@@ -8,10 +8,10 @@ varying the number of ANN workers while keeping OLAP worker at 1.
 TPC-H queries are executed directly via psycopg2 (no BenchBase overhead).
 
 Memory Configurations:
-  - No Pressure: 40GB shared_buffers, 60GB cgroup
-  - Relaxed: 16GB shared_buffers, 20GB cgroup
-  - Medium: 12GB shared_buffers, 16GB cgroup
-  - Tight: 8GB shared_buffers, 12GB cgroup
+  - No Pressure: 20GB shared_buffers, 50GB cgroup
+  - Relaxed: 12GB shared_buffers, 30GB cgroup
+  - Medium: 8GB shared_buffers, 20GB cgroup
+  - Tight: 4GB shared_buffers, 12GB cgroup
 """
 
 import psycopg2
@@ -52,17 +52,17 @@ RESULTS_DIR = str(TPCH_DIR / "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # CPU pinning — adjust these for your machine
-NUM_PG_CORES = 30
-POSTGRES_CORES = "0-29"
-BENCHBASE_CORES = "71-80"
-TOPK_CORES = list(range(60, 70))
+NUM_PG_CORES = 16
+POSTGRES_CORES = "0-15"
+BENCHBASE_CORES = "26-31"  # unused, kept for compatibility
+TOPK_CORES = list(range(16, 26))
 
 # PostgreSQL paths — auto-detect
 PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
 _pgdata_result = subprocess.run(
     "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
 )
-PG_DATA_DIR = _pgdata_result.stdout.strip() or "/home/postgres/pgdata"
+PG_DATA_DIR = _pgdata_result.stdout.strip() or "/mnt/nvme/pgdata"
 PG_CONF_PATH = os.path.join(PG_DATA_DIR, "postgresql.conf")
 
 # Cgroup
@@ -99,6 +99,42 @@ Q15_QUERY = "SELECT s_suppkey, s_name, s_address, s_phone, total_revenue FROM su
 Q15_DROP_VIEW = "DROP VIEW revenue0"
 
 
+def parse_explain_buffers(explain_lines):
+    """Parse EXPLAIN (ANALYZE, BUFFERS) output to extract buffer stats."""
+    total_shared_hit = 0
+    total_shared_read = 0
+    total_shared_written = 0
+    exec_time_ms = 0
+
+    for row in explain_lines:
+        line = row[0] if isinstance(row, tuple) else row
+        line = line.strip()
+
+        # Parse "Buffers: shared hit=X read=Y written=Z"
+        if 'Buffers:' in line and 'shared' in line:
+            import re as _re
+            hit_match = _re.search(r'shared hit=(\d+)', line)
+            read_match = _re.search(r'read=(\d+)', line)
+            written_match = _re.search(r'written=(\d+)', line)
+            if hit_match:
+                total_shared_hit = max(total_shared_hit, int(hit_match.group(1)))
+            if read_match:
+                total_shared_read = max(total_shared_read, int(read_match.group(1)))
+            if written_match:
+                total_shared_written = max(total_shared_written, int(written_match.group(1)))
+
+        # Parse "Execution Time: X ms"
+        if 'Execution Time:' in line:
+            exec_time_ms = float(line.split()[2])
+
+    return {
+        "shared_hit": total_shared_hit,
+        "shared_read": total_shared_read,
+        "shared_written": total_shared_written,
+        "exec_time_ms": exec_time_ms,
+    }
+
+
 def run_tpch_direct():
     """Run all 22 TPC-H queries directly via psycopg2. Returns total wall-clock time and per-query details."""
     conn = psycopg2.connect(**DB_CONFIG)
@@ -115,18 +151,29 @@ def run_tpch_direct():
         if qname == "Q15":
             start = time.time()
             cur.execute(Q15_CREATE_VIEW)
-            cur.execute(Q15_QUERY)
-            cur.fetchall()
+            cur.execute(f"EXPLAIN (ANALYZE, BUFFERS) {Q15_QUERY}")
+            explain_result = cur.fetchall()
             cur.execute(Q15_DROP_VIEW)
             elapsed = time.time() - start
+            buffers = parse_explain_buffers(explain_result)
         else:
             start = time.time()
-            cur.execute(sql)
-            cur.fetchall()
+            cur.execute(f"EXPLAIN (ANALYZE, BUFFERS) {sql}")
+            explain_result = cur.fetchall()
             elapsed = time.time() - start
+            buffers = parse_explain_buffers(explain_result)
 
-        query_times.append({"query": qname, "time_sec": round(elapsed, 3)})
-        print(f"    {qname}: {elapsed:.3f}s")
+        query_times.append({
+            "query": qname,
+            "time_sec": round(elapsed, 3),
+            "shared_hit": buffers["shared_hit"],
+            "shared_read": buffers["shared_read"],
+            "shared_written": buffers["shared_written"],
+        })
+        hit_rate = 0
+        if buffers["shared_hit"] + buffers["shared_read"] > 0:
+            hit_rate = buffers["shared_hit"] / (buffers["shared_hit"] + buffers["shared_read"]) * 100
+        print(f"    {qname}: {elapsed:.3f}s  (hit={buffers['shared_hit']}, read={buffers['shared_read']}, hit_rate={hit_rate:.1f}%)")
 
     total_time = time.time() - total_start
 
@@ -138,21 +185,21 @@ def run_tpch_direct():
 
 # Experiment parameters
 K = 100  # TopK parameter
-TOPK_WORKERS_LIST = [ 5,10]  # Variable ANN workers
+TOPK_WORKERS_LIST = [0,5,10]  # Variable ANN workers
 NUM_TPCH_WORKERS = 1  # Fixed number of OLAP workers
 
 # Index configuration - set these before running
-INDEX_TYPE = "IVFFLAT"  # "IVFFLAT" or "HNSW"
+INDEX_TYPE = "HNSW"  # "IVFFLAT" or "HNSW"
 PARALLEL_INDEX = False  # True for Parallel IVFFlat, False for Default
 IO_DEPTH = 1000  # 0 or 1000
 
 # Memory configurations: (name, shared_buffers_gb, cgroup_gb)
 # Uncomment the configuration(s) you want to run
 MEMORY_CONFIGS = [
-    #("no_pressure", 40, 60),
-    #("relaxed", 16, 20),
-    #("medium", 12, 20),
-    ("tight", 12 , 20),
+   ("no_pressure", 40, 60),
+    ("relaxed", 16, 20),
+    ("medium", 12, 16),
+    ("tight", 8, 12),
 ]
 
 # Query template for GIST dataset - using L2 distance
@@ -228,7 +275,7 @@ def restart_postgres():
 
     # Restart PostgreSQL pinned to NUMA 0
     subprocess.run(
-        f"su - postgres -c 'taskset -c {POSTGRES_CORES} {PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile restart'",
+        f"su - postgres -c 'numactl --cpunodebind=0-3 --membind=0-3 {PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile restart'",
         shell=True,
         check=True
     )

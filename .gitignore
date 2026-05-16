@@ -8,3 +8,5 @@ gist_test_queries.txt
 sampled_vectors_gist.txt
 tpch_direct_results.json
 benchbase/
+tpch_sf10_data/
+tpch_sf10_data/
