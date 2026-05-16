@@ -1,0 +1,10 @@
+*.hdf5
+*.dump
+*.tar.gz
+pgdata/
+__pycache__/
+*.pyc
+gist_test_queries.txt
+sampled_vectors_gist.txt
+tpch_direct_results.json
+benchbase/
