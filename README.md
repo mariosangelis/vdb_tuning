@@ -82,7 +82,8 @@ sudo chown postgres:postgres /mnt/nvme/pgdata
 
 ---
 
-## 3. Compile and Install PostgreSQL 18 [This version iscludes our patches for Compiler Optmization]
+## 3. Compile and Install PostgreSQL 18 
+This Postgres version includes our patches for Compiler Optmization !!!
 
 ```bash
 cd ~/vdb_tuning/postgres/postgres
@@ -130,7 +131,7 @@ The Makefile applies these optimization flags automatically:
 - `-march=native` (uses AVX2/AVX-512 on x86, SVE/NEON on ARM)
 - `-ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math`
 
-Our modified pgvector extension [Includes parallel IVFFLAT implementation]
+The modified pgvector extension that includes the parallel IVFFLAT implementation
 ```bash
 cd ~/vdb_tuning/pgvector_modified_final
 
@@ -239,11 +240,18 @@ sudo su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH; pg_restore -j 8 
 
 This restores all TPC-H tables (lineitem, orders, customer, etc.), the GIST data table (`gist_data` with ~1M 960-dimensional vectors), and an IVFFLAT index with 1000 clusters generated for GIST dataset. Takes ~10-15 minutes.
 
-### 6.3 Create Vector Index [ptch_sf10 folder comes with an IVFFLAT index with 1000 centroids]
+### 6.3 Create Vector Index [Optional]
+
+Optional since tph_sf10 folder already includes an IVFFLAT index with 1000 centroids.
+
 
 ```sql
--- Connect to mydb as postgres
-SET maintenance_work_mem = '15GB';
+sudo bash
+sudo su - postgres -s /bin/bash
+export PGDATA=/mnt/nvme/pgdata
+export PATH=/usr/local/pgsql/bin:$PATH
+
+psql -d mydb
 
 -- IVFFlat index (1000 lists, ~2-3 min build time)
 CREATE INDEX gist_data_embedding_idx ON gist_data USING ivfflat (embedding vector_l2_ops) WITH (lists = 1000);
@@ -288,7 +296,7 @@ cat /sys/fs/cgroup/postgres_test/memory.max
 
 ### 8.3 Configure CPU Pinning
 
-The experiment script (`execute_ann_impact_automated.py`) has these CPU settings at the top:
+Each experiment script (`execute_ann_impact_automated.py, execute_olap_impact_automated.py`) has these CPU settings at the top:
 
 ```python
 NUM_PG_CORES = 16
@@ -307,7 +315,7 @@ The script uses `numactl --cpunodebind=0-3 --membind=0-3` to start PostgreSQL wi
 
 ## 9. Running Experiments
 
-### 9.1 Main Experiment: ANN Impact on OLAP
+### ANN Impact on OLAP
 
 This measures how increasing ANN (TopK) concurrency degrades TPC-H performance under
 different memory pressures. The script must be run **3 times** — once per index/IO configuration.
@@ -357,18 +365,17 @@ sudo python3 execute_ann_impact_automated.py
 First, switch the index from IVFFlat to HNSW:
 
 ```bash
-sudo su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH; psql -d mydb" <<'EOF'
+sudo bash
+sudo su - postgres -s /bin/bash
+export PGDATA=/mnt/nvme/pgdata
+export PATH=/usr/local/pgsql/bin:$PATH
+
+psql -d mydb
 -- Drop the IVFFlat index
 DROP INDEX IF EXISTS gist_data_embedding_idx;
 
--- Create HNSW index (M=16, ef_construction=200, takes ~20-30 min)
-SET maintenance_work_mem = '15GB';
-CREATE INDEX gist_data_embedding_idx ON gist_data
-    USING hnsw (embedding vector_l2_ops) WITH (m = 16, ef_construction = 200);
-
--- Set search parameter
-ALTER INDEX gist_data_embedding_idx SET (ef_search = 350);
-EOF
+-- Create HNSW index (M=16 takes ~20-30 min)
+CREATE INDEX gist_data_embedding_idx ON gist_data USING hnsw (embedding vector_l2_ops);
 ```
 
 Then set:
@@ -416,5 +423,112 @@ Results are saved as JSON lines (one JSON object per experiment run):
 ```
 
 Results files are named: `mixed_workload_tpch_and_topk_{INDEX}_io_{IO_DEPTH}_{cores}_cores_for_postgres_{shared_buf}GB_shared_buffers_{cgroup}GB_RAM_GIST.txt`
+
+### 9.4 Reverse Experiment: OLAP Impact on ANN
+
+This measures the opposite direction — how increasing OLAP (TPC-H) concurrency degrades
+ANN (TopK) performance. It uses 1 fixed ANN worker and varies the number of concurrent
+OLAP workers (0 through 6).
+
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/TPCH/code
+```
+
+Edit the configuration at the top of `execute_olap_impact_automated.py`:
+
+```python
+INDEX_TYPE = "IVFFLAT"   # or "HNSW"
+IO_DEPTH = 1000          # 0 or 1000
+```
+
+Run it the same 3 times as the ANN→OLAP experiment (same index/IO combinations):
+
+#### Run 1: IVFFlat with io_depth=1000
+
+```python
+INDEX_TYPE = "IVFFLAT"
+IO_DEPTH = 1000
+```
+
+```bash
+sudo python3 execute_olap_impact_automated.py
+```
+
+#### Run 2: IVFFlat with io_depth=0
+
+```python
+INDEX_TYPE = "IVFFLAT"
+IO_DEPTH = 0
+```
+
+```bash
+sudo python3 execute_olap_impact_automated.py
+```
+
+#### Run 3: HNSW with io_depth=1000
+
+Make sure the HNSW index is already created (see Run 3 in section 9.1). Then:
+
+```python
+INDEX_TYPE = "HNSW"
+IO_DEPTH = 1000
+```
+
+```bash
+sudo python3 execute_olap_impact_automated.py
+```
+
+**What it does for each `(memory_config, olap_workers)` combination:**
+
+1. Restarts PostgreSQL (clean state, drop caches, set shared_buffers/effective_io_concurrency/cgroup)
+2. Starts 1 ANN (TopK) worker thread running continuous vector queries
+3. Starts N OLAP worker threads, each running 1 full round of all 22 TPC-H queries
+4. Waits until all OLAP workers finish their round, then stops the ANN worker
+5. Records ANN throughput/latency (p50/p95/p99) and OLAP throughput (tps)
+6. For `0 OLAP workers` (baseline), TopK runs solo for 180 seconds
+
+Results are saved to `results_olap_impact_to_ann/` as JSON lines. Each data point
+represents a different OLAP concurrency level, producing the throughput frontier plots
+(OLAP throughput vs Vector Search throughput).
+
+### 9.5 Results Directory Structure
+
+After running all 3 configurations, the results are stored under:
+
+```
+vdb-tuning-main/TPCH/
+├── results_ann_impact_to_olap/    # ANN→OLAP interference results
+│   ├── mixed_workload_..._IVFFLAT_io_1000_..._GIST.txt
+│   ├── mixed_workload_..._IVFFLAT_io_0_..._GIST.txt
+│   └── mixed_workload_..._HNSW_io_1000_..._GIST.txt
+├── results_olap_impact_to_ann/    # OLAP→ANN interference results (if run)
+│   └── olap_impact_on_ann_..._GIST.txt
+└── figures/
+    ├── generate_plot_for_ann_to_olap_impact.py
+    └── figure_plots/              # Generated figures
+```
+
+---
+
+## 10. Generating Plots
+
+Once all experiment results are available in `results_ann_impact_to_olap/`, generate the
+paper-style figures:
+
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/TPCH/figures
+python3 generate_plot_for_ann_to_olap_impact.py
+```
+
+The script reads the JSON-lines result files from `results_ann_impact_to_olap/` and
+produces figures in `figure_plots/`, including:
+
+- **ANN impact on OLAP frontier** — OLAP execution time vs vector search throughput (4 memory panels)
+- **TPC-H time vs ANN workers** — bar charts per memory config
+- **Buffer pool misses** — shared_read counts vs ANN workers
+- **Per-query breakdown** — individual TPC-H query times with 0 vs N ANN workers
+- **Throughput frontier** — OLAP throughput (tps) vs ANN throughput (qps)
+
+Figures are saved as both PDF and PNG.
 
 ---
