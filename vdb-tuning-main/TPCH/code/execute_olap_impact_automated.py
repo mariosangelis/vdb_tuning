@@ -61,7 +61,7 @@ DB_CONFIG = {
 
 # Paths — derived from script location
 WORKLOAD_VECTORS_PATH = str(PROJECT_DIR / "gist_test_queries.txt")
-RESULTS_DIR = str(TPCH_DIR / "results_olap_impact_to_ann")
+RESULTS_DIR = str(TPCH_DIR / "results")
 
 # Create results directory if it doesn't exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -87,19 +87,19 @@ CGROUP_MEM_PATH = "/sys/fs/cgroup/postgres_test/memory.max"
 # ============== EXPERIMENT PARAMETERS ==============
 K = 100  # TopK parameter
 NUM_TOPK_WORKERS = 1                        # Fixed: 1 ANN worker
-OLAP_WORKERS_LIST = [6,5,4,3,2,1]  # Variable: TPC-H concurrency
+OLAP_WORKERS_LIST = [0, 1, 2, 3, 4, 5, 6]  # Variable: TPC-H concurrency
 BASELINE_DURATION_SEC = 180                  # Duration for baseline (0 OLAP workers) run
 
 # Index configuration - set these before running
 INDEX_TYPE = "IVFFLAT"   # "IVFFLAT" or "HNSW"
 PARALLEL_INDEX = False   # True for Parallel IVFFlat, False for Default
-IO_DEPTH = 0          # 0 or 1000
+IO_DEPTH = 1000          # 0 or 1000
 
 # Memory configurations: (name, shared_buffers_gb, cgroup_gb)
 MEMORY_CONFIGS = [
-    # ("no_pressure", 40, 60),
-    # ("relaxed", 16, 20),
-    # ("medium", 12, 16),
+    ("no_pressure", 40, 60),
+    ("relaxed", 16, 20),
+    ("medium", 12, 16),
     ("tight", 8, 12),
 ]
 
@@ -205,6 +205,32 @@ def set_shared_buffers(size_gb):
         verify = f.read()
     match = re.search(r'shared_buffers\s*=\s*[^\n]+', verify)
     print(f"  shared_buffers now: {match.group() if match else 'NOT FOUND'}")
+
+
+def set_effective_io_concurrency(value):
+    """Modify effective_io_concurrency in postgresql.conf to match IO_DEPTH."""
+    print(f"Setting effective_io_concurrency to {value}...")
+
+    with open(PG_CONF_PATH, 'r') as f:
+        config = f.read()
+
+    if re.search(r'^#?\s*effective_io_concurrency\s*=', config, re.MULTILINE):
+        new_config = re.sub(
+            r'^#?\s*effective_io_concurrency\s*=\s*[^\n]+',
+            f'effective_io_concurrency = {value}',
+            config,
+            flags=re.MULTILINE,
+        )
+    else:
+        new_config = config.rstrip() + f'\neffective_io_concurrency = {value}\n'
+
+    with open(PG_CONF_PATH, 'w') as f:
+        f.write(new_config)
+
+    with open(PG_CONF_PATH, 'r') as f:
+        verify = f.read()
+    match = re.search(r'effective_io_concurrency\s*=\s*[^\n]+', verify)
+    print(f"  effective_io_concurrency now: {match.group() if match else 'NOT FOUND'}")
 
 
 def set_cgroup_memory(size_gb):
@@ -520,8 +546,9 @@ def run_memory_config(config_name, shared_buf_gb, cgroup_gb, workload):
     print(f"# Direction: OLAP impact on ANN (varying OLAP workers, fixed 1 ANN)")
     print(f"{'#'*70}")
 
-    # Configure memory settings
+    # Configure memory and I/O settings
     set_shared_buffers(shared_buf_gb)
+    set_effective_io_concurrency(IO_DEPTH)
     set_cgroup_memory(cgroup_gb)
 
     # Generate output filename
