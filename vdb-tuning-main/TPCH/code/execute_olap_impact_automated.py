@@ -61,7 +61,7 @@ DB_CONFIG = {
 
 # Paths — derived from script location
 WORKLOAD_VECTORS_PATH = str(PROJECT_DIR / "gist_test_queries.txt")
-RESULTS_DIR = str(TPCH_DIR / "results")
+RESULTS_DIR = str(TPCH_DIR / "results_olap_impact_to_ann")
 
 # Create results directory if it doesn't exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -87,11 +87,11 @@ CGROUP_MEM_PATH = "/sys/fs/cgroup/postgres_test/memory.max"
 # ============== EXPERIMENT PARAMETERS ==============
 K = 100  # TopK parameter
 NUM_TOPK_WORKERS = 1                        # Fixed: 1 ANN worker
-OLAP_WORKERS_LIST = [0, 1, 2, 3, 4, 5, 6]  # Variable: TPC-H concurrency
+OLAP_WORKERS_LIST = [6,5,4,3,2,1]  # Variable: TPC-H concurrency
 BASELINE_DURATION_SEC = 180                  # Duration for baseline (0 OLAP workers) run
 
 # Index configuration - set these before running
-INDEX_TYPE = "IVFFLAT"   # "IVFFLAT" or "HNSW"
+INDEX_TYPE = "HNSW"   # "IVFFLAT" or "HNSW"
 PARALLEL_INDEX = False   # True for Parallel IVFFlat, False for Default
 IO_DEPTH = 1000          # 0 or 1000
 
