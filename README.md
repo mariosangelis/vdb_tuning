@@ -499,7 +499,19 @@ frontier plots (OLAP throughput vs Vector Search throughput).
 
 ### 10.3 Generating Plots
 
-*Plotting script for OLAP→ANN results is not yet available. To be added.*
+Once all 3 runs are complete, generate the throughput frontier figures:
+
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/TPCH/figures
+python3 generate_plot_for_olap_to_ann_impact.py
+```
+
+The script reads the JSON-lines result files from `results_olap_impact_to_ann/` and
+produces a 2x2 grid throughput frontier plot in `figure_plots/`:
+
+- **Throughput frontier grid** — OLAP throughput (tps) vs Vector Search throughput (qps), with each point labeled by OLAP worker count (1-6), across 4 memory pressure panels
+
+Figures are saved as both PDF and PNG.
 
 ---
 
@@ -518,7 +530,8 @@ vdb-tuning-main/TPCH/
 │   ├── olap_impact_on_ann_IVFFLAT_io_0_..._GIST.txt
 │   └── olap_impact_on_ann_HNSW_io_1000_..._GIST.txt
 └── figures/
-    ├── generate_plot_for_ann_to_olap_impact.py   # Plots for Experiment 1
+    ├── generate_plot_for_ann_to_olap_impact.py    # Plots for Experiment 1
+    ├── generate_plot_for_olap_to_ann_impact.py    # Plots for Experiment 2
     └── figure_plots/                              # Generated figures
 ```
 
