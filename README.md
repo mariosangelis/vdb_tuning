@@ -313,12 +313,14 @@ The script uses `numactl --cpunodebind=0-3 --membind=0-3` to start PostgreSQL wi
 
 ---
 
-## 9. Running Experiments
-
-### ANN Impact on OLAP
+## 9. Experiment 1: ANN Impact on OLAP
 
 This measures how increasing ANN (TopK) concurrency degrades TPC-H performance under
-different memory pressures. The script must be run **3 times** — once per index/IO configuration.
+different memory pressures. Fixed: 1 OLAP worker. Variable: 0-10 ANN workers.
+
+### 9.1 Running the Experiment
+
+The script must be run **3 times** — once per index/IO configuration.
 
 ```bash
 cd ~/vdb_tuning/vdb-tuning-main/TPCH/code
@@ -365,7 +367,6 @@ sudo python3 execute_ann_impact_automated.py
 First, switch the index from IVFFlat to HNSW:
 
 ```bash
-sudo bash
 sudo su - postgres -s /bin/bash
 export PGDATA=/mnt/nvme/pgdata
 export PATH=/usr/local/pgsql/bin:$PATH
@@ -402,46 +403,49 @@ For each `(memory_config, ann_workers)` combination:
 7. Starts N ANN worker threads running continuous TopK vector queries
 8. Runs all 22 TPC-H queries with `EXPLAIN (ANALYZE, BUFFERS)` to capture buffer statistics
 9. Records per-query timing, shared_hit, shared_read counts
-10. Saves results as JSON lines
+10. Saves results as JSON lines to `results_ann_impact_to_olap/`
 
-### 9.3 Output Format
+### 9.3 Generating Plots
 
-Results are saved as JSON lines (one JSON object per experiment run):
+Once all 3 runs are complete, generate the paper-style figures:
 
-```json
-{
-  "tpch_query_times": [
-    {"query": "Q1", "time_sec": 13.2, "shared_hit": 228, "shared_read": 1124552, "shared_written": 0},
-    {"query": "Q2", "time_sec": 2.6, "shared_hit": 1586154, "shared_read": 233687, "shared_written": 0},
-    ...
-  ],
-  "topk_query_count": 14612,
-  "topk_throughput": 59.26,
-  "topk_avg_exec_time_sec": 0.083,
-  "tpch_execution_time": 246.59
-}
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/TPCH/figures
+python3 generate_plot_for_ann_to_olap_impact.py
 ```
 
-Results files are named: `mixed_workload_tpch_and_topk_{INDEX}_io_{IO_DEPTH}_{cores}_cores_for_postgres_{shared_buf}GB_shared_buffers_{cgroup}GB_RAM_GIST.txt`
+The script reads the JSON-lines result files from `results_ann_impact_to_olap/` and
+produces figures in `figure_plots/`, including:
 
-### 9.4 Reverse Experiment: OLAP Impact on ANN
+- **ANN impact on OLAP frontier** — OLAP execution time vs vector search throughput (4 memory panels)
+- **TPC-H time vs ANN workers** — bar charts per memory config
+- **Buffer pool misses** — shared_read counts vs ANN workers
+- **Per-query breakdown** — individual TPC-H query times with 0 vs N ANN workers
+- **Throughput frontier** — OLAP throughput (tps) vs ANN throughput (qps)
+
+Figures are saved as both PDF and PNG.
+
+---
+
+## 10. Experiment 2: OLAP Impact on ANN
 
 This measures the opposite direction — how increasing OLAP (TPC-H) concurrency degrades
-ANN (TopK) performance. It uses 1 fixed ANN worker and varies the number of concurrent
-OLAP workers (0 through 6).
+ANN (TopK) performance. Fixed: 1 ANN worker. Variable: 0-6 OLAP workers.
+
+### 10.1 Running the Experiment
+
+The script must be run **3 times** — same index/IO combinations as Experiment 1.
 
 ```bash
 cd ~/vdb_tuning/vdb-tuning-main/TPCH/code
 ```
 
-Edit the configuration at the top of `execute_olap_impact_automated.py`:
+Before each run, edit the two configuration variables at the top of `execute_olap_impact_automated.py`:
 
 ```python
 INDEX_TYPE = "IVFFLAT"   # or "HNSW"
 IO_DEPTH = 1000          # 0 or 1000
 ```
-
-Run it the same 3 times as the ANN→OLAP experiment (same index/IO combinations):
 
 #### Run 1: IVFFlat with io_depth=1000
 
@@ -478,7 +482,9 @@ IO_DEPTH = 1000
 sudo python3 execute_olap_impact_automated.py
 ```
 
-**What it does for each `(memory_config, olap_workers)` combination:**
+### 10.2 What the Script Does
+
+For each `(memory_config, olap_workers)` combination:
 
 1. Restarts PostgreSQL (clean state, drop caches, set shared_buffers/effective_io_concurrency/cgroup)
 2. Starts 1 ANN (TopK) worker thread running continuous vector queries
@@ -486,49 +492,34 @@ sudo python3 execute_olap_impact_automated.py
 4. Waits until all OLAP workers finish their round, then stops the ANN worker
 5. Records ANN throughput/latency (p50/p95/p99) and OLAP throughput (tps)
 6. For `0 OLAP workers` (baseline), TopK runs solo for 180 seconds
+7. Saves results as JSON lines to `results_olap_impact_to_ann/`
 
-Results are saved to `results_olap_impact_to_ann/` as JSON lines. Each data point
-represents a different OLAP concurrency level, producing the throughput frontier plots
-(OLAP throughput vs Vector Search throughput).
+Each data point represents a different OLAP concurrency level, producing the throughput
+frontier plots (OLAP throughput vs Vector Search throughput).
 
-### 9.5 Results Directory Structure
+### 10.3 Generating Plots
 
-After running all 3 configurations, the results are stored under:
-
-```
-vdb-tuning-main/TPCH/
-├── results_ann_impact_to_olap/    # ANN→OLAP interference results
-│   ├── mixed_workload_..._IVFFLAT_io_1000_..._GIST.txt
-│   ├── mixed_workload_..._IVFFLAT_io_0_..._GIST.txt
-│   └── mixed_workload_..._HNSW_io_1000_..._GIST.txt
-├── results_olap_impact_to_ann/    # OLAP→ANN interference results (if run)
-│   └── olap_impact_on_ann_..._GIST.txt
-└── figures/
-    ├── generate_plot_for_ann_to_olap_impact.py
-    └── figure_plots/              # Generated figures
-```
+*Plotting script for OLAP→ANN results is not yet available. To be added.*
 
 ---
 
-## 10. Generating Plots
+## 11. Results Directory Structure
 
-Once all experiment results are available in `results_ann_impact_to_olap/`, generate the
-paper-style figures:
+After running all experiments, the results are stored under:
 
-```bash
-cd ~/vdb_tuning/vdb-tuning-main/TPCH/figures
-python3 generate_plot_for_ann_to_olap_impact.py
 ```
-
-The script reads the JSON-lines result files from `results_ann_impact_to_olap/` and
-produces figures in `figure_plots/`, including:
-
-- **ANN impact on OLAP frontier** — OLAP execution time vs vector search throughput (4 memory panels)
-- **TPC-H time vs ANN workers** — bar charts per memory config
-- **Buffer pool misses** — shared_read counts vs ANN workers
-- **Per-query breakdown** — individual TPC-H query times with 0 vs N ANN workers
-- **Throughput frontier** — OLAP throughput (tps) vs ANN throughput (qps)
-
-Figures are saved as both PDF and PNG.
+vdb-tuning-main/TPCH/
+├── results_ann_impact_to_olap/    # Experiment 1: ANN→OLAP interference
+│   ├── mixed_workload_..._IVFFLAT_io_1000_..._GIST.txt
+│   ├── mixed_workload_..._IVFFLAT_io_0_..._GIST.txt
+│   └── mixed_workload_..._HNSW_io_1000_..._GIST.txt
+├── results_olap_impact_to_ann/    # Experiment 2: OLAP→ANN interference
+│   ├── olap_impact_on_ann_IVFFLAT_io_1000_..._GIST.txt
+│   ├── olap_impact_on_ann_IVFFLAT_io_0_..._GIST.txt
+│   └── olap_impact_on_ann_HNSW_io_1000_..._GIST.txt
+└── figures/
+    ├── generate_plot_for_ann_to_olap_impact.py   # Plots for Experiment 1
+    └── figure_plots/                              # Generated figures
+```
 
 ---
