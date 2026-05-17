@@ -91,7 +91,7 @@ OLAP_WORKERS_LIST = [6,5,4,3,2,1]  # Variable: TPC-H concurrency
 BASELINE_DURATION_SEC = 180                  # Duration for baseline (0 OLAP workers) run
 
 # Index configuration - set these before running
-INDEX_TYPE = "HNSW"   # "IVFFLAT" or "HNSW"
+INDEX_TYPE = "IVFFLAT"   # "IVFFLAT" or "HNSW"
 PARALLEL_INDEX = False   # True for Parallel IVFFlat, False for Default
 IO_DEPTH = 1000          # 0 or 1000
 
