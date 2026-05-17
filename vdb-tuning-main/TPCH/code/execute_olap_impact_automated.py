@@ -61,7 +61,7 @@ DB_CONFIG = {
 
 # Paths — derived from script location
 WORKLOAD_VECTORS_PATH = str(PROJECT_DIR / "gist_test_queries.txt")
-RESULTS_DIR = str(TPCH_DIR / "results_olap_impact_to_ann/")
+RESULTS_DIR = str(TPCH_DIR / "results_olap_impact_to_ann")
 
 # Create results directory if it doesn't exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -87,7 +87,7 @@ CGROUP_MEM_PATH = "/sys/fs/cgroup/postgres_test/memory.max"
 # ============== EXPERIMENT PARAMETERS ==============
 K = 100  # TopK parameter
 NUM_TOPK_WORKERS = 1                        # Fixed: 1 ANN worker
-OLAP_WORKERS_LIST = [0, 1, 2, 3, 4, 5, 6]  # Variable: TPC-H concurrency
+OLAP_WORKERS_LIST = [6,5,4,3,2,1]  # Variable: TPC-H concurrency
 BASELINE_DURATION_SEC = 180                  # Duration for baseline (0 OLAP workers) run
 
 # Index configuration - set these before running
@@ -97,9 +97,9 @@ IO_DEPTH = 0          # 0 or 1000
 
 # Memory configurations: (name, shared_buffers_gb, cgroup_gb)
 MEMORY_CONFIGS = [
-    ("no_pressure", 40, 60),
-    ("relaxed", 16, 20),
-    ("medium", 12, 16),
+    # ("no_pressure", 40, 60),
+    # ("relaxed", 16, 20),
+    # ("medium", 12, 16),
     ("tight", 8, 12),
 ]
 
@@ -304,11 +304,11 @@ def run_topk_queries(thread_id, workload, stop_event, results_dict):
             results_dict['latencies'].extend(local_latencies)
 
 
-def run_tpch_worker(worker_id, stop_event, worker_results):
-    """OLAP worker thread: runs all 22 TPC-H queries sequentially, looping until stop_event.
+def run_tpch_worker(worker_id, worker_results):
+    """OLAP worker thread: runs exactly 1 round of all 22 TPC-H queries sequentially.
 
-    Each worker opens its own connection and continuously runs the full
-    TPC-H query suite. We track per-query times and buffer stats.
+    Each worker opens its own connection and runs the full TPC-H query suite once.
+    We track per-query times and buffer stats. The thread exits after the round.
     """
     # Pin to socket 1
     core_id = OLAP_CORES[worker_id % len(OLAP_CORES)]
@@ -321,50 +321,41 @@ def run_tpch_worker(worker_id, stop_event, worker_results):
     # Enable sequential scans for TPC-H (disabled globally for vector search index usage)
     cur.execute("SET enable_seqscan = on;")
 
-    rounds_completed = 0
-    per_query_times = []  # List of dicts per round
+    round_queries = []
 
     try:
-        while not stop_event.is_set():
-            round_queries = []
-            for qname, sql in TPCH_QUERIES:
-                if stop_event.is_set():
-                    break
+        for qname, sql in TPCH_QUERIES:
+            if qname == "Q15":
+                start = time.time()
+                # Q15 needs a temp view — each worker needs unique name to avoid conflicts
+                view_name = f"revenue0_w{worker_id}"
+                create_view = Q15_CREATE_VIEW.replace("revenue0", view_name)
+                query = Q15_QUERY.replace("revenue0", view_name)
+                drop_view = Q15_DROP_VIEW.replace("revenue0", view_name)
 
-                if qname == "Q15":
-                    start = time.time()
-                    # Q15 needs a temp view — each worker needs unique name to avoid conflicts
-                    view_name = f"revenue0_w{worker_id}"
-                    create_view = Q15_CREATE_VIEW.replace("revenue0", view_name)
-                    query = Q15_QUERY.replace("revenue0", view_name)
-                    drop_view = Q15_DROP_VIEW.replace("revenue0", view_name)
+                cur.execute(create_view)
+                cur.execute(f"EXPLAIN (ANALYZE, BUFFERS) {query}")
+                explain_result = cur.fetchall()
+                cur.execute(drop_view)
+                elapsed = time.time() - start
+                buffers = parse_explain_buffers(explain_result)
+            else:
+                start = time.time()
+                cur.execute(f"EXPLAIN (ANALYZE, BUFFERS) {sql}")
+                explain_result = cur.fetchall()
+                elapsed = time.time() - start
+                buffers = parse_explain_buffers(explain_result)
 
-                    cur.execute(create_view)
-                    cur.execute(f"EXPLAIN (ANALYZE, BUFFERS) {query}")
-                    explain_result = cur.fetchall()
-                    cur.execute(drop_view)
-                    elapsed = time.time() - start
-                    buffers = parse_explain_buffers(explain_result)
-                else:
-                    start = time.time()
-                    cur.execute(f"EXPLAIN (ANALYZE, BUFFERS) {sql}")
-                    explain_result = cur.fetchall()
-                    elapsed = time.time() - start
-                    buffers = parse_explain_buffers(explain_result)
+            round_queries.append({
+                "query": qname,
+                "time_sec": round(elapsed, 3),
+                "shared_hit": buffers["shared_hit"],
+                "shared_read": buffers["shared_read"],
+                "shared_written": buffers["shared_written"],
+            })
 
-                round_queries.append({
-                    "query": qname,
-                    "time_sec": round(elapsed, 3),
-                    "shared_hit": buffers["shared_hit"],
-                    "shared_read": buffers["shared_read"],
-                    "shared_written": buffers["shared_written"],
-                })
-
-            if len(round_queries) == 22:
-                rounds_completed += 1
-                per_query_times.append(round_queries)
-                round_time = sum(q["time_sec"] for q in round_queries)
-                print(f"    OLAP worker {worker_id}: completed round {rounds_completed} in {round_time:.1f}s")
+        round_time = sum(q["time_sec"] for q in round_queries)
+        print(f"    OLAP worker {worker_id}: completed 1 round (22 queries) in {round_time:.1f}s")
 
     finally:
         cur.close()
@@ -373,8 +364,8 @@ def run_tpch_worker(worker_id, stop_event, worker_results):
         with global_lock:
             worker_results.append({
                 "worker_id": worker_id,
-                "rounds_completed": rounds_completed,
-                "per_query_times": per_query_times,
+                "rounds_completed": 1 if len(round_queries) == 22 else 0,
+                "per_query_times": [round_queries] if round_queries else [],
             })
 
 
@@ -440,16 +431,15 @@ def run_single_experiment(num_olap_workers, workload):
         time.sleep(BASELINE_DURATION_SEC)
         wall_time = BASELINE_DURATION_SEC
     else:
-        # Start OLAP worker threads — each runs TPC-H queries in a loop
+        # Start OLAP worker threads — each runs exactly 1 round of 22 TPC-H queries
         olap_threads = []
         for wid in range(num_olap_workers):
             t = threading.Thread(target=run_tpch_worker,
-                                 args=(wid, stop_event, olap_results))
+                                 args=(wid, olap_results))
             t.start()
             olap_threads.append(t)
 
-        # Wait for all OLAP workers to complete at least 1 full round
-        # We poll until all have finished
+        # Wait for all OLAP workers to finish their single round
         for t in olap_threads:
             t.join()
 
