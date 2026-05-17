@@ -82,7 +82,7 @@ sudo chown postgres:postgres /mnt/nvme/pgdata
 
 ---
 
-## 3. Compile and Install PostgreSQL 18
+## 3. Compile and Install PostgreSQL 18 [This version iscludes our patches for Compiler Optmization]
 
 ```bash
 cd ~/vdb_tuning/postgres/postgres
@@ -130,11 +130,24 @@ The Makefile applies these optimization flags automatically:
 - `-march=native` (uses AVX2/AVX-512 on x86, SVE/NEON on ARM)
 - `-ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math`
 
+Our modified pgvector extension [Includes parallel IVFFLAT implementation]
+```bash
+cd ~/vdb_tuning/pgvector_modified_final
+
+export PATH=/usr/local/pgsql/bin:$PATH
+export PG_CONFIG=/usr/local/pgsql/bin/pg_config
+make clean
+make CFLAGS='-O2 -fno-omit-frame-pointer -g'
+make install
+```
+
 ---
 
 ## 5. Initialize and Start PostgreSQL
 
 ```bash
+sudo bash 
+
 # Switch to postgres user
 sudo su - postgres -s /bin/bash
 
@@ -226,7 +239,7 @@ sudo su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH; pg_restore -j 8 
 
 This restores all TPC-H tables (lineitem, orders, customer, etc.), the GIST data table (`gist_data` with ~1M 960-dimensional vectors), and an IVFFLAT index with 1000 clusters generated for GIST dataset. Takes ~10-15 minutes.
 
-### 6.3 Create Vector Index
+### 6.3 Create Vector Index [ptch_sf10 folder comes with an IVFFLAT index with 1000 centroids]
 
 ```sql
 -- Connect to mydb as postgres
