@@ -46,16 +46,16 @@ DB_CONFIG = {
 
 # Paths — derived from script location and home directory
 WORKLOAD_VECTORS_PATH = str(PROJECT_DIR / "gist_test_queries.txt")
-RESULTS_DIR = str(TPCH_DIR / "results")
+RESULTS_DIR = str(TPCH_DIR / "results_ann_impact_to_olap")
 
 # Create results directory if it doesn't exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # CPU pinning — adjust these for your machine
-NUM_PG_CORES = 16
-POSTGRES_CORES = "0-15"
+NUM_PG_CORES = 32
+POSTGRES_CORES = "0-31"
 BENCHBASE_CORES = "26-31"  # unused, kept for compatibility
-TOPK_CORES = list(range(16, 26))
+TOPK_CORES = list(range(32, 48))
 
 # PostgreSQL paths — auto-detect
 PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
@@ -189,16 +189,16 @@ TOPK_WORKERS_LIST = [0,5,10]  # Variable ANN workers
 NUM_TPCH_WORKERS = 1  # Fixed number of OLAP workers
 
 # Index configuration - set these before running
-INDEX_TYPE = "HNSW"  # "IVFFLAT" or "HNSW"
+INDEX_TYPE = "IVFFLAT"  # "IVFFLAT" or "HNSW"
 PARALLEL_INDEX = False  # True for Parallel IVFFlat, False for Default
-IO_DEPTH = 1000  # 0 or 1000
+IO_DEPTH = 0  # 0 or 1000
 
 # Memory configurations: (name, shared_buffers_gb, cgroup_gb)
 # Uncomment the configuration(s) you want to run
 MEMORY_CONFIGS = [
-   ("no_pressure", 40, 60),
-    ("relaxed", 16, 20),
-    ("medium", 12, 16),
+#    ("no_pressure", 40, 60),
+#     ("relaxed", 16, 20),
+#     ("medium", 12, 16),
     ("tight", 8, 12),
 ]
 
@@ -275,7 +275,7 @@ def restart_postgres():
 
     # Restart PostgreSQL pinned to NUMA 0
     subprocess.run(
-        f"su - postgres -c 'numactl --cpunodebind=0-3 --membind=0-3 {PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile restart'",
+        f"su - postgres -c 'numactl --cpunodebind=0-7 --membind=0-7 {PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile restart'",
         shell=True,
         check=True
     )
@@ -408,8 +408,8 @@ def run_memory_config(config_name, shared_buf_gb, cgroup_gb, workload):
         result = run_single_experiment(num_workers, workload)
 
         # Append result to file
-        with open(filepath, "a") as f:
-            f.write(json.dumps(result) + "\n")
+        # with open(filepath, "a") as f:
+        #     f.write(json.dumps(result) + "\n")
 
         # Print summary
         print(f"\n>>> Result for {num_workers} ANN workers:")
