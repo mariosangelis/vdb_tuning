@@ -52,23 +52,32 @@ pip3 install psycopg2-binary h5py numpy psutil "psycopg[binary]" pgvector --brea
 
 ## 2. Prepare Storage and Create postgres User
 
-Mount the NVMe drive and create the postgres system user:
+Check your disk layout with `df -h` and `lsblk` to decide where to store PostgreSQL data.
+
+**Option A: Dedicated NVMe drive** (e.g., CloudLab machines with a separate data disk)
 
 ```bash
-# Format and mount NVMe (skip if already mounted)
-sudo mkfs.ext4 /dev/nvme0n1
+# Only if you have a separate, unformatted NVMe device (e.g., /dev/nvme1n1)
+sudo mkfs.ext4 /dev/nvme1n1
 sudo mkdir -p /mnt/nvme
-sudo mount /dev/nvme0n1 /mnt/nvme
+sudo mount /dev/nvme1n1 /mnt/nvme
+# Optional: make persistent
+echo '/dev/nvme1n1 /mnt/nvme ext4 defaults 0 0' | sudo tee -a /etc/fstab
+```
 
-# Create postgres user and data directory
+**Option B: Single root disk** (e.g., AWS EC2 with one NVMe as root `/`)
+
+```bash
+# The root filesystem already uses the NVMe — just create the directory
+sudo mkdir -p /mnt/nvme
+```
+
+Then create the postgres user and data directory:
+
+```bash
 sudo useradd -m -s /bin/bash postgres
 sudo mkdir -p /mnt/nvme/pgdata
 sudo chown postgres:postgres /mnt/nvme/pgdata
-```
-
-**Note:** The mount is not persistent across reboots. Add to `/etc/fstab` if needed:
-```bash
-echo '/dev/nvme0n1 /mnt/nvme ext4 defaults 0 0' | sudo tee -a /etc/fstab
 ```
 
 ---
@@ -109,11 +118,12 @@ sudo make install
 The default pgvector extension
 ```bash
 cd ~/vdb_tuning/pgvector
-export PATH=/usr/local/pgsql/bin:$PATH
 
+export PATH=/usr/local/pgsql/bin:$PATH
+export PG_CONFIG=/usr/local/pgsql/bin/pg_config
 make clean
-make -j$(nproc)
-sudo make install
+make CFLAGS='-O2 -fno-omit-frame-pointer -g'
+make install
 ```
 
 The Makefile applies these optimization flags automatically:
@@ -134,6 +144,30 @@ export PATH=/usr/local/pgsql/bin:$PATH
 
 # Initialize the database
 initdb -D $PGDATA --encoding=UTF8 --locale=en_US.UTF-8
+```
+
+**Important:** Before starting the server, copy the pre-configured postgresql.conf:
+
+```bash
+# Exit back to your regular user (exit the postgres shell)
+exit
+
+# Copy the experiment configuration files (overwrites the default postgresql.conf)
+sudo cp ~/vdb_tuning/postgres_configurations/postgresql.conf /mnt/nvme/pgdata/postgresql.conf
+sudo chown postgres:postgres /mnt/nvme/pgdata/postgresql.conf
+```
+
+The `postgresql.conf` in the repo has tuned settings for the experiments (shared_buffers,
+work_mem, effective_io_concurrency, enable_seqscan=off for vector queries, etc.).
+A `postgresql_default.conf` is also provided for reference.
+
+Now start the server and create the database:
+
+```bash
+# Switch back to postgres user
+sudo su - postgres -s /bin/bash
+export PGDATA=/mnt/nvme/pgdata
+export PATH=/usr/local/pgsql/bin:$PATH
 
 # Start the server
 pg_ctl -D $PGDATA -l /tmp/logfile start
@@ -151,70 +185,46 @@ psql -d mydb -c "SELECT extversion FROM pg_extension WHERE extname = 'vector';"
 
 ## 6. Load Data
 
-### 6.1 Option A: pg_restore from Dump (Fastest)
+The database dump contains all TPC-H SF10 tables and GIST-960 vector data (~4.8GB compressed).
+Download it from MediaFire and restore with `pg_restore`.
 
-If you have a `pg_dump` directory from another machine:
+### 6.1 Download the Database Dump
 
 ```bash
-# As root, fix permissions
-chmod -R a+r /tmp/mydb_dump
-chmod a+rx /tmp/mydb_dump
+# Create the dump directory
+mkdir -p /tmp/tpch_sf10
+cd /tmp/tpch_sf10
 
-# As postgres user
+# Download all dump files from MediaFire
+# (uses the premium/direct links which redirect automatically)
+wget -O 4685.dat.gz "https://www.mediafire.com/file_premium/59gidu10ljsv8et/4685.dat.gz/file"
+wget -O 4686.dat.gz "https://www.mediafire.com/file_premium/va2ljstm5fpbmun/4686.dat.gz/file"
+wget -O 4687.dat.gz "https://www.mediafire.com/file_premium/15fjmnipz05xndf/4687.dat.gz/file"
+wget -O 4688.dat.gz "https://www.mediafire.com/file_premium/402k0wcnt4ew758/4688.dat.gz/file"
+wget -O 4689.dat.gz "https://www.mediafire.com/file_premium/bnxogj4y6ghviu3/4689.dat.gz/file"
+wget -O 4690.dat.gz "https://www.mediafire.com/file_premium/qje6m3xr4gxupqz/4690.dat.gz/file"
+wget -O 4691.dat.gz "https://www.mediafire.com/file_premium/y1h3sarinsfa79n/4691.dat.gz/file"
+wget -O 4692.dat.gz "https://www.mediafire.com/file_premium/k3qawdhhg4aknd1/4692.dat.gz/file"
+wget -O 4693.dat.gz "https://www.mediafire.com/file_premium/3617jfx3vt731mx/4693.dat.gz/file"
+wget -O toc.dat    "https://www.mediafire.com/file_premium/af566ev4qyhjxn6/toc.dat/file"
+
+# Verify all files are present (should be 10 files, ~4.8GB total)
+ls -la /tmp/tpch_sf10/
+```
+
+### 6.2 Restore the Database
+
+```bash
+# Fix permissions so postgres user can read the dump
+chmod -R a+r /tmp/tpch_sf10
+chmod a+rx /tmp/tpch_sf10
+
+# Restore as postgres user (parallel with 8 jobs)
 export PATH=/usr/local/pgsql/bin:$PATH
-pg_restore -j 8 -d mydb /tmp/mydb_dump
+sudo su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH; pg_restore -j 8 -d mydb /tmp/tpch_sf10"
 ```
 
-This restores all tables, data, and indexes. Takes ~10-15 minutes.
-
-### 6.2 Option B: Load from Scratch
-
-#### Load TPC-H Data (SF10)
-
-Use BenchBase or dbgen to generate and load TPC-H scale factor 10 data:
-
-```bash
-# Using dbgen
-git clone https://github.com/electrum/tpch-dbgen.git
-cd tpch-dbgen && make
-./dbgen -s 10
-
-# Then COPY each .tbl file into PostgreSQL (create schema first)
-```
-
-Or use BenchBase (requires Java 23):
-```bash
-# Install Java
-sudo apt install -y openjdk-23-jdk   # Ubuntu
-# or: sudo dnf install -y java-23-amazon-corretto-devel  # Amazon Linux
-
-# Clone and build BenchBase
-git clone --depth 1 https://github.com/cmu-db/benchbase.git
-cd benchbase && ./mvnw clean package -P postgres -DskipTests
-cd target && tar xvzf benchbase-postgres.tgz && cd benchbase-postgres
-
-# Load TPC-H data
-java -jar benchbase.jar -b tpch -c config/postgres/tpch_mydb_sf10.xml \
-    --create=true --load=true --execute=false
-```
-
-#### Load GIST-960 Vectors
-
-Download the GIST dataset and load into PostgreSQL:
-
-```bash
-cd ~/vdb_tuning/vdb-tuning-main/data
-
-# Download GIST-960 dataset (~1GB)
-wget http://ann-benchmarks.com/gist-960-euclidean.hdf5
-
-# Load vectors into PostgreSQL (creates 'gist_data' table with ~1M vectors)
-python3 load_hdf5_to_postgres.py --file gist-960-euclidean.hdf5 --table gist_data
-
-# Save query vectors for experiments
-python3 load_hdf5_to_postgres.py --file gist-960-euclidean.hdf5 --table gist_data \
-    --save-queries ../gist_test_queries.txt --num-queries 1000
-```
+This restores all TPC-H tables (lineitem, orders, customer, etc.), the GIST data table (`gist_data` with ~1M 960-dimensional vectors), and an IVFFLAT index with 1000 clusters generated for GIST dataset. Takes ~10-15 minutes.
 
 ### 6.3 Create Vector Index
 
@@ -223,25 +233,15 @@ python3 load_hdf5_to_postgres.py --file gist-960-euclidean.hdf5 --table gist_dat
 SET maintenance_work_mem = '15GB';
 
 -- IVFFlat index (1000 lists, ~2-3 min build time)
-CREATE INDEX gist_data_embedding_idx ON gist_data
-    USING ivfflat (embedding vector_l2_ops) WITH (lists = 1000);
+CREATE INDEX gist_data_embedding_idx ON gist_data USING ivfflat (embedding vector_l2_ops) WITH (lists = 1000);
 
 -- OR: HNSW index (M=16, ef_construction=200, ~20-30 min build time)
-CREATE INDEX gist_data_embedding_idx ON gist_data
-    USING hnsw (embedding vector_l2_ops) WITH (m = 16, ef_construction = 200);
+CREATE INDEX gist_data_embedding_idx ON gist_data USING hnsw (embedding vector_l2_ops);
 ```
 
 **Note:** Only one index at a time. Drop the existing one before creating another:
 ```sql
 DROP INDEX IF EXISTS gist_data_embedding_idx;
-```
-
-### 6.4 Verify Data
-
-```sql
-SELECT count(*) FROM lineitem;       -- Expected: ~59,986,052 (SF10)
-SELECT count(*) FROM gist_data;      -- Expected: ~1,000,000
-\di+ gist_data_embedding_idx         -- Should show the index
 ```
 
 ---
@@ -296,45 +296,95 @@ The script uses `numactl --cpunodebind=0-3 --membind=0-3` to start PostgreSQL wi
 
 ### 9.1 Main Experiment: ANN Impact on OLAP
 
-This measures how increasing ANN (TopK) concurrency degrades TPC-H performance under different memory pressures:
+This measures how increasing ANN (TopK) concurrency degrades TPC-H performance under
+different memory pressures. The script must be run **3 times** — once per index/IO configuration.
 
 ```bash
 cd ~/vdb_tuning/vdb-tuning-main/TPCH/code
+```
 
-# Must run as root (needs cgroup + pg_ctl + cache dropping)
+Before each run, edit the two configuration variables at the top of `execute_ann_impact_automated.py`:
+
+```python
+INDEX_TYPE = "IVFFLAT"   # or "HNSW"
+IO_DEPTH = 1000          # 0 or 1000
+```
+
+The script automatically sets `effective_io_concurrency` in `postgresql.conf` to match
+`IO_DEPTH` before each PostgreSQL restart, so you only need to change these two variables.
+
+#### Run 1: IVFFlat with io_depth=1000
+
+The database dump already includes an IVFFlat index. Set:
+
+```python
+INDEX_TYPE = "IVFFLAT"
+IO_DEPTH = 1000
+```
+
+```bash
 sudo python3 execute_ann_impact_automated.py
 ```
 
-**Configuration** (edit the script before running):
+#### Run 2: IVFFlat with io_depth=0
+
+Change only `IO_DEPTH`:
 
 ```python
-# Memory configurations: (name, shared_buffers_gb, cgroup_gb)
-MEMORY_CONFIGS = [
-    ("no_pressure", 20, 50),   # Everything fits in memory
-    ("relaxed", 12, 30),       # Moderate pressure
-    ("medium", 8, 20),         # Significant pressure
-    ("tight", 4, 12),          # Heavy disk I/O
-]
-
-# ANN worker counts to test
-TOPK_WORKERS_LIST = [0, 5, 10]
-
-# Index type (must match the created index)
-INDEX_TYPE = "IVFFLAT"  # or "HNSW"
+INDEX_TYPE = "IVFFLAT"
+IO_DEPTH = 0
 ```
 
-**What it does for each (memory_config, ann_workers) combination:**
-1. Sets `shared_buffers` in postgresql.conf
-2. Sets cgroup `memory.max`
-3. Drops OS page caches (`echo 3 > /proc/sys/vm/drop_caches`)
-4. Restarts PostgreSQL with NUMA-aware CPU pinning
-5. Moves PostgreSQL processes into the cgroup
-6. Starts N ANN worker threads running continuous TopK vector queries
-7. Runs all 22 TPC-H queries with `EXPLAIN (ANALYZE, BUFFERS)` to capture buffer statistics
-8. Records per-query timing, shared_hit, shared_read counts
-9. Saves results as JSON lines
+```bash
+sudo python3 execute_ann_impact_automated.py
+```
 
-### 9.2 Output Format
+#### Run 3: HNSW with io_depth=1000
+
+First, switch the index from IVFFlat to HNSW:
+
+```bash
+sudo su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH; psql -d mydb" <<'EOF'
+-- Drop the IVFFlat index
+DROP INDEX IF EXISTS gist_data_embedding_idx;
+
+-- Create HNSW index (M=16, ef_construction=200, takes ~20-30 min)
+SET maintenance_work_mem = '15GB';
+CREATE INDEX gist_data_embedding_idx ON gist_data
+    USING hnsw (embedding vector_l2_ops) WITH (m = 16, ef_construction = 200);
+
+-- Set search parameter
+ALTER INDEX gist_data_embedding_idx SET (ef_search = 350);
+EOF
+```
+
+Then set:
+
+```python
+INDEX_TYPE = "HNSW"
+IO_DEPTH = 1000
+```
+
+```bash
+sudo python3 execute_ann_impact_automated.py
+```
+
+### 9.2 What the Script Does
+
+For each `(memory_config, ann_workers)` combination:
+
+1. Sets `shared_buffers` in postgresql.conf
+2. Sets `effective_io_concurrency` in postgresql.conf (matching `IO_DEPTH`)
+3. Sets cgroup `memory.max`
+4. Drops OS page caches (`echo 3 > /proc/sys/vm/drop_caches`)
+5. Restarts PostgreSQL with NUMA-aware CPU pinning
+6. Moves PostgreSQL processes into the cgroup
+7. Starts N ANN worker threads running continuous TopK vector queries
+8. Runs all 22 TPC-H queries with `EXPLAIN (ANALYZE, BUFFERS)` to capture buffer statistics
+9. Records per-query timing, shared_hit, shared_read counts
+10. Saves results as JSON lines
+
+### 9.3 Output Format
 
 Results are saved as JSON lines (one JSON object per experiment run):
 
@@ -352,77 +402,6 @@ Results are saved as JSON lines (one JSON object per experiment run):
 }
 ```
 
-Results files are named: `mixed_workload_tpch_and_topk_{INDEX}_{io}_{cores}_cores_for_postgres_{shared_buf}GB_shared_buffers_{cgroup}GB_RAM_GIST.txt`
+Results files are named: `mixed_workload_tpch_and_topk_{INDEX}_io_{IO_DEPTH}_{cores}_cores_for_postgres_{shared_buf}GB_shared_buffers_{cgroup}GB_RAM_GIST.txt`
 
 ---
-
-## 10. Understanding the Results
-
-### Memory Pressure Effect (0 ANN workers)
-
-As the cgroup limit decreases, PostgreSQL's buffer pool can hold less data, forcing more disk I/O:
-
-| Config | shared_buffers | cgroup | TPC-H Time | Buffer Hit Rate |
-|--------|---------------|--------|-----------|----------------|
-| no_pressure | 20GB | 50GB | ~115s | >99% (after Q1) |
-| relaxed | 12GB | 30GB | ~130s | 50-99% |
-| medium | 8GB | 20GB | ~200s | 30-90% |
-| tight | 4GB | 12GB | ~315s | 2-90% |
-
-### ANN Interference Effect
-
-ANN (TopK) workers compete for the same shared buffer pool, evicting TPC-H data pages:
-
-| Config | 0 ANN | 5 ANN | 10 ANN | Interference |
-|--------|-------|-------|--------|-------------|
-| no_pressure | 115s | 126s | 143s | 1.1-1.2x (minimal) |
-| relaxed | 130s | 247s | 261s | 1.9-2.0x |
-| medium | 199s | 410s | 412s | 2.1x |
-| tight | 314s | 533s | 590s | 1.7-1.9x |
-
-Key finding: Under no_pressure, the 40GB buffer pool absorbs both workloads with negligible interference. Under memory pressure, ANN index scans fill the buffer pool with GIST vector pages, evicting TPC-H data and causing dramatic OLAP degradation.
-
-### Buffer Statistics
-
-The `shared_hit` and `shared_read` counts per query reveal the mechanism:
-- `shared_hit` = page found in shared_buffers (fast, ~ns)
-- `shared_read` = page read from OS/disk (slow, ~us-ms)
-
-Example: Q12 under relaxed config:
-- 0 ANN workers: 8K reads (data cached from prior queries)
-- 5 ANN workers: 509K reads (ANN evicted the cached pages)
-- 64x increase in disk reads due to ANN interference
-
----
-
-## 11. Troubleshooting
-
-### PostgreSQL won't start with large shared_buffers
-
-Increase system shared memory limits:
-```bash
-sudo sysctl -w kernel.shmmax=42949672960    # 40GB
-sudo sysctl -w kernel.shmall=10485760
-```
-
-### OOM kills under tight cgroup
-
-If PostgreSQL gets killed under tight cgroup configs, check:
-```bash
-dmesg | grep -i oom
-cat /sys/fs/cgroup/postgres_test/memory.events
-```
-
-Increase the cgroup limit or reduce `shared_buffers`.
-
-### Q1 is slow (~70s) even under no_pressure
-
-Check that `enable_seqscan` is not globally `off` in postgresql.conf, or that the experiment script sets `SET enable_seqscan = on;` before running TPC-H queries. Without sequential scans, PostgreSQL uses bitmap index scans which are much slower for full-table queries.
-
-### Permission denied errors
-
-The experiment script must run as root to:
-- Modify postgresql.conf
-- Drop OS caches
-- Set cgroup memory limits
-- Restart PostgreSQL via `su - postgres`
