@@ -46,6 +46,8 @@ sudo apt-get install -y build-essential libreadline-dev zlib1g-dev libicu-dev \
     pkg-config flex bison libxml2-dev libssl-dev \
     python3-pip python3-dev numactl
 
+python3 -m venv .venv
+source .venv/bin/activate
 pip3 install psycopg2-binary h5py numpy psutil "psycopg[binary]" pgvector --break-system-packages
 ```
 ---
@@ -76,7 +78,8 @@ Then create the postgres user and data directory:
 
 ```bash
 sudo useradd -m -s /bin/bash postgres
-sudo mkdir -p /mnt/nvme/pgdata
+# sgs-intel-02: /local/home/postgres/pgdata
+sudo mkdir -p /mnt/nvme/pgdata 
 sudo chown postgres:postgres /mnt/nvme/pgdata
 ```
 
@@ -86,8 +89,9 @@ sudo chown postgres:postgres /mnt/nvme/pgdata
 This Postgres version includes our patches for Compiler Optmization !!!
 
 ```bash
+unset CC CXX
 cd ~/vdb_tuning/postgres/postgres
-
+rm -f config.cache
 # Clean any stale build artifacts (important if source was copied from another arch)
 make distclean 2>/dev/null
 
@@ -99,7 +103,8 @@ make -j$(nproc)
 sudo make install
 
 # Add to PATH (add to ~/.bashrc for persistence)
-export PATH=/usr/local/pgsql/bin:$PATH
+echo "export PATH=/usr/local/pgsql/bin:$PATH" >> ~/.bashrc
+source ~/.bashrc
 ```
 
 Default install prefix is `/usr/local/pgsql`. `sudo` is required for `make install`.
@@ -116,31 +121,32 @@ sudo make install
 
 ## 4. Compile and Install pgvector 
 
-The default pgvector extension
+The modified pgvector extension that includes the parallel IVFFLAT implementation
 ```bash
-cd ~/vdb_tuning/pgvector
+cd ~/vdb_tuning/postgres/postgres/pgvector_modified_final
 
 export PATH=/usr/local/pgsql/bin:$PATH
 export PG_CONFIG=/usr/local/pgsql/bin/pg_config
 make clean
 make CFLAGS='-O2 -fno-omit-frame-pointer -g'
-make install
+sudo make install PG_CONFIG=/usr/local/pgsql/bin/pg_config
+```
+### 4.1 (skip) Default pgvector
+The default pgvector extension
+```bash
+cd ~/vdb_tuning/postgres/postgres/pgvector
+
+export PATH=/usr/local/pgsql/bin:$PATH
+export PG_CONFIG=/usr/local/pgsql/bin/pg_config
+make clean
+make CFLAGS='-O2 -fno-omit-frame-pointer -g'
+sudo make install PG_CONFIG=/usr/local/pgsql/bin/pg_config
 ```
 
 The Makefile applies these optimization flags automatically:
 - `-march=native` (uses AVX2/AVX-512 on x86, SVE/NEON on ARM)
 - `-ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math`
 
-The modified pgvector extension that includes the parallel IVFFLAT implementation
-```bash
-cd ~/vdb_tuning/pgvector_modified_final
-
-export PATH=/usr/local/pgsql/bin:$PATH
-export PG_CONFIG=/usr/local/pgsql/bin/pg_config
-make clean
-make CFLAGS='-O2 -fno-omit-frame-pointer -g'
-make install
-```
 
 ---
 
@@ -152,9 +158,14 @@ sudo bash
 # Switch to postgres user
 sudo su - postgres -s /bin/bash
 
+
 # Set environment
 export PGDATA=/mnt/nvme/pgdata
 export PATH=/usr/local/pgsql/bin:$PATH
+## Set enviroment on sgs-intel-02:
+echo "export PGDATA=/local/home/postgres/pgdata" >> ~/.bashrc
+echo "export PATH=/usr/local/pgsql/bin:$PATH" >> ~/.bashrc
+source ~/.bashrc
 
 # Initialize the database
 initdb -D $PGDATA --encoding=UTF8 --locale=en_US.UTF-8
@@ -169,6 +180,9 @@ exit
 # Copy the experiment configuration files (overwrites the default postgresql.conf)
 sudo cp ~/vdb_tuning/postgres_configurations/postgresql.conf /mnt/nvme/pgdata/postgresql.conf
 sudo chown postgres:postgres /mnt/nvme/pgdata/postgresql.conf
+## sgs-intel-02
+sudo cp postgres_configurations/postgresql.conf /local/home/postgres/pgdata/postgresql.conf
+sudo chown postgres:postgres /local/home/postgres/pgdata/postgresql.conf
 ```
 
 The `postgresql.conf` in the repo has tuned settings for the experiments (shared_buffers,
@@ -234,8 +248,15 @@ chmod -R a+r /tmp/tpch_sf10
 chmod a+rx /tmp/tpch_sf10
 
 # Restore as postgres user (parallel with 8 jobs)
-export PATH=/usr/local/pgsql/bin:$PATH
+export PATH=/usr/local/pgsql/bin:\$PATH; pg_restore -j 8 -d mydb /tmp/tpch_sf10
+# or
 sudo su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH; pg_restore -j 8 -d mydb /tmp/tpch_sf10"
+
+# check
+psql -d mydb -c "\dt+"
+psql -d mydb -c "SELECT count(*) FROM gist_data;" # gist 1M
+psql -d mydb -c "SELECT count(*) FROM lineitem;" # if sf10: ~60M
+psql -d mydb -c "\d gist_data" # is there an index
 ```
 
 This restores all TPC-H tables (lineitem, orders, customer, etc.), the GIST data table (`gist_data` with ~1M 960-dimensional vectors), and an IVFFLAT index with 1000 clusters generated for GIST dataset. Takes ~10-15 minutes.
@@ -296,7 +317,7 @@ cat /sys/fs/cgroup/postgres_test/memory.max
 
 ### 8.3 Configure CPU Pinning
 
-Each experiment script (`execute_ann_impact_automated.py, execute_olap_impact_automated.py`) has these CPU settings at the top:
+Under `vdb-tuning-main/TPCH/code/*`: Each experiment script (`execute_ann_impact_automated.py, execute_olap_impact_automated.py`) has these CPU settings at the top:
 
 ```python
 NUM_PG_CORES = 16
