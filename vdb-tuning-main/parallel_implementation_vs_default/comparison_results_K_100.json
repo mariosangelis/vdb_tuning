@@ -1,0 +1,92 @@
+{
+  "k": 100,
+  "workload_size": 1000,
+  "default": [
+    {
+      "target_recall": 0.5,
+      "probes": 5,
+      "total_time_s": 13.8457,
+      "avg_time_ms": 13.85
+    },
+    {
+      "target_recall": 0.6,
+      "probes": 10,
+      "total_time_s": 22.0112,
+      "avg_time_ms": 22.01
+    },
+    {
+      "target_recall": 0.7,
+      "probes": 15,
+      "total_time_s": 30.612,
+      "avg_time_ms": 30.61
+    },
+    {
+      "target_recall": 0.8,
+      "probes": 20,
+      "total_time_s": 38.3178,
+      "avg_time_ms": 38.32
+    },
+    {
+      "target_recall": 0.9,
+      "probes": 35,
+      "total_time_s": 71.478,
+      "avg_time_ms": 71.48
+    },
+    {
+      "target_recall": 0.95,
+      "probes": 50,
+      "total_time_s": 93.3149,
+      "avg_time_ms": 93.31
+    },
+    {
+      "target_recall": 0.96,
+      "probes": 60,
+      "total_time_s": 103.7462,
+      "avg_time_ms": 103.75
+    }
+  ],
+  "parallel": [
+    {
+      "target_recall": 0.5,
+      "probes": 5,
+      "total_time_s": 16.4582,
+      "avg_time_ms": 16.46
+    },
+    {
+      "target_recall": 0.6,
+      "probes": 10,
+      "total_time_s": 22.1436,
+      "avg_time_ms": 22.14
+    },
+    {
+      "target_recall": 0.7,
+      "probes": 15,
+      "total_time_s": 27.3154,
+      "avg_time_ms": 27.32
+    },
+    {
+      "target_recall": 0.8,
+      "probes": 20,
+      "total_time_s": 32.2239,
+      "avg_time_ms": 32.22
+    },
+    {
+      "target_recall": 0.9,
+      "probes": 35,
+      "total_time_s": 46.6561,
+      "avg_time_ms": 46.66
+    },
+    {
+      "target_recall": 0.95,
+      "probes": 50,
+      "total_time_s": 59.5566,
+      "avg_time_ms": 59.56
+    },
+    {
+      "target_recall": 0.96,
+      "probes": 60,
+      "total_time_s": 68.2478,
+      "avg_time_ms": 68.25
+    }
+  ]
+}
