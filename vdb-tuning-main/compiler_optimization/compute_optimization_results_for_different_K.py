@@ -123,7 +123,7 @@ INDEX_DEFS = {
     },
     "hnsw": {
         "name": "gist_data_embedding_hnsw_idx",
-        "create_sql": "CREATE INDEX gist_data_embedding_hnsw_idx ON gist_data USING hnsw (embedding vector_l2_ops)",
+        "create_sql": "CREATE INDEX gist_data_embedding_hnsw_idx ON gist_data USING hnsw (embedding vector_l2_ops)",  # will be overridden below
     },
 }
 
@@ -170,20 +170,29 @@ def ensure_index(index_type):
 
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("ivfflat", "hnsw") or sys.argv[2] not in ("with", "without"):
+    if len(sys.argv) < 3 or sys.argv[1] not in ("ivfflat", "hnsw") or sys.argv[2] not in ("with", "without"):
         print("Usage: python3 compute_optimization_results_for_different_K.py <ivfflat|hnsw> <with|without>")
         print("  with    = with compiler optimization")
         print("  without = without compiler optimization")
         sys.exit(1)
 
     index_type = sys.argv[1]
+
+    # Parse optional --m and --efc for HNSW manual override
+    manual_m = None
+    manual_efc = None
+    for i in range(3, len(sys.argv)):
+        if sys.argv[i] == "--m" and i + 1 < len(sys.argv):
+            manual_m = int(sys.argv[i + 1])
+        elif sys.argv[i] == "--efc" and i + 1 < len(sys.argv):
+            manual_efc = int(sys.argv[i + 1])
     optimization = sys.argv[2]
 
     # Load optimal params from recall tuning
-    optimal_params_file = RECALL_DIR / f"optimal_{index_type}_params.json"
+    optimal_params_file = RECALL_DIR / "results_from_calculate_index_parameters_for_compiler_optimization" / f"optimal_{index_type}_params_recall_0.9.json"
     if not optimal_params_file.exists():
         print(f"ERROR: {optimal_params_file} not found.")
-        print(f"Run tune_recall.py {index_type} first.")
+        print(f"Run calculate_index_parameters_for_compiler_optimization.py {index_type} first.")
         sys.exit(1)
 
     with open(optimal_params_file, 'r') as f:
@@ -216,6 +225,47 @@ def main():
     set_compiler_optimization(enable=(optimization == "with"))
 
     # Ensure the required index exists (create if needed)
+    # Override IVFFlat index params from tuning JSON
+    if index_type == "ivfflat":
+        import json as _json
+        tune_file = RECALL_DIR / "tune_ivfflat_results.json"
+        if tune_file.exists():
+            with open(tune_file) as _f:
+                _tune = _json.load(_f)
+            if "best_configuration" in _tune:
+                best_lists = _tune["best_configuration"]["lists"]
+                INDEX_DEFS["ivfflat"]["create_sql"] = (
+                    f"CREATE INDEX gist_data_embedding_idx ON gist_data "
+                    f"USING ivfflat (embedding vector_l2_ops) WITH (lists = {best_lists})"
+                )
+                print(f"  Using tuned IVFFlat params: lists={best_lists}")
+            else:
+                print("  IVFFlat: no best_configuration, using default lists=1000")
+        else:
+            print("  IVFFlat: tune_ivfflat_results.json not found, using default lists=1000")
+
+    # Override HNSW index params if manual or from tuning JSON
+    if index_type == "hnsw":
+        m_val = manual_m if manual_m else 16
+        efc_val = manual_efc if manual_efc else 128
+        # Try to load from tuning JSON if no manual override
+        if manual_m is None and manual_efc is None:
+            import json as _json
+            tune_file = RECALL_DIR / "tune_hnsw_results.json"
+            if tune_file.exists():
+                with open(tune_file) as _f:
+                    _tune = _json.load(_f)
+                if "best_configuration" in _tune:
+                    m_val = _tune["best_configuration"]["m"]
+                    efc_val = _tune["best_configuration"]["ef_construction"]
+                    print(f"  Using tuned HNSW params: m={m_val}, ef_construction={efc_val}")
+        INDEX_DEFS["hnsw"]["create_sql"] = (
+            f"CREATE INDEX gist_data_embedding_hnsw_idx ON gist_data "
+            f"USING hnsw (embedding vector_l2_ops) WITH (m = {m_val}, ef_construction = {efc_val})"
+        )
+        if manual_m or manual_efc:
+            print(f"  MANUAL OVERRIDE: m={m_val}, ef_construction={efc_val}")
+
     ensure_index(index_type)
 
     execution_times = []

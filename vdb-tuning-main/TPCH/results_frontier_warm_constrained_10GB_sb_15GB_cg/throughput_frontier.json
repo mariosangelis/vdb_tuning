@@ -1,0 +1,284 @@
+{
+  "timestamp": "2026-05-26T15:51:07.075947",
+  "saturation_points": {
+    "X_ANN": 213.13,
+    "X_OLAP": 0.6667,
+    "tau_max": 50,
+    "alpha_max": 25
+  },
+  "frontier_points": [
+    {
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.01
+    },
+    {
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.6667
+    },
+    {
+      "ann_throughput_qps": 264.99,
+      "olap_throughput_tps": 0.0
+    }
+  ],
+  "metrics": {
+    "auc": 88.3344,
+    "bounding_box_area": 142.0938,
+    "auc_ratio": 0.6217,
+    "proportional_line_area": 71.0469,
+    "above_proportional_line": true,
+    "num_frontier_points": 3,
+    "num_total_measurements": 41
+  },
+  "interpretation": {
+    "auc_ratio_meaning": "AUC/BoundingBox ratio: 1.0 = perfect isolation (frontier at bounding box), 0.5 = proportional line (linear tradeoff), <0.5 = negative interference (below proportional line)",
+    "system_classification": "above_proportional"
+  },
+  "all_points": [
+    {
+      "ann_workers": 1,
+      "olap_workers": 0,
+      "ann_throughput_qps": 26.24,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 5,
+      "ann_throughput_qps": 7.47,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 10,
+      "ann_throughput_qps": 1.98,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 15,
+      "ann_throughput_qps": 1.53,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 20,
+      "ann_throughput_qps": 1.07,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 25,
+      "ann_throughput_qps": 0.8,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 10,
+      "olap_workers": 0,
+      "ann_throughput_qps": 136.83,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 10,
+      "olap_workers": 5,
+      "ann_throughput_qps": 134.16,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 10,
+      "olap_workers": 10,
+      "ann_throughput_qps": 125.54,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 10,
+      "olap_workers": 15,
+      "ann_throughput_qps": 116.61,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 10,
+      "olap_workers": 20,
+      "ann_throughput_qps": 85.38,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 10,
+      "olap_workers": 25,
+      "ann_throughput_qps": 66.93,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 20,
+      "olap_workers": 0,
+      "ann_throughput_qps": 207.82,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 20,
+      "olap_workers": 5,
+      "ann_throughput_qps": 204.05,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 20,
+      "olap_workers": 10,
+      "ann_throughput_qps": 183.62,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 20,
+      "olap_workers": 15,
+      "ann_throughput_qps": 166.95,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 20,
+      "olap_workers": 20,
+      "ann_throughput_qps": 139.22,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 20,
+      "olap_workers": 25,
+      "ann_throughput_qps": 93.28,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 30,
+      "olap_workers": 0,
+      "ann_throughput_qps": 241.72,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 30,
+      "olap_workers": 5,
+      "ann_throughput_qps": 233.21,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 30,
+      "olap_workers": 10,
+      "ann_throughput_qps": 211.26,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 30,
+      "olap_workers": 15,
+      "ann_throughput_qps": 194.83,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 30,
+      "olap_workers": 20,
+      "ann_throughput_qps": 161.1,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 30,
+      "olap_workers": 25,
+      "ann_throughput_qps": 126.06,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 40,
+      "olap_workers": 0,
+      "ann_throughput_qps": 253.79,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 40,
+      "olap_workers": 5,
+      "ann_throughput_qps": 253.16,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 40,
+      "olap_workers": 10,
+      "ann_throughput_qps": 218.33,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 40,
+      "olap_workers": 15,
+      "ann_throughput_qps": 213.86,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 40,
+      "olap_workers": 20,
+      "ann_throughput_qps": 174.27,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 40,
+      "olap_workers": 25,
+      "ann_throughput_qps": 154.39,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 50,
+      "olap_workers": 0,
+      "ann_throughput_qps": 264.21,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 50,
+      "olap_workers": 5,
+      "ann_throughput_qps": 264.99,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 50,
+      "olap_workers": 10,
+      "ann_throughput_qps": 245.2,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 50,
+      "olap_workers": 15,
+      "ann_throughput_qps": 233.79,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 50,
+      "olap_workers": 20,
+      "ann_throughput_qps": 178.09,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 50,
+      "olap_workers": 25,
+      "ann_throughput_qps": 142.28,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 5,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.01
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 10,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 15,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 20,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 25,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0
+    }
+  ]
+}

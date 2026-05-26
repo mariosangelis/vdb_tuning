@@ -1,0 +1,723 @@
+[Step 1/2] find_saturation_points.py --memory 20:50 --warm --index hnsw --hnsw-m 16 --hnsw-efc 128
+WARM MODE: No restart between measurements. Results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg
+MEMORY CONSTRAINED MODE: shared_buffers=20GB, cgroup=50GB
+Results directory: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg
+Setting shared_buffers to 20GB...
+  shared_buffers now: shared_buffers = 20000000kB
+Setting cgroup memory to 50GB...
+  cgroup memory set to 50.0GB
+INDEX: HNSW (results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_20GB_sb_50GB_cg)
+  Manual params: {'m': 16, 'ef_construction': 128}
+======================================================================
+THROUGHPUT FRONTIER - Step 1: Find Saturation Points
+Index: IVFFLAT, Parallel: False, io_depth: 1000, K: 100
+Measurement: 300s per data point (cold start, no warmup)
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+Memory: shared_buffers=20GB, cgroup=50GB
+======================================================================
+
+Ensuring correct index from tune config...
+  Loaded tune config from: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_ivfflat_results.json
+  Best config: {'lists': 8192, 'probes': 150, 'recall': 0.9135, 'avg_query_time_ms': 44.18, 'index_build_time_s': 2888.28}
+  Overriding tune config with CLI params: {'m': 16, 'ef_construction': 128}
+  Building HNSW index from tune config...
+    Dropping index: gist_data_embedding_idx
+    Creating HNSW index with m=16, ef_construction=128...
+    Index created successfully.
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1124552 pages (8786 MB)
+    [IDX] gist_data_embedding_idx: 983121 pages (7681 MB)
+    [TBL] orders: 260944 pages (2039 MB)
+    [TBL] partsupp: 174416 pages (1363 MB)
+    [IDX] lineitem_pkey: 164480 pages (1285 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] o_ok: 41131 pages (321 MB)
+    [IDX] orders_pkey: 41131 pages (321 MB)
+    [TBL] part: 40984 pages (320 MB)
+    [TBL] customer: 35856 pages (280 MB)
+    [IDX] ps_sk_pk: 21937 pages (171 MB)
+    [IDX] ps_pk_sk: 21937 pages (171 MB)
+    [IDX] partsupp_pkey: 21937 pages (171 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6400 pages (50 MB)
+    [IDX] p_pk: 5487 pages (43 MB)
+    [IDX] part_pkey: 5487 pages (43 MB)
+    [IDX] c_ck: 4116 pages (32 MB)
+    [IDX] customer_pkey: 4116 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_sk: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] n_nk: 2 pages (0 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [IDX] r_rk: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 41 relations, 3512422 pages (~27441 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/mangelis/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+  Copied OLAP saturation from IVFFlat run: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg/saturation_points_olap.json
+  -> /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_20GB_sb_50GB_cg/saturation_points_olap.json
+
+======================================================================
+PHASE 1: Finding ANN Saturation (X^ANN)
+Running ANN alone with increasing workers...
+======================================================================
+
+  Measuring: 1 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=104.07 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 1 workers: 104.07 qps
+
+  Measuring: 5 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=407.46 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 5 workers: 407.46 qps
+
+  Measuring: 10 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=695.53 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 10 workers: 695.53 qps
+
+  Measuring: 15 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=876.60 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 15 workers: 876.60 qps
+
+  Measuring: 20 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=964.68 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 20 workers: 964.68 qps
+
+  Measuring: 25 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1039.65 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 25 workers: 1039.65 qps
+
+  Measuring: 30 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1101.15 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 30 workers: 1101.15 qps
+
+  Measuring: 35 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1108.06 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 35 workers: 1108.06 qps
+
+  Measuring: 40 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1095.30 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 40 workers: 1095.30 qps
+
+  Measuring: 45 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1074.91 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 45 workers: 1074.91 qps
+
+  Measuring: 50 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1089.42 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 50 workers: 1089.42 qps
+
+  Measuring: 55 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1081.34 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 55 workers: 1081.34 qps
+
+  Measuring: 60 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1068.00 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 60 workers: 1068.00 qps
+
+  Measuring: 65 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1093.06 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 65 workers: 1093.06 qps
+
+  Measuring: 70 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1094.55 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 70 workers: 1094.55 qps
+
+  Measuring: 75 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1061.45 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 75 workers: 1061.45 qps
+
+  Measuring: 80 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1062.88 qps, OLAP=0.00 qps (0.0000 batches/s)
+  >> 80 workers: 1062.88 qps
+
+  *** ANN Saturation: X^ANN = 1108.06 qps (at 35 workers) ***
+
+
+======================================================================
+PHASE 2: Finding OLAP Saturation (X^OLAP)
+Running OLAP alone with increasing workers...
+======================================================================
+
+  Measuring: 0 ANN workers, 1 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=0.18 qps (0.0067 batches/s)
+  >> 1 workers: 0.0067 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 2 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=0.35 qps (0.0133 batches/s)
+  >> 2 workers: 0.0133 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 3 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=0.51 qps (0.0200 batches/s)
+  >> 3 workers: 0.0200 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 4 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=0.70 qps (0.0267 batches/s)
+  >> 4 workers: 0.0267 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 5 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=0.88 qps (0.0333 batches/s)
+  >> 5 workers: 0.0333 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 6 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.03 qps (0.0400 batches/s)
+  >> 6 workers: 0.0400 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 7 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.19 qps (0.0467 batches/s)
+  >> 7 workers: 0.0467 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 8 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.30 qps (0.0533 batches/s)
+  >> 8 workers: 0.0533 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 9 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.44 qps (0.0600 batches/s)
+  >> 9 workers: 0.0600 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 10 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.54 qps (0.0667 batches/s)
+  >> 10 workers: 0.0667 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 11 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.58 qps (0.0600 batches/s)
+  >> 11 workers: 0.0600 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 12 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.56 qps (0.0400 batches/s)
+  >> 12 workers: 0.0400 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 13 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.54 qps (0.0433 batches/s)
+  >> 13 workers: 0.0433 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 14 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.53 qps (0.0467 batches/s)
+  >> 14 workers: 0.0467 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 15 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.54 qps (0.0500 batches/s)
+  >> 15 workers: 0.0500 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 16 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.53 qps (0.0533 batches/s)
+  >> 16 workers: 0.0533 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 17 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.54 qps (0.0567 batches/s)
+  >> 17 workers: 0.0567 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 18 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.57 qps (0.0600 batches/s)
+  >> 18 workers: 0.0600 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 19 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.57 qps (0.0633 batches/s)
+  >> 19 workers: 0.0633 tps (batches/sec)
+
+  Measuring: 0 ANN workers, 20 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=0.00 qps, OLAP=1.61 qps (0.0667 batches/s)
+  >> 20 workers: 0.0667 tps (batches/sec)
+
+  *** OLAP Saturation: X^OLAP = 0.0667 tps (at 10 workers) ***
+
+
+======================================================================
+SUMMARY
+======================================================================
+  X^ANN  = 1108.06 qps (saturates at 35 workers)
+  X^OLAP = 0.0667 qps (saturates at 10 workers)
+======================================================================
+
+ANN results saved to: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_20GB_sb_50GB_cg/saturation_points_ann.json
+
+OLAP results saved to: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_20GB_sb_50GB_cg/saturation_points_olap.json
+Combined results saved to: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_20GB_sb_50GB_cg/saturation_points.json
+
+[Step 2/2] build_throughput_frontier.py --memory 20:50 --warm --index hnsw --hnsw-m 16 --hnsw-efc 128
+WARM MODE: No restart between measurements. Results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg
+INDEX: HNSW (results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_20GB_sb_50GB_cg)
+  Manual params: {'m': 16, 'ef_construction': 128}
+======================================================================
+THROUGHPUT FRONTIER - Step 2: Build Grid Graph & Extract Frontier
+Index: IVFFLAT, Parallel: False, io_depth: 1000, K: 100
+Measurement: 300s per data point (warm)
+Grid fractions: [0.0, 0.01, 0.02, 0.2, 0.4, 0.6, 0.8, 1.0]
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+======================================================================
+Saturation points loaded:
+  X^ANN  = 1108.06 qps (tau_max = 35 workers)
+  X^OLAP = 0.0667 tps (alpha_max = 10 workers)
+
+Ensuring correct index from tune config...
+  Loaded tune config from: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_ivfflat_results.json
+  Best config: {'lists': 8192, 'probes': 150, 'recall': 0.9135, 'avg_query_time_ms': 44.18, 'index_build_time_s': 2888.28}
+  Overriding tune config with CLI params: {'m': 16, 'ef_construction': 128}
+  Index OK: hnsw with m=16 already exists
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1124552 pages (8786 MB)
+    [IDX] gist_data_embedding_idx: 983121 pages (7681 MB)
+    [TBL] orders: 260944 pages (2039 MB)
+    [TBL] partsupp: 174416 pages (1363 MB)
+    [IDX] lineitem_pkey: 164480 pages (1285 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] o_ok: 41131 pages (321 MB)
+    [IDX] orders_pkey: 41131 pages (321 MB)
+    [TBL] part: 40984 pages (320 MB)
+    [TBL] customer: 35856 pages (280 MB)
+    [IDX] ps_sk_pk: 21937 pages (171 MB)
+    [IDX] ps_pk_sk: 21937 pages (171 MB)
+    [IDX] partsupp_pkey: 21937 pages (171 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6400 pages (50 MB)
+    [IDX] p_pk: 5487 pages (43 MB)
+    [IDX] part_pkey: 5487 pages (43 MB)
+    [IDX] c_ck: 4116 pages (32 MB)
+    [IDX] customer_pkey: 4116 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_sk: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] n_nk: 2 pages (0 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [IDX] r_rk: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 41 relations, 3512422 pages (~27441 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/mangelis/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+
+Grid graph plan:
+  ANN levels (fixed-ANN lines): [1, 7, 14, 21, 28, 35]
+  OLAP levels (fixed-OLAP lines): [2, 4, 6, 8, 10]
+  Total new measurements needed: 71
+  Estimated time: 355 minutes (5.9 hours)
+
+======================================================================
+FIXED-ANN LINE: ANN = 1 workers
+  Sweeping OLAP: [0, 2, 4, 6, 8, 10]
+======================================================================
+
+  [1/71] Measuring (1 ANN, 0 OLAP)...
+
+  Measuring: 1 ANN workers, 0 OLAP workers (300s, warm)
+  Results: ANN=101.05 qps, OLAP=0.00 qps (0.0000 batches/s)
+
+  [2/71] Measuring (1 ANN, 2 OLAP)...
+
+  Measuring: 1 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=92.56 qps, OLAP=0.32 qps (0.0133 batches/s)
+
+  [3/71] Measuring (1 ANN, 4 OLAP)...
+
+  Measuring: 1 ANN workers, 4 OLAP workers (300s, warm)
+  Results: ANN=79.01 qps, OLAP=0.65 qps (0.0267 batches/s)
+
+  [4/71] Measuring (1 ANN, 6 OLAP)...
+
+  Measuring: 1 ANN workers, 6 OLAP workers (300s, warm)
+  Results: ANN=76.96 qps, OLAP=0.97 qps (0.0400 batches/s)
+
+  [5/71] Measuring (1 ANN, 8 OLAP)...
+
+  Measuring: 1 ANN workers, 8 OLAP workers (300s, warm)
+  Results: ANN=62.27 qps, OLAP=1.26 qps (0.0533 batches/s)
+
+  [6/71] Measuring (1 ANN, 10 OLAP)...
+
+  Measuring: 1 ANN workers, 10 OLAP workers (300s, warm)
+  Results: ANN=47.12 qps, OLAP=1.44 qps (0.0600 batches/s)
+
+======================================================================
+FIXED-ANN LINE: ANN = 7 workers
+  Sweeping OLAP: [0, 2, 4, 6, 8, 10]
+======================================================================
+
+  [7/71] Measuring (7 ANN, 0 OLAP)...
+
+  Measuring: 7 ANN workers, 0 OLAP workers (300s, warm)
+  Results: ANN=527.94 qps, OLAP=0.00 qps (0.0000 batches/s)
+
+  [8/71] Measuring (7 ANN, 2 OLAP)...
+
+  Measuring: 7 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=523.44 qps, OLAP=0.31 qps (0.0133 batches/s)
+
+  [9/71] Measuring (7 ANN, 4 OLAP)...
+
+  Measuring: 7 ANN workers, 4 OLAP workers (300s, warm)
+  Results: ANN=503.05 qps, OLAP=0.61 qps (0.0267 batches/s)
+
+  [10/71] Measuring (7 ANN, 6 OLAP)...
+
+  Measuring: 7 ANN workers, 6 OLAP workers (300s, warm)
+  Results: ANN=475.97 qps, OLAP=0.90 qps (0.0400 batches/s)
+
+  [11/71] Measuring (7 ANN, 8 OLAP)...
+
+  Measuring: 7 ANN workers, 8 OLAP workers (300s, warm)
+  Results: ANN=406.99 qps, OLAP=1.04 qps (0.0267 batches/s)
+
+  [12/71] Measuring (7 ANN, 10 OLAP)...
+
+  Measuring: 7 ANN workers, 10 OLAP workers (300s, warm)
+  Results: ANN=321.75 qps, OLAP=1.16 qps (0.0333 batches/s)
+
+======================================================================
+FIXED-ANN LINE: ANN = 14 workers
+  Sweeping OLAP: [0, 2, 4, 6, 8, 10]
+======================================================================
+
+  [13/71] Measuring (14 ANN, 0 OLAP)...
+
+  Measuring: 14 ANN workers, 0 OLAP workers (300s, warm)
+  Results: ANN=821.59 qps, OLAP=0.00 qps (0.0000 batches/s)
+
+  [14/71] Measuring (14 ANN, 2 OLAP)...
+
+  Measuring: 14 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=796.47 qps, OLAP=0.28 qps (0.0067 batches/s)
+
+  [15/71] Measuring (14 ANN, 4 OLAP)...
+
+  Measuring: 14 ANN workers, 4 OLAP workers (300s, warm)
+  Results: ANN=758.66 qps, OLAP=0.50 qps (0.0133 batches/s)
+
+  [16/71] Measuring (14 ANN, 6 OLAP)...
+
+  Measuring: 14 ANN workers, 6 OLAP workers (300s, warm)
+  Results: ANN=695.12 qps, OLAP=0.67 qps (0.0200 batches/s)
+
+  [17/71] Measuring (14 ANN, 8 OLAP)...
+
+  Measuring: 14 ANN workers, 8 OLAP workers (300s, warm)
+  Results: ANN=605.48 qps, OLAP=0.82 qps (0.0267 batches/s)
+
+  [18/71] Measuring (14 ANN, 10 OLAP)...
+
+  Measuring: 14 ANN workers, 10 OLAP workers (300s, warm)
+  Results: ANN=546.28 qps, OLAP=0.92 qps (0.0333 batches/s)
+
+======================================================================
+FIXED-ANN LINE: ANN = 21 workers
+  Sweeping OLAP: [0, 2, 4, 6, 8, 10]
+======================================================================
+
+  [19/71] Measuring (21 ANN, 0 OLAP)...
+
+  Measuring: 21 ANN workers, 0 OLAP workers (300s, warm)
+  Results: ANN=955.38 qps, OLAP=0.00 qps (0.0000 batches/s)
+
+  [20/71] Measuring (21 ANN, 2 OLAP)...
+
+  Measuring: 21 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=933.53 qps, OLAP=0.23 qps (0.0067 batches/s)
+
+  [21/71] Measuring (21 ANN, 4 OLAP)...
+
+  Measuring: 21 ANN workers, 4 OLAP workers (300s, warm)
+  Results: ANN=874.92 qps, OLAP=0.40 qps (0.0133 batches/s)
+
+  [22/71] Measuring (21 ANN, 6 OLAP)...
+
+  Measuring: 21 ANN workers, 6 OLAP workers (300s, warm)
+  Results: ANN=795.24 qps, OLAP=0.52 qps (0.0200 batches/s)
+
+  [23/71] Measuring (21 ANN, 8 OLAP)...
+
+  Measuring: 21 ANN workers, 8 OLAP workers (300s, warm)
+  Results: ANN=730.96 qps, OLAP=0.65 qps (0.0267 batches/s)
+
+  [24/71] Measuring (21 ANN, 10 OLAP)...
+
+  Measuring: 21 ANN workers, 10 OLAP workers (300s, warm)
+  Results: ANN=687.98 qps, OLAP=0.75 qps (0.0300 batches/s)
+
+======================================================================
+FIXED-ANN LINE: ANN = 28 workers
+  Sweeping OLAP: [0, 2, 4, 6, 8, 10]
+======================================================================
+
+  [25/71] Measuring (28 ANN, 0 OLAP)...
+
+  Measuring: 28 ANN workers, 0 OLAP workers (300s, warm)
+  Results: ANN=1040.34 qps, OLAP=0.00 qps (0.0000 batches/s)
+
+  [26/71] Measuring (28 ANN, 2 OLAP)...
+
+  Measuring: 28 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=1009.66 qps, OLAP=0.18 qps (0.0067 batches/s)
+
+  [27/71] Measuring (28 ANN, 4 OLAP)...
+
+  Measuring: 28 ANN workers, 4 OLAP workers (300s, warm)
+  Results: ANN=923.94 qps, OLAP=0.33 qps (0.0133 batches/s)
+
+  [28/71] Measuring (28 ANN, 6 OLAP)...
+
+  Measuring: 28 ANN workers, 6 OLAP workers (300s, warm)
+  Results: ANN=863.13 qps, OLAP=0.44 qps (0.0133 batches/s)
+
+  [29/71] Measuring (28 ANN, 8 OLAP)...
+
+  Measuring: 28 ANN workers, 8 OLAP workers (300s, warm)
+  Results: ANN=814.40 qps, OLAP=0.53 qps (0.0033 batches/s)
+
+  [30/71] Measuring (28 ANN, 10 OLAP)...
+
+  Measuring: 28 ANN workers, 10 OLAP workers (300s, warm)
+  Results: ANN=761.02 qps, OLAP=0.62 qps (0.0000 batches/s)
+
+======================================================================
+FIXED-ANN LINE: ANN = 35 workers
+  Sweeping OLAP: [0, 2, 4, 6, 8, 10]
+======================================================================
+
+  [31/71] Measuring (35 ANN, 0 OLAP)...
+
+  Measuring: 35 ANN workers, 0 OLAP workers (300s, warm)
+  Results: ANN=1093.61 qps, OLAP=0.00 qps (0.0000 batches/s)
+
+  [32/71] Measuring (35 ANN, 2 OLAP)...
+
+  Measuring: 35 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=1026.55 qps, OLAP=0.14 qps (0.0033 batches/s)
+
+  [33/71] Measuring (35 ANN, 4 OLAP)...
+
+  Measuring: 35 ANN workers, 4 OLAP workers (300s, warm)
+  Results: ANN=963.63 qps, OLAP=0.26 qps (0.0000 batches/s)
+
+  [34/71] Measuring (35 ANN, 6 OLAP)...
+
+  Measuring: 35 ANN workers, 6 OLAP workers (300s, warm)
+  Results: ANN=915.74 qps, OLAP=0.36 qps (0.0000 batches/s)
+
+  [35/71] Measuring (35 ANN, 8 OLAP)...
+
+  Measuring: 35 ANN workers, 8 OLAP workers (300s, warm)
+  Results: ANN=873.58 qps, OLAP=0.43 qps (0.0000 batches/s)
+
+  [36/71] Measuring (35 ANN, 10 OLAP)...
+
+  Measuring: 35 ANN workers, 10 OLAP workers (300s, warm)
+  Results: ANN=820.05 qps, OLAP=0.48 qps (0.0000 batches/s)
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 2 workers
+  Sweeping ANN: [0, 1, 7, 14, 21, 28, 35]
+======================================================================
+
+  [37/71] Measuring (0 ANN, 2 OLAP)...
+
+  Measuring: 0 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=0.00 qps, OLAP=0.34 qps (0.0133 batches/s)
+  Skipping (1, 2) — already measured
+  Skipping (7, 2) — already measured
+  Skipping (14, 2) — already measured
+  Skipping (21, 2) — already measured
+  Skipping (28, 2) — already measured
+  Skipping (35, 2) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 4 workers
+  Sweeping ANN: [0, 1, 7, 14, 21, 28, 35]
+======================================================================
+
+  [38/71] Measuring (0 ANN, 4 OLAP)...
+
+  Measuring: 0 ANN workers, 4 OLAP workers (300s, warm)
+  Results: ANN=0.00 qps, OLAP=0.68 qps (0.0267 batches/s)
+  Skipping (1, 4) — already measured
+  Skipping (7, 4) — already measured
+  Skipping (14, 4) — already measured
+  Skipping (21, 4) — already measured
+  Skipping (28, 4) — already measured
+  Skipping (35, 4) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 6 workers
+  Sweeping ANN: [0, 1, 7, 14, 21, 28, 35]
+======================================================================
+
+  [39/71] Measuring (0 ANN, 6 OLAP)...
+
+  Measuring: 0 ANN workers, 6 OLAP workers (300s, warm)
+  Results: ANN=0.00 qps, OLAP=0.99 qps (0.0400 batches/s)
+  Skipping (1, 6) — already measured
+  Skipping (7, 6) — already measured
+  Skipping (14, 6) — already measured
+  Skipping (21, 6) — already measured
+  Skipping (28, 6) — already measured
+  Skipping (35, 6) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 8 workers
+  Sweeping ANN: [0, 1, 7, 14, 21, 28, 35]
+======================================================================
+
+  [40/71] Measuring (0 ANN, 8 OLAP)...
+
+  Measuring: 0 ANN workers, 8 OLAP workers (300s, warm)
+  Results: ANN=0.00 qps, OLAP=1.28 qps (0.0533 batches/s)
+  Skipping (1, 8) — already measured
+  Skipping (7, 8) — already measured
+  Skipping (14, 8) — already measured
+  Skipping (21, 8) — already measured
+  Skipping (28, 8) — already measured
+  Skipping (35, 8) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 10 workers
+  Sweeping ANN: [0, 1, 7, 14, 21, 28, 35]
+======================================================================
+
+  [41/71] Measuring (0 ANN, 10 OLAP)...
+
+  Measuring: 0 ANN workers, 10 OLAP workers (300s, warm)
+  Results: ANN=0.00 qps, OLAP=1.48 qps (0.0667 batches/s)
+  Skipping (1, 10) — already measured
+  Skipping (7, 10) — already measured
+  Skipping (14, 10) — already measured
+  Skipping (21, 10) — already measured
+  Skipping (28, 10) — already measured
+  Skipping (35, 10) — already measured
+
+
+All grid measurements complete. Total: 41 data points.
+
+======================================================================
+EXTRACTING THROUGHPUT FRONTIER
+======================================================================
+
+======================================================================
+THROUGHPUT FRONTIER SUMMARY
+======================================================================
+  X^ANN  = 1108.06 qps (tau_max = 35 workers)
+  X^OLAP = 0.0667 tps (alpha_max = 10 workers)
+  
+  Bounding box area:      73.9076
+  Proportional line area: 36.9538
+  Frontier AUC:           36.1425
+  AUC ratio:              0.4890
+  Above proportional:     False
+  Frontier points:        12
+  Total measurements:     41
+======================================================================
+  => LINEAR tradeoff: Frontier near proportional line.
+     Increasing one workload proportionally decreases the other.
+
+Results saved to:
+  Grid graph: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_20GB_sb_50GB_cg/grid_graph.json
+  Frontier:   /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_20GB_sb_50GB_cg/throughput_frontier.json
+
+DONE! Index: hnsw, Memory: 20GB/50GB

@@ -40,7 +40,7 @@ PGVECTOR_PARALLEL = Path("/users/mangelis/vdb_tuning/postgres/postgres/pgvector_
 WORKLOAD_PATH = str(PROJECT_DIR / "sampled_vectors_gist.txt")
 
 # Recall params file
-RECALL_PARAMS_FILE = RECALL_DIR / "performance_recall_ivfflat_K_100.json"
+RECALL_PARAMS_FILE = RECALL_DIR / "results_from_calculate_index_parameters_for_performance_recall_diagram" / "performance_recall_ivfflat_K_100.json"
 
 # === DB CONFIG ===
 DB_CONFIG = {
@@ -54,7 +54,19 @@ K = 100
 
 # Index definition
 INDEX_NAME = "gist_data_embedding_idx"
-CREATE_INDEX_SQL = "CREATE INDEX gist_data_embedding_idx ON gist_data USING ivfflat (embedding vector_l2_ops) WITH (lists = 1000)"
+# Load tuned lists from tune_ivfflat_results.json, fallback to 8192
+_tune_file = RECALL_DIR / "results_from_tune_scripts/tune_ivfflat_results.json"
+_lists = None
+if _tune_file.exists():
+    import json as _json
+    with open(_tune_file) as _f:
+        _tune = _json.load(_f)
+    if "best_configuration" in _tune:
+        _lists = _tune["best_configuration"]["lists"]
+if _lists is None:
+    print("ERROR: tune_ivfflat_results.json not found or missing best_configuration. Run tuning first.")
+    import sys; sys.exit(1)
+CREATE_INDEX_SQL = f"CREATE INDEX gist_data_embedding_idx ON gist_data USING ivfflat (embedding vector_l2_ops) WITH (lists = {_lists})"
 
 # PostgreSQL paths
 PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
@@ -62,6 +74,13 @@ _pgdata_result = subprocess.run(
     "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
 )
 PG_DATA_DIR = _pgdata_result.stdout.strip() or "/mnt/nvme/pgdata"
+# === LOAD NUMA CONFIG ===
+EXPERIMENT_CONFIG_PATH = PROJECT_DIR / "TPCH" / "code" / "experiment_config.json"
+if EXPERIMENT_CONFIG_PATH.exists():
+    with open(EXPERIMENT_CONFIG_PATH, "r") as _cf:
+        PG_NUMA_NODES = json.load(_cf).get("hardware", {}).get("postgres_numa_nodes", "0")
+else:
+    PG_NUMA_NODES = "0"
 
 
 def wait_for_postgres(max_attempts=60, quiet=False):
@@ -83,7 +102,7 @@ def restart_postgres(quiet=False):
         print("  Restarting PostgreSQL (clearing caches)...")
     subprocess.run("sync; echo 3 > /proc/sys/vm/drop_caches", shell=True, check=True)
     subprocess.run(
-        f"su - postgres -c '{PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile restart'",
+        f"su - postgres -c 'numactl --cpunodebind={PG_NUMA_NODES} --membind={PG_NUMA_NODES} {PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile restart'",
         shell=True, capture_output=True
     )
     time.sleep(3)
@@ -161,7 +180,7 @@ def run_workload(workload, probes):
     return total_exec_time
 
 
-def run_implementation(name, pgvector_dir, workload, recall_configs):
+def run_implementation(name, pgvector_dir, workload, recall_configs, force_rebuild=True):
     """Run full benchmark for one pgvector implementation."""
     print(f"\n{'='*60}")
     print(f"Running: {name}")
@@ -173,8 +192,21 @@ def run_implementation(name, pgvector_dir, workload, recall_configs):
     # Step 2: Restart PostgreSQL after recompiling
     restart_postgres()
 
-    # Step 3: Drop and create index
-    drop_and_create_index()
+    # Step 3: Drop and create index (or skip if not forced)
+    if force_rebuild:
+        drop_and_create_index()
+    else:
+        # Check if ivfflat index exists, keep it
+        conn = psycopg2.connect(**DB_CONFIG)
+        cur = conn.cursor()
+        cur.execute("SELECT indexname FROM pg_indexes WHERE tablename = 'gist_data'")
+        existing = cur.fetchall()
+        cur.close()
+        conn.close()
+        if existing:
+            print(f"  Index already exists: {existing[0][0]}. Keeping it.")
+        else:
+            drop_and_create_index()
 
     # Step 4: Restart PostgreSQL after creating index (clear caches)
     restart_postgres()
@@ -230,12 +262,13 @@ def main():
         workload = eval(f.read())
     print(f"Loaded {len(workload)} queries")
 
-    # Run default implementation
+    # Run default implementation (skip index rebuild if exists)
     default_results = run_implementation(
         "Default IVFFlat (pgvector)",
         PGVECTOR_DEFAULT,
         workload,
-        recall_configs
+        recall_configs,
+        force_rebuild=False
     )
 
     # Run parallel implementation

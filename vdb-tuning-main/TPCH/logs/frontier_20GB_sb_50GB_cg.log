@@ -1,0 +1,222 @@
+[Step 1/2] find_saturation_points.py --memory 20:50
+WARM MODE: No restart between measurements. Results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg
+MEMORY CONSTRAINED MODE: shared_buffers=20GB, cgroup=50GB
+Results directory: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg
+Setting shared_buffers to 20GB...
+  shared_buffers now: shared_buffers = 20000000kB
+Setting cgroup memory to 50GB...
+  cgroup memory set to 50.0GB
+======================================================================
+THROUGHPUT FRONTIER - Step 1: Find Saturation Points
+Index: IVFFLAT, Parallel: False, io_depth: 1000, K: 100
+Measurement: 300s per data point (cold start, no warmup)
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+Memory: shared_buffers=20GB, cgroup=50GB
+======================================================================
+
+Ensuring correct index from tune config...
+  Loaded tune config from: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_ivfflat_results.json
+  Best config: {'lists': 8192, 'probes': 150, 'recall': 0.9135, 'avg_query_time_ms': 44.18, 'index_build_time_s': 2888.28}
+  Index OK: ivfflat with lists=8192 already exists
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1124552 pages (8786 MB)
+    [IDX] gist_data_embedding_idx: 506305 pages (3956 MB)
+    [TBL] orders: 260944 pages (2039 MB)
+    [TBL] partsupp: 174416 pages (1363 MB)
+    [IDX] lineitem_pkey: 164480 pages (1285 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] o_ok: 41131 pages (321 MB)
+    [IDX] orders_pkey: 41131 pages (321 MB)
+    [TBL] part: 40984 pages (320 MB)
+    [TBL] customer: 35856 pages (280 MB)
+    [IDX] ps_sk_pk: 21937 pages (171 MB)
+    [IDX] ps_pk_sk: 21937 pages (171 MB)
+    [IDX] partsupp_pkey: 21937 pages (171 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6400 pages (50 MB)
+    [IDX] p_pk: 5487 pages (43 MB)
+    [IDX] part_pkey: 5487 pages (43 MB)
+    [IDX] c_ck: 4116 pages (32 MB)
+    [IDX] customer_pkey: 4116 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_sk: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] n_nk: 2 pages (0 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [IDX] r_rk: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 41 relations, 3035606 pages (~23716 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/mangelis/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+
+Saturation points already exist:
+  /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg/saturation_points_ann.json
+  /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg/saturation_points_olap.json
+  Skipping saturation measurements. Delete files to re-run.
+  X^ANN  = 222.24 qps
+  X^OLAP = 0.0733 qps
+
+[Step 2/2] build_throughput_frontier.py --memory 20:50
+WARM MODE: No restart between measurements. Results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_20GB_sb_50GB_cg
+======================================================================
+THROUGHPUT FRONTIER - Step 2: Build Grid Graph & Extract Frontier
+Index: IVFFLAT, Parallel: False, io_depth: 1000, K: 100
+Measurement: 300s per data point (warm)
+Grid fractions: [0.0, 0.01, 0.02, 0.2, 0.4, 0.6, 0.8, 1.0]
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+======================================================================
+Saturation points loaded:
+  X^ANN  = 222.24 qps (tau_max = 75 workers)
+  X^OLAP = 0.0733 tps (alpha_max = 11 workers)
+
+Ensuring correct index from tune config...
+  Loaded tune config from: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_ivfflat_results.json
+  Best config: {'lists': 8192, 'probes': 150, 'recall': 0.9135, 'avg_query_time_ms': 44.18, 'index_build_time_s': 2888.28}
+  Index OK: ivfflat with lists=8192 already exists
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1124552 pages (8786 MB)
+    [IDX] gist_data_embedding_idx: 506305 pages (3956 MB)
+    [TBL] orders: 260944 pages (2039 MB)
+    [TBL] partsupp: 174416 pages (1363 MB)
+    [IDX] lineitem_pkey: 164480 pages (1285 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] o_ok: 41131 pages (321 MB)
+    [IDX] orders_pkey: 41131 pages (321 MB)
+    [TBL] part: 40984 pages (320 MB)
+    [TBL] customer: 35856 pages (280 MB)
+    [IDX] ps_sk_pk: 21937 pages (171 MB)
+    [IDX] ps_pk_sk: 21937 pages (171 MB)
+    [IDX] partsupp_pkey: 21937 pages (171 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6400 pages (50 MB)
+    [IDX] p_pk: 5487 pages (43 MB)
+    [IDX] part_pkey: 5487 pages (43 MB)
+    [IDX] c_ck: 4116 pages (32 MB)
+    [IDX] customer_pkey: 4116 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_sk: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] n_nk: 2 pages (0 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [IDX] r_rk: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 41 relations, 3035606 pages (~23716 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/mangelis/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+Resuming: 69 existing measurements found.
+
+Grid graph plan:
+  ANN levels (fixed-ANN lines): [1, 2, 15, 30, 45, 60, 75]
+  OLAP levels (fixed-OLAP lines): [2, 4, 7, 9, 11]
+  Total new measurements needed: 59
+  Estimated time: 295 minutes (4.9 hours)
+
+======================================================================
+FIXED-ANN LINE: ANN = 1 workers
+  Sweeping OLAP: [0, 2, 4, 7, 9, 11]
+======================================================================
+
+  [1/59] Measuring (1 ANN, 0 OLAP)...
+
+  Measuring: 1 ANN workers, 0 OLAP workers (300s, warm)
+  Results: ANN=26.07 qps, OLAP=0.00 qps (0.0000 batches/s)
+
+  [2/59] Measuring (1 ANN, 2 OLAP)...
+
+  Measuring: 1 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=24.37 qps, OLAP=0.36 qps (0.0133 batches/s)
+
+  [3/59] Measuring (1 ANN, 4 OLAP)...
+
+  Measuring: 1 ANN workers, 4 OLAP workers (300s, warm)
+  Results: ANN=23.62 qps, OLAP=0.71 qps (0.0267 batches/s)
+
+  [4/59] Measuring (1 ANN, 7 OLAP)...
+
+  Measuring: 1 ANN workers, 7 OLAP workers (300s, warm)
+  Results: ANN=22.71 qps, OLAP=1.19 qps (0.0467 batches/s)
+
+  [5/59] Measuring (1 ANN, 9 OLAP)...
+
+  Measuring: 1 ANN workers, 9 OLAP workers (300s, warm)
+  Results: ANN=20.60 qps, OLAP=1.43 qps (0.0600 batches/s)
+
+  [6/59] Measuring (1 ANN, 11 OLAP)...
+
+  Measuring: 1 ANN workers, 11 OLAP workers (300s, warm)
+  Results: ANN=17.46 qps, OLAP=1.57 qps (0.0533 batches/s)
+
+======================================================================
+FIXED-ANN LINE: ANN = 2 workers
+  Sweeping OLAP: [0, 2, 4, 7, 9, 11]
+======================================================================
+  Skipping (2, 0) — already measured
+  Skipping (2, 2) — already measured
+  Skipping (2, 4) — already measured
+  Skipping (2, 7) — already measured
+  Skipping (2, 9) — already measured
+  Skipping (2, 11) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 15 workers
+  Sweeping OLAP: [0, 2, 4, 7, 9, 11]
+======================================================================
+  Skipping (15, 0) — already measured
+  Skipping (15, 2) — already measured
+  Skipping (15, 4) — already measured
+  Skipping (15, 7) — already measured
+  Skipping (15, 9) — already measured
+  Skipping (15, 11) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 30 workers
+  Sweeping OLAP: [0, 2, 4, 7, 9, 11]
+======================================================================
+  Skipping (30, 0) — already measured
+
+  [7/59] Measuring (30 ANN, 2 OLAP)...
+
+  Measuring: 30 ANN workers, 2 OLAP workers (300s, warm)
+  Results: ANN=204.69 qps, OLAP=0.17 qps (0.0067 batches/s)
+
+  [8/59] Measuring (30 ANN, 4 OLAP)...
+
+  Measuring: 30 ANN workers, 4 OLAP workers (300s, warm)

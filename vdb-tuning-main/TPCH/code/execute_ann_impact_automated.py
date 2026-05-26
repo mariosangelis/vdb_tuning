@@ -36,6 +36,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent           # .../TPCH/code/
 TPCH_DIR = SCRIPT_DIR.parent                           # .../TPCH/
 PROJECT_DIR = TPCH_DIR.parent                          # .../vdb-tuning-main/
 
+# ============== LOAD EXPERIMENT CONFIG ==============
+CONFIG_PATH = SCRIPT_DIR / "experiment_config.json"
+with open(CONFIG_PATH, 'r') as _cf:
+    CONFIG = json.load(_cf)
+
+IDX_CFG = CONFIG["index_config"]
+HW_CFG = CONFIG["hardware"]
+
 # ============== CONFIGURATION ==============
 DB_CONFIG = {
     "dbname": "mydb",
@@ -44,18 +52,18 @@ DB_CONFIG = {
     "port": "5432"
 }
 
-# Paths — derived from script location and home directory
-WORKLOAD_VECTORS_PATH = str(PROJECT_DIR / "gist_test_queries.txt")
+# Paths
+WORKLOAD_VECTORS_PATH = str(PROJECT_DIR / IDX_CFG["workload_vectors_file"])
 RESULTS_DIR = str(TPCH_DIR / "results_ann_impact_to_olap")
 
 # Create results directory if it doesn't exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-# CPU pinning — adjust these for your machine
-NUM_PG_CORES = 32
-POSTGRES_CORES = "0-31"
-BENCHBASE_CORES = "26-31"  # unused, kept for compatibility
-TOPK_CORES = list(range(32, 48))
+# CPU pinning — from config
+NUM_PG_CORES = HW_CFG["num_pg_cores"]
+POSTGRES_CORES = HW_CFG["postgres_cores"]
+TOPK_CORES = HW_CFG["topk_producers_cores"]
+PG_NUMA_NODES = HW_CFG["postgres_numa_nodes"]
 
 # PostgreSQL paths — auto-detect
 PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
@@ -184,21 +192,20 @@ def run_tpch_direct():
 
 
 # Experiment parameters
-K = 100  # TopK parameter
-TOPK_WORKERS_LIST = [0,1,2,3,4,5,6,7,8,9,10]  # Variable ANN workers
-NUM_TPCH_WORKERS = 1  # Fixed number of OLAP workers
+K = IDX_CFG["k"]
+TOPK_WORKERS_LIST = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+NUM_TPCH_WORKERS = 1
 
-# Index configuration - set these before running
-INDEX_TYPE = "IVFFLAT"  # "IVFFLAT" or "HNSW"
-PARALLEL_INDEX = False  # True for Parallel IVFFlat, False for Default
-IO_DEPTH = 0  # 0 or 1000
+# Index configuration — from config
+INDEX_TYPE = IDX_CFG["index_type"]
+PARALLEL_INDEX = IDX_CFG["parallel_index"]
+IO_DEPTH = IDX_CFG["io_depth"]
 
-# Memory configurations: (name, shared_buffers_gb, cgroup_gb)
-# Uncomment the configuration(s) you want to run
+# Memory configurations
 MEMORY_CONFIGS = [
-#    ("no_pressure", 40, 60),
-#     ("relaxed", 16, 20),
-#     ("medium", 12, 16),
+    ("no_pressure", 40, 60),
+    ("relaxed", 16, 20),
+    ("medium", 12, 16),
     ("tight", 8, 12),
 ]
 
@@ -275,7 +282,7 @@ def restart_postgres():
 
     # Restart PostgreSQL pinned to NUMA 0
     subprocess.run(
-        f"su - postgres -c 'numactl --cpunodebind=0-7 --membind=0-7 {PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile restart'",
+        f"su - postgres -c 'numactl --cpunodebind={PG_NUMA_NODES} --membind={PG_NUMA_NODES} {PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile restart'",
         shell=True,
         check=True
     )

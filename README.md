@@ -288,6 +288,181 @@ DROP INDEX IF EXISTS gist_data_embedding_idx;
 
 ---
 
+## 7. Recall Tuning and Index Parameter Calculation
+
+Before running experiments that require specific recall targets, you need to determine
+the optimal index tuning parameters (probes for IVFFlat, ef_search for HNSW).
+
+The scripts in `vdb-tuning-main/compute_and_compare_recall/` handle this.
+
+### Directory Contents
+
+```
+compute_and_compare_recall/
+|-- exact_results_gist/                # Ground truth: exact (sequential scan) results
+|   |-- exact_search_results_1000_queries_gist_K_1.json
+|   |-- exact_search_results_1000_queries_gist_K_10.json
+|   |-- exact_search_results_1000_queries_gist_K_100.json
+|   |-- exact_search_results_1000_queries_gist_K_200.json
+|   |-- exact_search_results_1000_queries_gist_K_400.json
+|   |-- exact_search_results_1000_queries_gist_K_800.json
+|   |-- exact_search_results_1000_queries_gist_K_1000.json
+|-- calculate_index_parameters_for_compiler_optimization.py
+|-- calculate_index_parameters_for_performance_recall_diagram.py
+|-- performance_recall_ivfflat_K_100.json   # Output example
+```
+
+**`exact_results_gist/`** contains the ground truth for recall computation. Each JSON file
+is a list of 1000 entries (one per query from `sampled_vectors_gist.txt`), where each entry
+is a list of the true nearest neighbor IDs obtained via exact sequential scan for that K value.
+
+### 7.1 calculate_index_parameters_for_compiler_optimization.py
+
+Determines the optimal probes (IVFFlat) or ef_search (HNSW) for each K value
+(1, 10, 100, 200, 400, 800, 1000) to achieve a given target recall. This is required by the
+compiler optimization experiment (`compiler_optimization/compute_optimization_results_for_different_K.py`)
+so that each K uses a fair tuning parameter that guarantees good recall.
+
+The script creates the required index if it does not exist (drops conflicting indexes first).
+
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/compute_and_compare_recall
+
+# For IVFFlat with 90% recall target
+sudo python3 calculate_index_parameters_for_compiler_optimization.py ivfflat 0.9
+
+# For HNSW with 95% recall target
+sudo python3 calculate_index_parameters_for_compiler_optimization.py hnsw 0.95
+```
+
+**Output:** `optimal_ivfflat_params_recall_0.9.json` or `optimal_hnsw_params_recall_0.95.json`
+containing the minimum probes/ef_search value per K that achieves the specified recall target.
+
+### 7.2 calculate_index_parameters_for_performance_recall_diagram.py
+
+Determines the optimal probes/ef_search for a single K value across multiple recall targets.
+Used for performance-vs-recall trade-off diagrams (e.g., the parallel IVFFlat comparison).
+
+The script creates the required index if it does not exist (drops conflicting indexes first).
+
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/compute_and_compare_recall
+
+# IVFFlat, K=100, recall targets 0.5 through 0.9
+sudo python3 calculate_index_parameters_for_performance_recall_diagram.py ivfflat 100 0.5,0.6,0.7,0.8,0.9
+
+# HNSW, K=100, single target
+sudo python3 calculate_index_parameters_for_performance_recall_diagram.py hnsw 100 0.9
+
+# Can also add higher recall targets later
+sudo python3 calculate_index_parameters_for_performance_recall_diagram.py ivfflat 100 0.95
+```
+
+**Output:** `performance_recall_ivfflat_K_100.json` (or `hnsw`) containing the optimal
+parameter and measured execution time for each recall target.
+
+---
+
+### 7.3 Compiler Optimization Experiment
+
+Located in `vdb-tuning-main/compiler_optimization/`. This experiment measures the
+performance gain from a custom compiler optimization in PostgreSQL's executor that
+short-circuits distance comparisons during Top-K vector search.
+
+```
+compiler_optimization/
+|-- compute_optimization_results_for_different_K.py   # Main benchmark script
+|-- plot_optimization_results.py                      # Generate comparison PDF
+|-- data/                                             # Results (text files + plots)
+|-- postgres_modifications.txt                        # Description of the PG patch
+|-- README.txt
+```
+
+**How it works:**
+
+The script toggles `enable_topk_search_optimizations` (a boolean in
+`postgres/postgres/src/backend/executor/execExpr.c`) between `true` and `false`,
+recompiles PostgreSQL, restarts the server, creates the required index if missing,
+then runs 1000 GIST queries for each K value using the optimal probes/ef_search
+from section 7.1.
+
+**Prerequisites:** Run `calculate_index_parameters_for_compiler_optimization.py` first
+to generate the optimal params JSON (section 7.1).
+
+**Usage:**
+
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/compiler_optimization
+
+# Run WITH compiler optimization (sets flag=true, recompiles, benchmarks)
+sudo python3 compute_optimization_results_for_different_K.py ivfflat with
+
+# Run WITHOUT compiler optimization (sets flag=false, recompiles, benchmarks)
+sudo python3 compute_optimization_results_for_different_K.py ivfflat without
+
+# Same for HNSW
+sudo python3 compute_optimization_results_for_different_K.py hnsw with
+sudo python3 compute_optimization_results_for_different_K.py hnsw without
+```
+
+**Output:** Results saved to `data/results_with_optimization_IVFFLAT.txt` (or `HNSW`, `without`).
+
+**Generating the plot:**
+
+Once both `with` and `without` runs are complete for both indexes:
+
+```bash
+python3 plot_optimization_results.py
+```
+
+Produces `data/compiler_optimization_all.pdf` comparing all 4 configurations.
+
+---
+
+### 7.4 Parallel IVFFlat vs Default IVFFlat Comparison
+
+Located in `vdb-tuning-main/parallel_implementation_vs_default/`. This experiment compares
+the performance of the default pgvector IVFFlat implementation against the modified parallel
+IVFFlat implementation at different recall targets.
+
+**Prerequisites:** First run `calculate_index_parameters_for_performance_recall_diagram.py`
+(section 7.2) to generate the probes for each recall target:
+
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/compute_and_compare_recall
+sudo python3 calculate_index_parameters_for_performance_recall_diagram.py ivfflat 100 0.5,0.6,0.7,0.8,0.9
+```
+
+This produces `performance_recall_ivfflat_K_100.json` which the comparison script reads.
+
+**What the script does:**
+
+For each pgvector implementation (default and parallel):
+1. Compiles the pgvector extension (`make clean && make && make install`)
+2. Restarts PostgreSQL (clears OS page caches)
+3. Drops all existing indexes and creates a fresh IVFFlat index (lists=1000)
+4. Restarts PostgreSQL again (clears caches after index creation)
+5. For each recall target (0.5, 0.6, 0.7, 0.8, 0.9):
+   - Restarts PostgreSQL and clears caches (cold run)
+   - Sets `ivfflat.probes` to the optimal value from the JSON
+   - Runs all 1000 GIST queries, measuring execution time via `EXPLAIN ANALYZE`
+
+The two pgvector implementations:
+- **Default:** `~/vdb_tuning/postgres/postgres/pgvector`
+- **Parallel:** `~/vdb_tuning/postgres/postgres/pgvector_modified_final`
+
+**Usage:**
+
+```bash
+cd ~/vdb_tuning/vdb-tuning-main/parallel_implementation_vs_default
+sudo python3 run_comparison.py
+```
+
+**Output:** `comparison_results_K_100.json` with per-recall-target timing for both
+implementations and a speedup summary table.
+
+---
+
 ## 8. Prepare for Experiments
 
 ### 8.1 Disable Hyperthreading

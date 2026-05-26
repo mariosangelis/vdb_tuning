@@ -1,7 +1,7 @@
-K=1, exec_time=65.492015
-K=10, exec_time=72.375017
-K=100, exec_time=87.226878
-K=200, exec_time=98.050935
-K=400, exec_time=110.016059
-K=800, exec_time=125.364599
-K=1000, exec_time=131.819814
+K=1, exec_time=62.142095
+K=10, exec_time=72.275805
+K=100, exec_time=87.285934
+K=200, exec_time=97.897312
+K=400, exec_time=110.013106
+K=800, exec_time=125.451325
+K=1000, exec_time=131.560069

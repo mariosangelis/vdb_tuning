@@ -1,0 +1,49 @@
+THROUGHPUT FRONTIER - Final Results
+======================================================================
+AUC ratio: 0.5233 | Classification: above_proportional
+======================================================================
+
+  OLAP tps (TPC-H batches/sec)
+  ^
+         |                                                                                                                
+  0.0667 |                                                                                                                
+         |# * * * * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - |       
+         |        * * * * *                                                                                       |       
+         |              . * * * * *                                                                               |       
+         |o                 .   . * * # *                                                                         |       
+         |                          .   * * *                                                                     |       
+         |                                . . * * *                                                               |       
+         |                                      . * * *                                                           |       
+         |                                              * * *                                                     |       
+         |o                       o     o           o       * # * *                                               |       
+         |                                                o         * * * #                                       |       
+         |                                                              o . * * * *                               |       
+         |                                                                      . * * * * *                       |       
+         |                                                                              . * # * *                 |       
+         |o                               o                 o                                 . * * *             |       
+         |o                               o                   o                                     * * # *       |       
+         |                                                                                          o     * # *   |       
+       0 |                                  o                       o                   o   o           o o o o o #       
+         +----------------------------------------------------------------------------------------------------------------> ANN qps
+         0                                                           221
+
+  - - = bounding box (perfect isolation ceiling)
+  . . = proportional line (linear tradeoff, AUC=0.5)
+  * * = throughput frontier (our system, AUC=0.5233)
+  o   = measured grid points
+  #   = frontier vertices
+
+  FRONTIER VERTICES:
+    ANN =    0.00 qps,  OLAP = 0.0667 tps
+    ANN =   59.10 qps,  OLAP = 0.0533 tps
+    ANN =  109.47 qps,  OLAP = 0.0333 tps
+    ANN =  136.44 qps,  OLAP = 0.0267 tps
+    ANN =  173.84 qps,  OLAP = 0.0167 tps
+    ANN =  200.22 qps,  OLAP = 0.0067 tps
+    ANN =  207.43 qps,  OLAP = 0.0033 tps
+    ANN =  221.01 qps,  OLAP = 0.0000 tps
+
+  METRICS:
+    AUC / Bounding box = 0.5233  (1.0 = perfect, 0.5 = linear, <0.5 = bad)
+    Above proportional line: True
+    Total measurements: 35

@@ -4,152 +4,407 @@
   "results": [
     {
       "target_recall": 0.5,
-      "optimal_probes": 5,
-      "actual_recall": 0.5342699999999998,
-      "avg_time_ms": 14.588533163070679,
+      "optimal_probes": 15,
+      "actual_recall": 0.5061399999999997,
+      "avg_time_ms": 7.205250978469849,
       "all_tested": [
         {
           "probes": 5,
-          "recall": 0.5343,
-          "avg_time_ms": 14.59
+          "recall": 0.2999,
+          "avg_time_ms": 8.47
+        },
+        {
+          "probes": 10,
+          "recall": 0.4249,
+          "avg_time_ms": 6.68
+        },
+        {
+          "probes": 15,
+          "recall": 0.5061,
+          "avg_time_ms": 7.21
         }
       ]
     },
     {
       "target_recall": 0.6,
-      "optimal_probes": 10,
-      "actual_recall": 0.6950700000000002,
-      "avg_time_ms": 17.86589813232422,
+      "optimal_probes": 25,
+      "actual_recall": 0.6097800000000011,
+      "avg_time_ms": 9.295745849609375,
       "all_tested": [
         {
           "probes": 5,
-          "recall": 0.5343,
-          "avg_time_ms": 9.29
+          "recall": 0.2999,
+          "avg_time_ms": 4.51
         },
         {
           "probes": 10,
-          "recall": 0.6951,
-          "avg_time_ms": 17.87
+          "recall": 0.4249,
+          "avg_time_ms": 5.68
+        },
+        {
+          "probes": 15,
+          "recall": 0.5061,
+          "avg_time_ms": 6.82
+        },
+        {
+          "probes": 20,
+          "recall": 0.565,
+          "avg_time_ms": 8.29
+        },
+        {
+          "probes": 25,
+          "recall": 0.6098,
+          "avg_time_ms": 9.3
         }
       ]
     },
     {
       "target_recall": 0.7,
-      "optimal_probes": 15,
-      "actual_recall": 0.781300000000001,
-      "avg_time_ms": 26.596374034881592,
+      "optimal_probes": 40,
+      "actual_recall": 0.7049299999999997,
+      "avg_time_ms": 12.691809892654419,
       "all_tested": [
         {
           "probes": 5,
-          "recall": 0.5343,
-          "avg_time_ms": 18.61
+          "recall": 0.2999,
+          "avg_time_ms": 4.5
         },
         {
           "probes": 10,
-          "recall": 0.6951,
-          "avg_time_ms": 35.25
+          "recall": 0.4249,
+          "avg_time_ms": 5.69
         },
         {
           "probes": 15,
-          "recall": 0.7813,
-          "avg_time_ms": 26.6
+          "recall": 0.5061,
+          "avg_time_ms": 6.8
+        },
+        {
+          "probes": 20,
+          "recall": 0.565,
+          "avg_time_ms": 8.11
+        },
+        {
+          "probes": 25,
+          "recall": 0.6098,
+          "avg_time_ms": 9.12
+        },
+        {
+          "probes": 30,
+          "recall": 0.6471,
+          "avg_time_ms": 10.53
+        },
+        {
+          "probes": 35,
+          "recall": 0.6783,
+          "avg_time_ms": 11.27
+        },
+        {
+          "probes": 40,
+          "recall": 0.7049,
+          "avg_time_ms": 12.69
         }
       ]
     },
     {
       "target_recall": 0.8,
-      "optimal_probes": 20,
-      "actual_recall": 0.8342100000000016,
-      "avg_time_ms": 34.61119890213013,
+      "optimal_probes": 80,
+      "actual_recall": 0.8311400000000017,
+      "avg_time_ms": 20.911644220352173,
       "all_tested": [
         {
           "probes": 5,
-          "recall": 0.5343,
-          "avg_time_ms": 9.24
+          "recall": 0.2999,
+          "avg_time_ms": 4.46
         },
         {
           "probes": 10,
-          "recall": 0.6951,
-          "avg_time_ms": 18.01
+          "recall": 0.4249,
+          "avg_time_ms": 5.7
         },
         {
           "probes": 15,
-          "recall": 0.7813,
-          "avg_time_ms": 26.48
+          "recall": 0.5061,
+          "avg_time_ms": 6.86
         },
         {
           "probes": 20,
-          "recall": 0.8342,
-          "avg_time_ms": 34.61
+          "recall": 0.565,
+          "avg_time_ms": 8.13
+        },
+        {
+          "probes": 25,
+          "recall": 0.6098,
+          "avg_time_ms": 9.08
+        },
+        {
+          "probes": 30,
+          "recall": 0.6471,
+          "avg_time_ms": 10.07
+        },
+        {
+          "probes": 35,
+          "recall": 0.6783,
+          "avg_time_ms": 11.23
+        },
+        {
+          "probes": 40,
+          "recall": 0.7049,
+          "avg_time_ms": 12.26
+        },
+        {
+          "probes": 50,
+          "recall": 0.7489,
+          "avg_time_ms": 15.21
+        },
+        {
+          "probes": 60,
+          "recall": 0.7829,
+          "avg_time_ms": 17.23
+        },
+        {
+          "probes": 80,
+          "recall": 0.8311,
+          "avg_time_ms": 20.91
         }
       ]
     },
     {
       "target_recall": 0.9,
-      "optimal_probes": 35,
-      "actual_recall": 0.9160800000000029,
-      "avg_time_ms": 59.34343910217285,
+      "optimal_probes": 150,
+      "actual_recall": 0.9156400000000021,
+      "avg_time_ms": 37.96502685546875,
       "all_tested": [
         {
           "probes": 5,
-          "recall": 0.5343,
-          "avg_time_ms": 9.23
+          "recall": 0.2999,
+          "avg_time_ms": 4.47
         },
         {
           "probes": 10,
-          "recall": 0.6951,
-          "avg_time_ms": 17.83
+          "recall": 0.4249,
+          "avg_time_ms": 8.88
         },
         {
           "probes": 15,
-          "recall": 0.7813,
-          "avg_time_ms": 26.45
+          "recall": 0.5061,
+          "avg_time_ms": 10.16
         },
         {
           "probes": 20,
-          "recall": 0.8342,
-          "avg_time_ms": 34.77
+          "recall": 0.565,
+          "avg_time_ms": 11.04
         },
         {
           "probes": 25,
-          "recall": 0.8714,
-          "avg_time_ms": 43.49
+          "recall": 0.6098,
+          "avg_time_ms": 13.79
         },
         {
           "probes": 30,
-          "recall": 0.8979,
-          "avg_time_ms": 51.94
+          "recall": 0.6471,
+          "avg_time_ms": 10.7
         },
         {
           "probes": 35,
-          "recall": 0.9161,
-          "avg_time_ms": 59.34
+          "recall": 0.6783,
+          "avg_time_ms": 17.27
+        },
+        {
+          "probes": 40,
+          "recall": 0.7049,
+          "avg_time_ms": 19.14
+        },
+        {
+          "probes": 50,
+          "recall": 0.7489,
+          "avg_time_ms": 22.62
+        },
+        {
+          "probes": 60,
+          "recall": 0.7829,
+          "avg_time_ms": 24.87
+        },
+        {
+          "probes": 80,
+          "recall": 0.8311,
+          "avg_time_ms": 23.07
+        },
+        {
+          "probes": 100,
+          "recall": 0.8653,
+          "avg_time_ms": 27.86
+        },
+        {
+          "probes": 150,
+          "recall": 0.9156,
+          "avg_time_ms": 37.97
         }
       ]
     },
     {
       "target_recall": 0.95,
-      "optimal_probes": 50,
-      "actual_recall": 0.9523,
-      "avg_time_ms": 120.2,
+      "optimal_probes": 300,
+      "actual_recall": 0.9711700000000042,
+      "avg_time_ms": 66.73339128494263,
       "all_tested": [
         {
+          "probes": 5,
+          "recall": 0.2999,
+          "avg_time_ms": 4.67
+        },
+        {
+          "probes": 10,
+          "recall": 0.4249,
+          "avg_time_ms": 6.01
+        },
+        {
+          "probes": 15,
+          "recall": 0.5061,
+          "avg_time_ms": 7.33
+        },
+        {
+          "probes": 20,
+          "recall": 0.565,
+          "avg_time_ms": 8.58
+        },
+        {
+          "probes": 25,
+          "recall": 0.6098,
+          "avg_time_ms": 9.83
+        },
+        {
+          "probes": 30,
+          "recall": 0.6471,
+          "avg_time_ms": 15.53
+        },
+        {
+          "probes": 35,
+          "recall": 0.6783,
+          "avg_time_ms": 13.57
+        },
+        {
+          "probes": 40,
+          "recall": 0.7049,
+          "avg_time_ms": 19.12
+        },
+        {
           "probes": 50,
-          "recall": 0.9523,
-          "avg_time_ms": 120.2
+          "recall": 0.7489,
+          "avg_time_ms": 16.2
+        },
+        {
+          "probes": 60,
+          "recall": 0.7829,
+          "avg_time_ms": 18.57
+        },
+        {
+          "probes": 80,
+          "recall": 0.8311,
+          "avg_time_ms": 21.74
+        },
+        {
+          "probes": 100,
+          "recall": 0.8653,
+          "avg_time_ms": 25.29
+        },
+        {
+          "probes": 150,
+          "recall": 0.9156,
+          "avg_time_ms": 35.72
+        },
+        {
+          "probes": 200,
+          "recall": 0.9427,
+          "avg_time_ms": 46.1
+        },
+        {
+          "probes": 300,
+          "recall": 0.9712,
+          "avg_time_ms": 66.73
         }
       ]
     },
     {
       "target_recall": 0.96,
-      "optimal_probes": 60,
-      "actual_recall": 0.9663,
-      "avg_time_ms": 98.59,
+      "optimal_probes": 300,
+      "actual_recall": 0.9711700000000042,
+      "avg_time_ms": 67.36737275123596,
       "all_tested": [
         {
+          "probes": 5,
+          "recall": 0.2999,
+          "avg_time_ms": 6.24
+        },
+        {
+          "probes": 10,
+          "recall": 0.4249,
+          "avg_time_ms": 8.18
+        },
+        {
+          "probes": 15,
+          "recall": 0.5061,
+          "avg_time_ms": 10.08
+        },
+        {
+          "probes": 20,
+          "recall": 0.565,
+          "avg_time_ms": 11.88
+        },
+        {
+          "probes": 25,
+          "recall": 0.6098,
+          "avg_time_ms": 11.93
+        },
+        {
+          "probes": 30,
+          "recall": 0.6471,
+          "avg_time_ms": 15.64
+        },
+        {
+          "probes": 35,
+          "recall": 0.6783,
+          "avg_time_ms": 11.55
+        },
+        {
+          "probes": 40,
+          "recall": 0.7049,
+          "avg_time_ms": 19.08
+        },
+        {
+          "probes": 50,
+          "recall": 0.7489,
+          "avg_time_ms": 23.03
+        },
+        {
           "probes": 60,
-          "recall": 0.9663,
-          "avg_time_ms": 98.59
+          "recall": 0.7829,
+          "avg_time_ms": 17.6
+        },
+        {
+          "probes": 80,
+          "recall": 0.8311,
+          "avg_time_ms": 32.69
+        },
+        {
+          "probes": 100,
+          "recall": 0.8653,
+          "avg_time_ms": 38.11
+        },
+        {
+          "probes": 150,
+          "recall": 0.9156,
+          "avg_time_ms": 37.54
+        },
+        {
+          "probes": 200,
+          "recall": 0.9427,
+          "avg_time_ms": 48.81
+        },
+        {
+          "probes": 300,
+          "recall": 0.9712,
+          "avg_time_ms": 67.37
         }
       ]
     }

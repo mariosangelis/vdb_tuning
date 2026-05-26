@@ -1,0 +1,202 @@
+{
+  "1": {
+    "k": 1,
+    "index_type": "hnsw",
+    "optimal_ef_search": 100,
+    "recall": 0.923,
+    "avg_time_ms": 12.478089094161987,
+    "target_recall": 0.9,
+    "all_tested": [
+      {
+        "ef_search": 1,
+        "recall": 0.242,
+        "avg_time_ms": 7.88
+      },
+      {
+        "ef_search": 10,
+        "recall": 0.654,
+        "avg_time_ms": 18.49
+      },
+      {
+        "ef_search": 50,
+        "recall": 0.864,
+        "avg_time_ms": 26.02
+      },
+      {
+        "ef_search": 100,
+        "recall": 0.923,
+        "avg_time_ms": 12.48
+      }
+    ]
+  },
+  "10": {
+    "k": 10,
+    "index_type": "hnsw",
+    "optimal_ef_search": 150,
+    "recall": 0.9102999999999967,
+    "avg_time_ms": 7.8353986740112305,
+    "target_recall": 0.9,
+    "all_tested": [
+      {
+        "ef_search": 10,
+        "recall": 0.6033,
+        "avg_time_ms": 1.04
+      },
+      {
+        "ef_search": 50,
+        "recall": 0.8082,
+        "avg_time_ms": 1.84
+      },
+      {
+        "ef_search": 100,
+        "recall": 0.8768,
+        "avg_time_ms": 3.01
+      },
+      {
+        "ef_search": 150,
+        "recall": 0.9103,
+        "avg_time_ms": 7.84
+      }
+    ]
+  },
+  "100": {
+    "k": 100,
+    "index_type": "hnsw",
+    "optimal_ef_search": 300,
+    "recall": 0.9003100000000026,
+    "avg_time_ms": 7.894029378890992,
+    "target_recall": 0.9,
+    "all_tested": [
+      {
+        "ef_search": 100,
+        "recall": 0.7608,
+        "avg_time_ms": 3.21
+      },
+      {
+        "ef_search": 150,
+        "recall": 0.8193,
+        "avg_time_ms": 4.23
+      },
+      {
+        "ef_search": 200,
+        "recall": 0.856,
+        "avg_time_ms": 7.21
+      },
+      {
+        "ef_search": 250,
+        "recall": 0.8812,
+        "avg_time_ms": 7.53
+      },
+      {
+        "ef_search": 300,
+        "recall": 0.9003,
+        "avg_time_ms": 7.89
+      }
+    ]
+  },
+  "200": {
+    "k": 200,
+    "index_type": "hnsw",
+    "optimal_ef_search": 450,
+    "recall": 0.9093500000000027,
+    "avg_time_ms": 10.53104019165039,
+    "target_recall": 0.9,
+    "all_tested": [
+      {
+        "ef_search": 200,
+        "recall": 0.8129,
+        "avg_time_ms": 5.45
+      },
+      {
+        "ef_search": 250,
+        "recall": 0.8439,
+        "avg_time_ms": 6.44
+      },
+      {
+        "ef_search": 300,
+        "recall": 0.8672,
+        "avg_time_ms": 7.34
+      },
+      {
+        "ef_search": 350,
+        "recall": 0.8843,
+        "avg_time_ms": 8.78
+      },
+      {
+        "ef_search": 400,
+        "recall": 0.8981,
+        "avg_time_ms": 9.71
+      },
+      {
+        "ef_search": 450,
+        "recall": 0.9094,
+        "avg_time_ms": 10.53
+      }
+    ]
+  },
+  "400": {
+    "k": 400,
+    "index_type": "hnsw",
+    "optimal_ef_search": 600,
+    "recall": 0.9066850000000003,
+    "avg_time_ms": 17.210846185684204,
+    "target_recall": 0.9,
+    "all_tested": [
+      {
+        "ef_search": 400,
+        "recall": 0.8613,
+        "avg_time_ms": 9.73
+      },
+      {
+        "ef_search": 450,
+        "recall": 0.8758,
+        "avg_time_ms": 10.5
+      },
+      {
+        "ef_search": 500,
+        "recall": 0.8882,
+        "avg_time_ms": 12.1
+      },
+      {
+        "ef_search": 550,
+        "recall": 0.8981,
+        "avg_time_ms": 13.02
+      },
+      {
+        "ef_search": 600,
+        "recall": 0.9067,
+        "avg_time_ms": 17.21
+      }
+    ]
+  },
+  "800": {
+    "k": 800,
+    "index_type": "hnsw",
+    "optimal_ef_search": 800,
+    "recall": 0.9003637499999987,
+    "avg_time_ms": 18.05528426170349,
+    "target_recall": 0.9,
+    "all_tested": [
+      {
+        "ef_search": 800,
+        "recall": 0.9004,
+        "avg_time_ms": 18.06
+      }
+    ]
+  },
+  "1000": {
+    "k": 1000,
+    "index_type": "hnsw",
+    "optimal_ef_search": 1000,
+    "recall": 0.9114939999999995,
+    "avg_time_ms": 21.644224405288696,
+    "target_recall": 0.9,
+    "all_tested": [
+      {
+        "ef_search": 1000,
+        "recall": 0.9115,
+        "avg_time_ms": 21.64
+      }
+    ]
+  }
+}
