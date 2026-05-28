@@ -1,0 +1,42 @@
+[Step 1/2] find_saturation_points.py --memory 13:17 --warm --index hnsw --hnsw-m 16 --hnsw-efc 128
+WARM MODE: No restart between measurements. Results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_13GB_sb_17GB_cg
+MEMORY CONSTRAINED MODE: shared_buffers=13GB, cgroup=17GB
+Results directory: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_13GB_sb_17GB_cg
+Setting shared_buffers to 13GB...
+  shared_buffers now: shared_buffers = 13000000kB
+Setting cgroup memory to 17GB...
+Traceback (most recent call last):
+  File "/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code/find_saturation_points.py", line 883, in <module>
+    main()
+  File "/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code/find_saturation_points.py", line 723, in main
+    set_cgroup_memory(cg_gb)
+  File "/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code/find_saturation_points.py", line 163, in set_cgroup_memory
+    with open(CGROUP_MEM_PATH, 'w') as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/sys/fs/cgroup/postgres_test/memory.max'
+
+[Step 2/2] build_throughput_frontier.py --memory 13:17 --warm --index hnsw --hnsw-m 16 --hnsw-efc 128
+WARM MODE: No restart between measurements. Results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_13GB_sb_17GB_cg
+INDEX: HNSW (results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_13GB_sb_17GB_cg)
+  Manual params: {'m': 16, 'ef_construction': 128}
+======================================================================
+THROUGHPUT FRONTIER - Step 2: Build Grid Graph & Extract Frontier
+Index: IVFFLAT, Parallel: False, io_depth: 1000, K: 100
+Measurement: 300s per data point (warm)
+Grid fractions: [0.0, 0.01, 0.02, 0.2, 0.4, 0.6, 0.8, 1.0]
+Postgres cores: 0-31, NUMA: 0
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+======================================================================
+Traceback (most recent call last):
+  File "/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code/build_throughput_frontier.py", line 1120, in <module>
+    main()
+  File "/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code/build_throughput_frontier.py", line 997, in main
+    saturation = load_saturation_points()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code/build_throughput_frontier.py", line 393, in load_saturation_points
+    raise FileNotFoundError(f"ANN saturation file not found: {ann_path}\n"
+FileNotFoundError: ANN saturation file not found: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_13GB_sb_17GB_cg/saturation_points_ann.json
+Run find_saturation_points.py --ann-only first.
+
+DONE! Index: hnsw, Memory: 13GB/17GB

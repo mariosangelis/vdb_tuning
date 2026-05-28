@@ -1,0 +1,23 @@
+[Step 1/2] find_saturation_points.py --memory 13:17 --warm --index ivfflat --ivfflat-lists 8192
+WARM MODE: No restart between measurements. Results: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_13GB_sb_17GB_cg
+MEMORY CONSTRAINED MODE: shared_buffers=13GB, cgroup=17GB
+Results directory: /users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_13GB_sb_17GB_cg
+Setting shared_buffers to 13GB...
+  shared_buffers now: shared_buffers = 13000000kB
+Setting cgroup memory to 17GB...
+  cgroup memory set to 17.0GB
+THROUGHPUT FRONTIER - Step 1: Find Saturation Points
+Index: IVFFLAT, Parallel: False, io_depth: 1000, K: 100
+Measurement: 300s per data point (cold start, no warmup)
+Postgres cores: 0-31, NUMA: 0
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+Memory: shared_buffers=13GB, cgroup=17GB
+======================================================================
+
+Ensuring correct index from tune config...
+  Loaded tune config from: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_ivfflat_results.json
+  Best config: {'lists': 8192, 'probes': 150, 'recall': 0.9135, 'avg_query_time_ms': 44.18, 'index_build_time_s': 2888.28}
+  Overriding tune config with CLI params: {'lists': 8192}
+  Building IVFFLAT index from tune config...
+    Creating IVFFlat index with lists=8192...

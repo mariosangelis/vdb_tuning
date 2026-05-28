@@ -53,7 +53,7 @@
 #include "utils/typcache.h"
 
 // ADDED FOR COMPILER OPTIMIZATION
-bool enable_topk_search_optimizations = false;
+bool enable_topk_search_optimizations = true;
 
 typedef struct ExprSetupInfo
 {

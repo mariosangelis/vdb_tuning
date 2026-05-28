@@ -9,7 +9,7 @@
   "hardware": {
     "num_pg_cores": 32,
     "postgres_cores": "0-31",
-    "postgres_numa_nodes": "0-7",
+    "postgres_numa_nodes": "0",
     "_comment_numa": "postgres_numa_nodes: single node e.g. '0' or range e.g. '0-6'",
     "topk_producers_cores": [
       32,
