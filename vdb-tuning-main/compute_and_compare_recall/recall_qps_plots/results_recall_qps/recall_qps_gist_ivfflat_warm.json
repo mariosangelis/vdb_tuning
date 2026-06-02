@@ -1,0 +1,193 @@
+{
+  "ivfflat": {
+    "index_type": "ivfflat",
+    "dataset": "gist",
+    "mode": "warm",
+    "build_params": {
+      "lists": 8192
+    },
+    "snapshot_used": "/mnt/nvme/saved_indexes/gist_ivfflat_lists8192_pgdata.tar.gz",
+    "k": 100,
+    "recall_targets": [
+      0.7,
+      0.8,
+      0.9,
+      0.95,
+      0.96,
+      0.98
+    ],
+    "recall_qps_points": [
+      {
+        "target_recall": 0.7,
+        "actual_recall": 0.7072,
+        "probes": 35,
+        "qps": 75.1,
+        "avg_latency_ms": 13.32
+      },
+      {
+        "target_recall": 0.8,
+        "actual_recall": 0.8069,
+        "probes": 60,
+        "qps": 52.81,
+        "avg_latency_ms": 18.93
+      },
+      {
+        "target_recall": 0.9,
+        "actual_recall": 0.9294,
+        "probes": 150,
+        "qps": 25.47,
+        "avg_latency_ms": 39.26
+      },
+      {
+        "target_recall": 0.95,
+        "actual_recall": 0.9531,
+        "probes": 200,
+        "qps": 19.55,
+        "avg_latency_ms": 51.16
+      },
+      {
+        "target_recall": 0.96,
+        "actual_recall": 0.9762,
+        "probes": 300,
+        "qps": 13.33,
+        "avg_latency_ms": 75.02
+      },
+      {
+        "target_recall": 0.98,
+        "actual_recall": 0.9878,
+        "probes": 400,
+        "qps": 10.37,
+        "avg_latency_ms": 96.42
+      }
+    ],
+    "full_sweep": [
+      {
+        "probes": 1,
+        "recall": 0.1075,
+        "qps": 229.22,
+        "avg_latency_ms": 4.36
+      },
+      {
+        "probes": 2,
+        "recall": 0.1807,
+        "qps": 215.03,
+        "avg_latency_ms": 4.65
+      },
+      {
+        "probes": 3,
+        "recall": 0.2338,
+        "qps": 205.74,
+        "avg_latency_ms": 4.86
+      },
+      {
+        "probes": 5,
+        "recall": 0.3188,
+        "qps": 179.49,
+        "avg_latency_ms": 5.57
+      },
+      {
+        "probes": 8,
+        "recall": 0.4112,
+        "qps": 167.75,
+        "avg_latency_ms": 5.96
+      },
+      {
+        "probes": 10,
+        "recall": 0.456,
+        "qps": 145.8,
+        "avg_latency_ms": 6.86
+      },
+      {
+        "probes": 15,
+        "recall": 0.5406,
+        "qps": 120.21,
+        "avg_latency_ms": 8.32
+      },
+      {
+        "probes": 20,
+        "recall": 0.5975,
+        "qps": 106.99,
+        "avg_latency_ms": 9.35
+      },
+      {
+        "probes": 25,
+        "recall": 0.6427,
+        "qps": 91.25,
+        "avg_latency_ms": 10.96
+      },
+      {
+        "probes": 30,
+        "recall": 0.6795,
+        "qps": 85.15,
+        "avg_latency_ms": 11.74
+      },
+      {
+        "probes": 35,
+        "recall": 0.7072,
+        "qps": 75.1,
+        "avg_latency_ms": 13.32
+      },
+      {
+        "probes": 40,
+        "recall": 0.7312,
+        "qps": 69.04,
+        "avg_latency_ms": 14.48
+      },
+      {
+        "probes": 50,
+        "recall": 0.7758,
+        "qps": 60.73,
+        "avg_latency_ms": 16.47
+      },
+      {
+        "probes": 60,
+        "recall": 0.8069,
+        "qps": 52.81,
+        "avg_latency_ms": 18.93
+      },
+      {
+        "probes": 80,
+        "recall": 0.8524,
+        "qps": 42.3,
+        "avg_latency_ms": 23.64
+      },
+      {
+        "probes": 100,
+        "recall": 0.8841,
+        "qps": 35.93,
+        "avg_latency_ms": 27.83
+      },
+      {
+        "probes": 150,
+        "recall": 0.9294,
+        "qps": 25.47,
+        "avg_latency_ms": 39.26
+      },
+      {
+        "probes": 200,
+        "recall": 0.9531,
+        "qps": 19.55,
+        "avg_latency_ms": 51.16
+      },
+      {
+        "probes": 300,
+        "recall": 0.9762,
+        "qps": 13.33,
+        "avg_latency_ms": 75.02
+      },
+      {
+        "probes": 400,
+        "recall": 0.9878,
+        "qps": 10.37,
+        "avg_latency_ms": 96.42
+      },
+      {
+        "probes": 500,
+        "recall": 0.9929,
+        "qps": 8.42,
+        "avg_latency_ms": 118.77
+      }
+    ],
+    "timestamp": "2026-05-31T16:56:45.267875"
+  }
+}

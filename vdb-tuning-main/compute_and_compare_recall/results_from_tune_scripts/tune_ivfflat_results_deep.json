@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-05-31T14:19:35.246050",
+  "dataset": "deep",
+  "table": "deep_data",
+  "target_recall": 0.9,
+  "k": 100,
+  "workload_size": 1000,
+  "configurations": [
+    {
+      "lists": 32768,
+      "index_build_time_s": 1640.69,
+      "target_recall": 0.9,
+      "optimal_probes": 60,
+      "achieved_recall": 0.904,
+      "avg_query_time_ms": 13.75,
+      "total_query_time_s": 13.747,
+      "all_probe_results": [
+        {
+          "probes": 1,
+          "recall": 0.2215,
+          "avg_time_ms": 2.03,
+          "total_time_s": 2.033
+        },
+        {
+          "probes": 2,
+          "recall": 0.3307,
+          "avg_time_ms": 2.25,
+          "total_time_s": 2.249
+        },
+        {
+          "probes": 3,
+          "recall": 0.4068,
+          "avg_time_ms": 2.48,
+          "total_time_s": 2.481
+        },
+        {
+          "probes": 5,
+          "recall": 0.5088,
+          "avg_time_ms": 2.91,
+          "total_time_s": 2.908
+        },
+        {
+          "probes": 8,
+          "recall": 0.6016,
+          "avg_time_ms": 3.61,
+          "total_time_s": 3.611
+        },
+        {
+          "probes": 10,
+          "recall": 0.6445,
+          "avg_time_ms": 3.66,
+          "total_time_s": 3.663
+        },
+        {
+          "probes": 15,
+          "recall": 0.72,
+          "avg_time_ms": 4.53,
+          "total_time_s": 4.533
+        },
+        {
+          "probes": 20,
+          "recall": 0.7674,
+          "avg_time_ms": 5.53,
+          "total_time_s": 5.534
+        },
+        {
+          "probes": 25,
+          "recall": 0.8016,
+          "avg_time_ms": 6.08,
+          "total_time_s": 6.078
+        },
+        {
+          "probes": 30,
+          "recall": 0.8264,
+          "avg_time_ms": 7.69,
+          "total_time_s": 7.692
+        },
+        {
+          "probes": 35,
+          "recall": 0.8472,
+          "avg_time_ms": 8.65,
+          "total_time_s": 8.647
+        },
+        {
+          "probes": 40,
+          "recall": 0.863,
+          "avg_time_ms": 9.91,
+          "total_time_s": 9.907
+        },
+        {
+          "probes": 50,
+          "recall": 0.8872,
+          "avg_time_ms": 11.58,
+          "total_time_s": 11.58
+        },
+        {
+          "probes": 60,
+          "recall": 0.904,
+          "avg_time_ms": 13.75,
+          "total_time_s": 13.747
+        }
+      ]
+    }
+  ],
+  "best_configuration": {
+    "lists": 32768,
+    "probes": 60,
+    "recall": 0.904,
+    "avg_query_time_ms": 13.75,
+    "index_build_time_s": 1640.69
+  }
+}

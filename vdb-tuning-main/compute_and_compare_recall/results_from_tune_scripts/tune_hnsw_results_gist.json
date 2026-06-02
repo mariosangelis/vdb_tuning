@@ -1,0 +1,528 @@
+{
+  "timestamp": "2026-05-29T13:32:30.571207",
+  "dataset": "gist",
+  "table": "gist_data",
+  "target_recall": 0.9,
+  "k": 100,
+  "workload_size": 1000,
+  "configurations": [
+    {
+      "m": 8,
+      "ef_construction": 64,
+      "index_build_time_s": 0.0,
+      "index_size": "3865 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": null,
+      "achieved_recall": null,
+      "avg_query_time_ms": null,
+      "total_query_time_s": null,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.5672,
+          "avg_time_ms": 3.58,
+          "total_time_s": 3.576
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.6008,
+          "avg_time_ms": 3.77,
+          "total_time_s": 3.77
+        },
+        {
+          "ef_search": 150,
+          "recall": 0.6401,
+          "avg_time_ms": 4.31,
+          "total_time_s": 4.313
+        },
+        {
+          "ef_search": 200,
+          "recall": 0.6887,
+          "avg_time_ms": 5.18,
+          "total_time_s": 5.18
+        },
+        {
+          "ef_search": 250,
+          "recall": 0.7229,
+          "avg_time_ms": 6.07,
+          "total_time_s": 6.066
+        },
+        {
+          "ef_search": 300,
+          "recall": 0.7496,
+          "avg_time_ms": 6.82,
+          "total_time_s": 6.816
+        },
+        {
+          "ef_search": 400,
+          "recall": 0.788,
+          "avg_time_ms": 8.46,
+          "total_time_s": 8.455
+        },
+        {
+          "ef_search": 500,
+          "recall": 0.816,
+          "avg_time_ms": 9.83,
+          "total_time_s": 9.833
+        },
+        {
+          "ef_search": 600,
+          "recall": 0.8356,
+          "avg_time_ms": 11.5,
+          "total_time_s": 11.504
+        },
+        {
+          "ef_search": 800,
+          "recall": 0.8649,
+          "avg_time_ms": 14.52,
+          "total_time_s": 14.523
+        },
+        {
+          "ef_search": 1000,
+          "recall": 0.8853,
+          "avg_time_ms": 17.3,
+          "total_time_s": 17.298
+        }
+      ]
+    },
+    {
+      "m": 8,
+      "ef_construction": 128,
+      "index_build_time_s": 0.0,
+      "index_size": "3863 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 1000,
+      "achieved_recall": 0.9033,
+      "avg_query_time_ms": 14.91,
+      "total_query_time_s": 14.909,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.5937,
+          "avg_time_ms": 3.03,
+          "total_time_s": 3.034
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.6268,
+          "avg_time_ms": 3.35,
+          "total_time_s": 3.347
+        },
+        {
+          "ef_search": 150,
+          "recall": 0.6669,
+          "avg_time_ms": 3.65,
+          "total_time_s": 3.646
+        },
+        {
+          "ef_search": 200,
+          "recall": 0.7139,
+          "avg_time_ms": 4.46,
+          "total_time_s": 4.459
+        },
+        {
+          "ef_search": 250,
+          "recall": 0.7483,
+          "avg_time_ms": 5.24,
+          "total_time_s": 5.236
+        },
+        {
+          "ef_search": 300,
+          "recall": 0.7751,
+          "avg_time_ms": 5.91,
+          "total_time_s": 5.909
+        },
+        {
+          "ef_search": 400,
+          "recall": 0.8132,
+          "avg_time_ms": 7.23,
+          "total_time_s": 7.228
+        },
+        {
+          "ef_search": 500,
+          "recall": 0.8397,
+          "avg_time_ms": 8.55,
+          "total_time_s": 8.551
+        },
+        {
+          "ef_search": 600,
+          "recall": 0.8591,
+          "avg_time_ms": 9.79,
+          "total_time_s": 9.79
+        },
+        {
+          "ef_search": 800,
+          "recall": 0.8858,
+          "avg_time_ms": 12.41,
+          "total_time_s": 12.413
+        },
+        {
+          "ef_search": 1000,
+          "recall": 0.9033,
+          "avg_time_ms": 14.91,
+          "total_time_s": 14.909
+        }
+      ]
+    },
+    {
+      "m": 8,
+      "ef_construction": 256,
+      "index_build_time_s": 0.0,
+      "index_size": "3860 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 1000,
+      "achieved_recall": 0.916,
+      "avg_query_time_ms": 17.99,
+      "total_query_time_s": 17.992,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.612,
+          "avg_time_ms": 3.58,
+          "total_time_s": 3.576
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.6465,
+          "avg_time_ms": 3.87,
+          "total_time_s": 3.871
+        },
+        {
+          "ef_search": 150,
+          "recall": 0.6873,
+          "avg_time_ms": 4.43,
+          "total_time_s": 4.432
+        },
+        {
+          "ef_search": 200,
+          "recall": 0.7352,
+          "avg_time_ms": 5.27,
+          "total_time_s": 5.274
+        },
+        {
+          "ef_search": 250,
+          "recall": 0.769,
+          "avg_time_ms": 6.26,
+          "total_time_s": 6.256
+        },
+        {
+          "ef_search": 300,
+          "recall": 0.7952,
+          "avg_time_ms": 7.07,
+          "total_time_s": 7.071
+        },
+        {
+          "ef_search": 400,
+          "recall": 0.8315,
+          "avg_time_ms": 8.76,
+          "total_time_s": 8.764
+        },
+        {
+          "ef_search": 500,
+          "recall": 0.8564,
+          "avg_time_ms": 10.45,
+          "total_time_s": 10.445
+        },
+        {
+          "ef_search": 600,
+          "recall": 0.8745,
+          "avg_time_ms": 11.97,
+          "total_time_s": 11.97
+        },
+        {
+          "ef_search": 800,
+          "recall": 0.8986,
+          "avg_time_ms": 14.91,
+          "total_time_s": 14.914
+        },
+        {
+          "ef_search": 1000,
+          "recall": 0.916,
+          "avg_time_ms": 17.99,
+          "total_time_s": 17.992
+        }
+      ]
+    },
+    {
+      "m": 16,
+      "ef_construction": 64,
+      "index_build_time_s": 0.0,
+      "index_size": "7684 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 400,
+      "achieved_recall": 0.9186,
+      "avg_query_time_ms": 15.12,
+      "total_query_time_s": 15.118,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.7392,
+          "avg_time_ms": 5.67,
+          "total_time_s": 5.666
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.7691,
+          "avg_time_ms": 6.31,
+          "total_time_s": 6.311
+        },
+        {
+          "ef_search": 150,
+          "recall": 0.8041,
+          "avg_time_ms": 8.36,
+          "total_time_s": 8.363
+        },
+        {
+          "ef_search": 200,
+          "recall": 0.8447,
+          "avg_time_ms": 8.98,
+          "total_time_s": 8.979
+        },
+        {
+          "ef_search": 250,
+          "recall": 0.8714,
+          "avg_time_ms": 10.62,
+          "total_time_s": 10.619
+        },
+        {
+          "ef_search": 300,
+          "recall": 0.8917,
+          "avg_time_ms": 12.0,
+          "total_time_s": 11.997
+        },
+        {
+          "ef_search": 400,
+          "recall": 0.9186,
+          "avg_time_ms": 15.12,
+          "total_time_s": 15.118
+        }
+      ]
+    },
+    {
+      "m": 16,
+      "ef_construction": 128,
+      "index_build_time_s": 0.0,
+      "index_size": "7681 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 300,
+      "achieved_recall": 0.9132,
+      "avg_query_time_ms": 12.23,
+      "total_query_time_s": 12.23,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.7664,
+          "avg_time_ms": 5.99,
+          "total_time_s": 5.988
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.7973,
+          "avg_time_ms": 6.47,
+          "total_time_s": 6.467
+        },
+        {
+          "ef_search": 150,
+          "recall": 0.8321,
+          "avg_time_ms": 7.52,
+          "total_time_s": 7.521
+        },
+        {
+          "ef_search": 200,
+          "recall": 0.8707,
+          "avg_time_ms": 9.19,
+          "total_time_s": 9.193
+        },
+        {
+          "ef_search": 250,
+          "recall": 0.8956,
+          "avg_time_ms": 10.93,
+          "total_time_s": 10.932
+        },
+        {
+          "ef_search": 300,
+          "recall": 0.9132,
+          "avg_time_ms": 12.23,
+          "total_time_s": 12.23
+        }
+      ]
+    },
+    {
+      "m": 16,
+      "ef_construction": 256,
+      "index_build_time_s": 0.0,
+      "index_size": "7679 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 250,
+      "achieved_recall": 0.9108,
+      "avg_query_time_ms": 14.15,
+      "total_query_time_s": 14.151,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.7832,
+          "avg_time_ms": 7.47,
+          "total_time_s": 7.469
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.8153,
+          "avg_time_ms": 7.01,
+          "total_time_s": 7.008
+        },
+        {
+          "ef_search": 150,
+          "recall": 0.8497,
+          "avg_time_ms": 7.69,
+          "total_time_s": 7.692
+        },
+        {
+          "ef_search": 200,
+          "recall": 0.8873,
+          "avg_time_ms": 11.97,
+          "total_time_s": 11.969
+        },
+        {
+          "ef_search": 250,
+          "recall": 0.9108,
+          "avg_time_ms": 14.15,
+          "total_time_s": 14.151
+        }
+      ]
+    },
+    {
+      "m": 32,
+      "ef_construction": 64,
+      "index_build_time_s": 0.0,
+      "index_size": "7813 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 150,
+      "achieved_recall": 0.901,
+      "avg_query_time_ms": 19.67,
+      "total_query_time_s": 19.673,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.8504,
+          "avg_time_ms": 14.91,
+          "total_time_s": 14.91
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.8746,
+          "avg_time_ms": 16.81,
+          "total_time_s": 16.812
+        },
+        {
+          "ef_search": 150,
+          "recall": 0.901,
+          "avg_time_ms": 19.67,
+          "total_time_s": 19.673
+        }
+      ]
+    },
+    {
+      "m": 32,
+      "ef_construction": 128,
+      "index_build_time_s": 0.0,
+      "index_size": "7679 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 150,
+      "achieved_recall": 0.9206,
+      "avg_query_time_ms": 12.4,
+      "total_query_time_s": 12.402,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.8744,
+          "avg_time_ms": 9.54,
+          "total_time_s": 9.538
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.8969,
+          "avg_time_ms": 10.68,
+          "total_time_s": 10.684
+        },
+        {
+          "ef_search": 150,
+          "recall": 0.9206,
+          "avg_time_ms": 12.4,
+          "total_time_s": 12.402
+        }
+      ]
+    },
+    {
+      "m": 32,
+      "ef_construction": 256,
+      "index_build_time_s": 0.0,
+      "index_size": "7678 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 120,
+      "achieved_recall": 0.9091,
+      "avg_query_time_ms": 16.71,
+      "total_query_time_s": 16.707,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.8867,
+          "avg_time_ms": 17.44,
+          "total_time_s": 17.435
+        },
+        {
+          "ef_search": 120,
+          "recall": 0.9091,
+          "avg_time_ms": 16.71,
+          "total_time_s": 16.707
+        }
+      ]
+    },
+    {
+      "m": 64,
+      "ef_construction": 128,
+      "index_build_time_s": 0.0,
+      "index_size": "7813 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 100,
+      "achieved_recall": 0.9349,
+      "avg_query_time_ms": 30.23,
+      "total_query_time_s": 30.229,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.9349,
+          "avg_time_ms": 30.23,
+          "total_time_s": 30.229
+        }
+      ]
+    },
+    {
+      "m": 64,
+      "ef_construction": 256,
+      "index_build_time_s": 0.0,
+      "index_size": "7678 MB",
+      "target_recall": 0.9,
+      "optimal_ef_search": 100,
+      "achieved_recall": 0.9438,
+      "avg_query_time_ms": 24.07,
+      "total_query_time_s": 24.071,
+      "all_ef_search_results": [
+        {
+          "ef_search": 100,
+          "recall": 0.9438,
+          "avg_time_ms": 24.07,
+          "total_time_s": 24.071
+        }
+      ]
+    }
+  ],
+  "best_configuration": {
+    "m": 16,
+    "ef_construction": 128,
+    "ef_search": 300,
+    "recall": 0.9132,
+    "avg_query_time_ms": 12.23,
+    "index_build_time_s": 0.0,
+    "index_size": "7681 MB"
+  }
+}

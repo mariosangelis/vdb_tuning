@@ -1,0 +1,200 @@
+{
+  "hnsw": {
+    "index_type": "hnsw",
+    "dataset": "gist",
+    "mode": "warm",
+    "build_params": {
+      "m": 16,
+      "ef_construction": 128
+    },
+    "snapshot_used": "/mnt/nvme/saved_indexes/gist_hnsw_efc128_m16_pgdata.tar.gz",
+    "k": 100,
+    "recall_targets": [
+      0.7,
+      0.8,
+      0.9,
+      0.95,
+      0.96,
+      0.98
+    ],
+    "recall_qps_points": [
+      {
+        "target_recall": 0.7,
+        "actual_recall": 0.7234,
+        "ef_search": 80,
+        "qps": 218.49,
+        "avg_latency_ms": 4.58
+      },
+      {
+        "target_recall": 0.8,
+        "actual_recall": 0.8039,
+        "ef_search": 100,
+        "qps": 200.29,
+        "avg_latency_ms": 4.99
+      },
+      {
+        "target_recall": 0.9,
+        "actual_recall": 0.9173,
+        "ef_search": 250,
+        "qps": 113.39,
+        "avg_latency_ms": 8.82
+      },
+      {
+        "target_recall": 0.95,
+        "actual_recall": 0.9523,
+        "ef_search": 400,
+        "qps": 80.34,
+        "avg_latency_ms": 12.45
+      },
+      {
+        "target_recall": 0.96,
+        "actual_recall": 0.9637,
+        "ef_search": 500,
+        "qps": 69.97,
+        "avg_latency_ms": 14.29
+      },
+      {
+        "target_recall": 0.98,
+        "actual_recall": 0.9809,
+        "ef_search": 800,
+        "qps": 48.37,
+        "avg_latency_ms": 20.68
+      }
+    ],
+    "full_sweep": [
+      {
+        "ef_search": 1,
+        "recall": 0.0081,
+        "qps": 1468.69,
+        "avg_latency_ms": 0.68
+      },
+      {
+        "ef_search": 10,
+        "recall": 0.1009,
+        "qps": 556.58,
+        "avg_latency_ms": 1.8
+      },
+      {
+        "ef_search": 30,
+        "recall": 0.2997,
+        "qps": 352.4,
+        "avg_latency_ms": 2.84
+      },
+      {
+        "ef_search": 40,
+        "recall": 0.3986,
+        "qps": 307.73,
+        "avg_latency_ms": 3.25
+      },
+      {
+        "ef_search": 50,
+        "recall": 0.4932,
+        "qps": 273.95,
+        "avg_latency_ms": 3.65
+      },
+      {
+        "ef_search": 60,
+        "recall": 0.5811,
+        "qps": 275.7,
+        "avg_latency_ms": 3.63
+      },
+      {
+        "ef_search": 70,
+        "recall": 0.6581,
+        "qps": 231.4,
+        "avg_latency_ms": 4.32
+      },
+      {
+        "ef_search": 80,
+        "recall": 0.7234,
+        "qps": 218.49,
+        "avg_latency_ms": 4.58
+      },
+      {
+        "ef_search": 90,
+        "recall": 0.7745,
+        "qps": 206.29,
+        "avg_latency_ms": 4.85
+      },
+      {
+        "ef_search": 100,
+        "recall": 0.8039,
+        "qps": 200.29,
+        "avg_latency_ms": 4.99
+      },
+      {
+        "ef_search": 120,
+        "recall": 0.8316,
+        "qps": 186.78,
+        "avg_latency_ms": 5.35
+      },
+      {
+        "ef_search": 150,
+        "recall": 0.861,
+        "qps": 157.95,
+        "avg_latency_ms": 6.33
+      },
+      {
+        "ef_search": 200,
+        "recall": 0.8965,
+        "qps": 130.61,
+        "avg_latency_ms": 7.66
+      },
+      {
+        "ef_search": 250,
+        "recall": 0.9173,
+        "qps": 113.39,
+        "avg_latency_ms": 8.82
+      },
+      {
+        "ef_search": 300,
+        "recall": 0.9324,
+        "qps": 101.94,
+        "avg_latency_ms": 9.81
+      },
+      {
+        "ef_search": 400,
+        "recall": 0.9523,
+        "qps": 80.34,
+        "avg_latency_ms": 12.45
+      },
+      {
+        "ef_search": 500,
+        "recall": 0.9637,
+        "qps": 69.97,
+        "avg_latency_ms": 14.29
+      },
+      {
+        "ef_search": 600,
+        "recall": 0.9714,
+        "qps": 59.79,
+        "avg_latency_ms": 16.73
+      },
+      {
+        "ef_search": 800,
+        "recall": 0.9809,
+        "qps": 48.37,
+        "avg_latency_ms": 20.68
+      },
+      {
+        "ef_search": 1000,
+        "recall": 0.9862,
+        "qps": 40.2,
+        "avg_latency_ms": 24.88
+      },
+      {
+        "ef_search": 1500,
+        "recall": 0.9442,
+        "qps": 89.63,
+        "avg_latency_ms": 11.16
+      },
+      {
+        "ef_search": 2000,
+        "recall": 0.9442,
+        "qps": 89.79,
+        "avg_latency_ms": 11.14
+      }
+    ],
+    "timestamp": "2026-05-31T16:59:12.601774"
+  }
+}
