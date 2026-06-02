@@ -312,7 +312,9 @@ def main():
     if args.output:
         output_path = args.output
     else:
-        output_path = str(Path(__file__).resolve().parent / f"recall_qps_{args.dataset}_{args.mode}.png")
+        figures_dir = Path(__file__).resolve().parent / "figures"
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        output_path = str(figures_dir / f"recall_qps_{args.dataset}_{args.mode}.png")
 
     # Plot
     plot_recall_qps(results, args.dataset, args.mode, output_path)
