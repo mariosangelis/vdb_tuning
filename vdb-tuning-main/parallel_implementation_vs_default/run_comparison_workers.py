@@ -2,22 +2,22 @@
 """
 Compare Default IVFFlat vs Parallel IVFFlat with varying worker counts.
 
-For K=100, runs the GIST workload at multiple recall targets (using probes from
-performance_recall_ivfflat_K_100.json) and measures execution time for:
+For K=100, runs the workload at multiple recall targets and measures execution time for:
   1. Default pgvector (~/vdb_tuning/postgres/postgres/pgvector)
   2. Parallel pgvector with NUM_WORKERS = 4, 8, 12
      (~/vdb_tuning/postgres/postgres/pgvector_modified_final)
 
-For each worker count:
-  - sed-replace #define NUM_WORKERS in ivfscan.c
-  - Compile pgvector extension (make clean && make && make install)
-  - Restart PostgreSQL (drop caches)
-  - Drop and recreate the IVFFlat index
-  - For each recall target: cold restart, set probes, run 1000 queries, measure time
+Probe values for each recall target are loaded from the dataset-specific
+recall_qps results file (results_recall_qps/recall_qps_{dataset}_ivfflat_cold.json).
+
+Supports --mode cold (restart + drop caches between each probe) and
+--mode warm (prewarm index+table, no restart between probes).
 
 Usage:
-    sudo python3 run_comparison_workers.py
-    sudo python3 run_comparison_workers.py --skip-default   # skip default, only run parallel variants
+    sudo python3 run_comparison_workers.py --dataset gist --mode cold
+    sudo python3 run_comparison_workers.py --dataset gist --mode warm
+    sudo python3 run_comparison_workers.py --dataset deep --mode cold --skip-default
+    sudo python3 run_comparison_workers.py --dataset gist --mode warm --no-rebuild
 """
 
 import psycopg2
@@ -27,6 +27,7 @@ import json
 import sys
 import os
 import shutil
+import argparse
 from pathlib import Path
 
 # === AUTO-DETECT PATHS ===
@@ -48,14 +49,33 @@ PGVECTOR_PARALLEL = Path("/users/mangelis/vdb_tuning/postgres/postgres/pgvector_
 # The ivfscan.c file where NUM_WORKERS is defined
 IVFSCAN_PATH = PGVECTOR_PARALLEL / "src" / "ivfscan.c"
 
+# Snapshot directory
+SNAPSHOT_DIR = Path("/mnt/nvme/saved_indexes")
+
 # Worker counts to test
 WORKER_COUNTS = [4, 8, 12]
 
-# Workload
-WORKLOAD_PATH = str(PROJECT_DIR / "sampled_vectors_gist.txt")
-
-# Recall params file
-RECALL_PARAMS_FILE = RECALL_DIR / "results_from_calculate_index_parameters_for_performance_recall_diagram" / "performance_recall_ivfflat_K_100.json"
+# === DATASET CONFIGURATIONS ===
+DATASET_CONFIGS = {
+    "gist": {
+        "table": "gist_data",
+        "queries_file": "gist_test_queries.txt",
+        "distance_op": "<->",
+        "index_ops": "vector_l2_ops",
+    },
+    "deep": {
+        "table": "deep_data",
+        "queries_file": "deep_test_queries.txt",
+        "distance_op": "<=>",
+        "index_ops": "vector_cosine_ops",
+    },
+    "sift": {
+        "table": "sift_data",
+        "queries_file": "sift_test_queries.txt",
+        "distance_op": "<->",
+        "index_ops": "vector_l2_ops",
+    },
+}
 
 # === DB CONFIG ===
 DB_CONFIG = {
@@ -67,25 +87,58 @@ DB_CONFIG = {
 
 K = 100
 
-# Index definition
-INDEX_NAME = "gist_data_embedding_idx"
-# Load tuned lists
-import json as _json2
-_tune_file2 = Path(__file__).resolve().parent.parent / "compute_and_compare_recall" / "results_from_tune_scripts/tune_ivfflat_results.json"
-_lists2 = 8192
-if _tune_file2.exists():
-    with open(_tune_file2) as _f2:
-        _t2 = _json2.load(_f2)
-    if "best_configuration" in _t2:
-        _lists2 = _t2["best_configuration"]["lists"]
-CREATE_INDEX_SQL = f"CREATE INDEX gist_data_embedding_idx ON gist_data USING ivfflat (embedding vector_l2_ops) WITH (lists = {_lists2})"
-
 # PostgreSQL paths
 PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
 _pgdata_result = subprocess.run(
     "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
 )
 PG_DATA_DIR = _pgdata_result.stdout.strip() or "/mnt/nvme/pgdata"
+
+
+def get_snapshot_path(dataset, index_type, params):
+    """Get path for a PGDATA snapshot tar.gz. params is a dict like {'lists': 1024}."""
+    param_str = "_".join(f"{k}{v}" for k, v in sorted(params.items()))
+    fname = f"{dataset}_{index_type}_{param_str}_pgdata.tar.gz"
+    return SNAPSHOT_DIR / fname
+
+
+def load_pgdata_snapshot(snapshot_path):
+    """Stop postgres, restore PGDATA from tar, restart postgres."""
+    print(f"    Loading PGDATA snapshot from {snapshot_path}...")
+
+    # Stop postgres
+    subprocess.run(
+        f"su - postgres -c '{PG_CTL_PATH} -D {PG_DATA_DIR} stop'",
+        shell=True, capture_output=True
+    )
+    time.sleep(2)
+
+    # Clear PGDATA and extract
+    subprocess.run(f"rm -rf {PG_DATA_DIR}/*", shell=True, check=True)
+
+    pigz = shutil.which("pigz")
+    if pigz:
+        cmd = f"pigz -dc {snapshot_path} | tar -xf - -C {PG_DATA_DIR}"
+    else:
+        cmd = f"tar -xzf {snapshot_path} -C {PG_DATA_DIR}"
+
+    start = time.time()
+    subprocess.run(cmd, shell=True, check=True)
+    elapsed = time.time() - start
+
+    # Fix permissions
+    subprocess.run(f"chown -R postgres:postgres {PG_DATA_DIR}", shell=True, check=True)
+    subprocess.run(f"chmod 700 {PG_DATA_DIR}", shell=True, check=True)
+
+    print(f"    Snapshot restored in {elapsed:.1f}s")
+
+    # Start postgres pinned to NUMA node
+    subprocess.run(
+        f"su - postgres -c 'numactl --cpunodebind={PG_NUMA_NODES} --membind={PG_NUMA_NODES} {PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile start'",
+        shell=True, capture_output=True
+    )
+    time.sleep(3)
+    wait_for_postgres()
 
 
 def wait_for_postgres(max_attempts=60, quiet=False):
@@ -114,6 +167,41 @@ def restart_postgres(quiet=False):
     wait_for_postgres(quiet=quiet)
     if not quiet:
         print("  PostgreSQL is ready.")
+
+
+def prewarm_table_and_index(table_name):
+    """Use pg_prewarm to load entire table and index into shared buffers."""
+    print(f"  Prewarming table and index for '{table_name}'...")
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute("CREATE EXTENSION IF NOT EXISTS pg_prewarm")
+
+        # Prewarm the vector index
+        cur.execute(f"""
+            SELECT i.relname FROM pg_index ix
+            JOIN pg_class t ON t.oid = ix.indrelid
+            JOIN pg_class i ON i.oid = ix.indexrelid
+            JOIN pg_am am ON am.oid = i.relam
+            WHERE t.relname = '{table_name}' AND am.amname IN ('ivfflat', 'hnsw')
+        """)
+        result = cur.fetchone()
+        if result:
+            idx_name = result[0]
+            cur.execute(f"SELECT pg_prewarm('{idx_name}')")
+            blocks = cur.fetchone()[0]
+            print(f"    Prewarmed index '{idx_name}': {blocks} blocks")
+
+        # Prewarm the table
+        cur.execute(f"SELECT pg_prewarm('{table_name}')")
+        tblocks = cur.fetchone()[0]
+        print(f"    Prewarmed table '{table_name}': {tblocks} blocks")
+
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"    Prewarm error: {e}")
 
 
 def set_num_workers(n):
@@ -151,23 +239,26 @@ def compile_pgvector(pgvector_dir):
     print("  pgvector compiled and installed.")
 
 
-def drop_and_create_index():
-    """Drop all indexes on gist_data and create IVFFlat index."""
-    print("  Dropping existing indexes and creating IVFFlat index...")
+def drop_and_create_index(table_name, index_ops, lists):
+    """Drop all indexes on table and create IVFFlat index."""
+    index_name = f"{table_name}_embedding_idx"
+    create_sql = f"CREATE INDEX {index_name} ON {table_name} USING ivfflat (embedding {index_ops}) WITH (lists = {lists})"
+
+    print(f"  Dropping existing indexes and creating IVFFlat index (lists={lists})...")
     conn = psycopg2.connect(**DB_CONFIG)
     conn.autocommit = True
     cur = conn.cursor()
 
-    # Drop all indexes on gist_data
-    cur.execute("SELECT indexname FROM pg_indexes WHERE tablename = 'gist_data'")
+    # Drop all indexes on table
+    cur.execute(f"SELECT indexname FROM pg_indexes WHERE tablename = '{table_name}'")
     for (idx_name,) in cur.fetchall():
         print(f"    Dropping '{idx_name}'...")
         cur.execute(f"DROP INDEX IF EXISTS {idx_name}")
 
     # Create index
-    print(f"    Creating '{INDEX_NAME}' (this may take a while)...")
+    print(f"    Creating '{index_name}' (this may take a while)...")
     start = time.time()
-    cur.execute(CREATE_INDEX_SQL)
+    cur.execute(create_sql)
     elapsed = time.time() - start
     print(f"    Index created in {elapsed:.1f}s")
 
@@ -175,7 +266,21 @@ def drop_and_create_index():
     conn.close()
 
 
-def run_workload(workload, probes):
+def setup_index(dataset, lists, table_name, index_ops, index_type="ivfflat"):
+    """Try to load snapshot for the index; if not available, rebuild from scratch."""
+    snapshot_path = get_snapshot_path(dataset, index_type, {"lists": lists})
+
+    if snapshot_path.exists():
+        print(f"  Found saved snapshot: {snapshot_path.name}")
+        load_pgdata_snapshot(snapshot_path)
+        return True
+    else:
+        print(f"  No snapshot found at {snapshot_path.name}, rebuilding index...")
+        drop_and_create_index(table_name, index_ops, lists)
+        return True
+
+
+def run_workload(workload, probes, table_name, distance_op):
     """Run all queries with given probes setting, return total execution time."""
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
@@ -187,7 +292,7 @@ def run_workload(workload, probes):
     for i in range(len(workload)):
         vec_str = workload[i]
         cur.execute(
-            f"EXPLAIN (ANALYZE, BUFFERS) SELECT id FROM gist_data ORDER BY embedding <-> '{vec_str}'::vector LIMIT {K}"
+            f"EXPLAIN (ANALYZE, BUFFERS) SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {K}"
         )
         explain_result = cur.fetchall()
 
@@ -203,14 +308,16 @@ def run_workload(workload, probes):
     return total_exec_time
 
 
-def run_implementation(name, pgvector_dir, workload, recall_configs, num_workers=None, create_index=True):
+def run_implementation(name, pgvector_dir, workload, recall_configs, dataset, lists,
+                       table_name, index_ops, distance_op, mode="cold",
+                       index_type="ivfflat", num_workers=None, no_rebuild=False):
     """Run full benchmark for one pgvector implementation.
 
-    If num_workers is specified, set NUM_WORKERS before compiling.
-    If create_index is False, skip index drop/create (reuse existing).
+    mode: "cold" = restart + drop caches before each probe measurement
+          "warm" = prewarm once after index setup, no restart between probes
     """
     print(f"\n{'='*60}")
-    print(f"Running: {name}")
+    print(f"Running: {name} (mode={mode})")
     if num_workers:
         print(f"  Workers: {num_workers}")
     print(f"{'='*60}")
@@ -225,11 +332,15 @@ def run_implementation(name, pgvector_dir, workload, recall_configs, num_workers
     # Step 2: Restart PostgreSQL after recompiling
     restart_postgres()
 
-    # Step 3: Drop and create index (only if requested)
-    if create_index:
-        drop_and_create_index()
-        # Restart PostgreSQL after creating index (clear caches)
+    # Step 3: Set up index (load snapshot or rebuild), unless --no-rebuild
+    if not no_rebuild:
+        setup_index(dataset, lists, table_name, index_ops, index_type=index_type)
+        # Restart after index setup
         restart_postgres()
+
+    # Step 4: For warm mode, prewarm once
+    if mode == "warm":
+        prewarm_table_and_index(table_name)
 
     # Step 5: Run workload for each recall target
     results = []
@@ -238,12 +349,14 @@ def run_implementation(name, pgvector_dir, workload, recall_configs, num_workers
 
     for config in recall_configs:
         target = config["target_recall"]
-        probes = config["optimal_probes"]
+        probes = config["probes"]
 
-        # Restart and clear caches before each run (cold run, no output)
-        restart_postgres(quiet=True)
+        if mode == "cold":
+            # Cold: restart and clear caches before each probe measurement
+            restart_postgres(quiet=True)
+        # Warm: do nothing, index is already in shared buffers
 
-        total_time = run_workload(workload, probes)
+        total_time = run_workload(workload, probes, table_name, distance_op)
         avg_time_ms = (total_time / len(workload)) * 1000
 
         results.append({
@@ -259,37 +372,72 @@ def run_implementation(name, pgvector_dir, workload, recall_configs, num_workers
 
 
 def main():
-    skip_default = "--skip-default" in sys.argv
-    no_rebuild = "--no-rebuild" in sys.argv
+    parser = argparse.ArgumentParser(description="Compare Default vs Parallel IVFFlat (multiple worker counts)")
+    parser.add_argument("--dataset", required=True, choices=list(DATASET_CONFIGS.keys()),
+                        help="Dataset to use (gist, deep, sift)")
+    parser.add_argument("--mode", required=True, choices=["cold", "warm"],
+                        help="cold = restart+drop caches between probes; warm = prewarm, no restart")
+    parser.add_argument("--skip-default", action="store_true",
+                        help="Skip the default pgvector run, only test parallel variants")
+    parser.add_argument("--no-rebuild", action="store_true",
+                        help="Don't rebuild/restore the index, reuse existing one")
+    args = parser.parse_args()
 
-    print("Parallel IVFFlat vs Default IVFFlat Comparison (Multiple Worker Counts)")
-    print(f"K = {K}")
-    print(f"Worker counts to test: {WORKER_COUNTS}")
-    print(f"Workload: {WORKLOAD_PATH}")
-    if skip_default:
-        print("SKIPPING default implementation (--skip-default)")
+    dataset = args.dataset
+    mode = args.mode
+    ds_cfg = DATASET_CONFIGS[dataset]
+    table_name = ds_cfg["table"]
+    distance_op = ds_cfg["distance_op"]
+    index_ops = ds_cfg["index_ops"]
+    queries_file = ds_cfg["queries_file"]
 
-    # Load recall params
-    if not RECALL_PARAMS_FILE.exists():
-        print(f"ERROR: {RECALL_PARAMS_FILE} not found.")
-        print("Run calculate_index_parameters_for_performance_recall_diagram.py first.")
+    # Load tuned lists value
+    tune_file = RECALL_DIR / f"results_from_tune_scripts/tune_ivfflat_results_{dataset}.json"
+    if not tune_file.exists():
+        print(f"ERROR: {tune_file} not found. Run tuning first.")
         sys.exit(1)
 
-    with open(RECALL_PARAMS_FILE, 'r') as f:
-        recall_data = json.load(f)
+    with open(tune_file) as f:
+        tune_data = json.load(f)
+    if "best_configuration" not in tune_data:
+        print("ERROR: tune results missing best_configuration.")
+        sys.exit(1)
+    lists = tune_data["best_configuration"]["lists"]
 
-    recall_configs = recall_data["results"]
+    # Load recall targets and probe values from recall_qps results
+    recall_qps_file = RECALL_DIR / "recall_qps_plots" / "results_recall_qps" / f"recall_qps_{dataset}_ivfflat_cold.json"
+    if not recall_qps_file.exists():
+        print(f"ERROR: {recall_qps_file} not found.")
+        print("Run recall_qps_diagram.py first.")
+        sys.exit(1)
+
+    with open(recall_qps_file, 'r') as f:
+        recall_qps_data = json.load(f)
+
+    recall_configs = recall_qps_data["ivfflat"]["recall_qps_points"]
+
+    print("Parallel IVFFlat vs Default IVFFlat Comparison (Multiple Worker Counts)")
+    print(f"Dataset: {dataset}")
+    print(f"Table: {table_name}")
+    print(f"Mode: {mode}")
+    print(f"K = {K}")
+    print(f"Lists = {lists}")
+    print(f"Worker counts to test: {WORKER_COUNTS}")
+    print(f"Probe source: {recall_qps_file.name}")
     print(f"Recall targets: {[r['target_recall'] for r in recall_configs]}")
-    print(f"Probes:         {[r['optimal_probes'] for r in recall_configs]}")
+    print(f"Probes:         {[r['probes'] for r in recall_configs]}")
+    if args.skip_default:
+        print("SKIPPING default implementation (--skip-default)")
 
-    # Load workload
-    print(f"\nLoading workload...")
-    with open(WORKLOAD_PATH, 'r') as f:
+    # Load workload (test queries)
+    workload_path = PROJECT_DIR / queries_file
+    print(f"\nLoading queries from {workload_path}...")
+    with open(workload_path, 'r') as f:
         workload = eval(f.read())
     print(f"Loaded {len(workload)} queries")
 
-    # Output file (save incrementally)
-    output_file = SCRIPT_DIR / "comparison_results_workers_K_100.json"
+    # Output file (save incrementally) - includes mode in filename
+    output_file = SCRIPT_DIR / f"comparison_results_workers_{dataset}_{mode}_K_{K}.json"
 
     # Load existing results if any (for resuming)
     output = {}
@@ -298,17 +446,28 @@ def main():
             output = json.load(f)
         print(f"Loaded existing results from {output_file}")
 
+    output["dataset"] = dataset
+    output["mode"] = mode
     output["k"] = K
+    output["lists"] = lists
     output["workload_size"] = len(workload)
     output["worker_counts_tested"] = WORKER_COUNTS
 
     # Run default implementation (only once)
-    if not skip_default and "default" not in output:
+    if not args.skip_default and "default" not in output:
         default_results = run_implementation(
-            "Default IVFFlat (pgvector)",
+            f"Default IVFFlat (pgvector) - {dataset}",
             PGVECTOR_DEFAULT,
             workload,
-            recall_configs
+            recall_configs,
+            dataset=dataset,
+            lists=lists,
+            table_name=table_name,
+            index_ops=index_ops,
+            distance_op=distance_op,
+            mode=mode,
+            index_type="ivfflat",
+            no_rebuild=args.no_rebuild
         )
         output["default"] = default_results
         # Save incrementally
@@ -325,29 +484,35 @@ def main():
     if "parallel_by_workers" not in output:
         output["parallel_by_workers"] = {}
 
-    # For parallel: create index only on first worker count, then reuse
-    first_parallel = not no_rebuild  # if --no-rebuild, never create index
+    # For parallel: load snapshot on first worker count, then reuse for rest
+    first_parallel = True
     for num_workers in WORKER_COUNTS:
         key = str(num_workers)
         if key in output["parallel_by_workers"]:
             print(f"\nParallel (workers={num_workers}) already done, skipping.")
-            if not no_rebuild:
-                first_parallel = False
+            first_parallel = False
             continue
 
-
-
+        # Only set up index (load snapshot or rebuild) for the first parallel run
+        # Subsequent worker counts reuse the same index
+        should_rebuild = first_parallel and not args.no_rebuild
 
         parallel_results = run_implementation(
-            f"Parallel IVFFlat (workers={num_workers})",
+            f"Parallel IVFFlat (workers={num_workers}) - {dataset}",
             PGVECTOR_PARALLEL,
             workload,
             recall_configs,
+            dataset=dataset,
+            lists=lists,
+            table_name=table_name,
+            index_ops=index_ops,
+            distance_op=distance_op,
+            mode=mode,
+            index_type="parallel_ivfflat",
             num_workers=num_workers,
-            create_index=(first_parallel and not no_rebuild)
+            no_rebuild=not should_rebuild
         )
-        if not no_rebuild:
-            first_parallel = False
+        first_parallel = False
         output["parallel_by_workers"][key] = parallel_results
 
         # Save incrementally after each worker count
@@ -357,7 +522,7 @@ def main():
 
     # Print comparison summary
     print(f"\n{'='*80}")
-    print(f"COMPARISON SUMMARY (K={K})")
+    print(f"COMPARISON SUMMARY (dataset={dataset}, mode={mode}, K={K})")
     print(f"{'='*80}")
 
     header = f"{'Target':<10} {'Probes':<8} {'Default (ms)':<14}"

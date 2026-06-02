@@ -1,0 +1,165 @@
+{
+  "dataset": "gist",
+  "k": 100,
+  "lists": 8192,
+  "workload_size": 1000,
+  "worker_counts_tested": [
+    4,
+    8,
+    12
+  ],
+  "default": [
+    {
+      "target_recall": 0.7,
+      "probes": 35,
+      "total_time_s": 18.8394,
+      "avg_time_ms": 18.84
+    },
+    {
+      "target_recall": 0.8,
+      "probes": 60,
+      "total_time_s": 26.0733,
+      "avg_time_ms": 26.07
+    },
+    {
+      "target_recall": 0.9,
+      "probes": 150,
+      "total_time_s": 50.0064,
+      "avg_time_ms": 50.01
+    },
+    {
+      "target_recall": 0.95,
+      "probes": 200,
+      "total_time_s": 63.6993,
+      "avg_time_ms": 63.7
+    },
+    {
+      "target_recall": 0.96,
+      "probes": 300,
+      "total_time_s": 90.5556,
+      "avg_time_ms": 90.56
+    },
+    {
+      "target_recall": 0.98,
+      "probes": 400,
+      "total_time_s": 114.1136,
+      "avg_time_ms": 114.11
+    }
+  ],
+  "parallel_by_workers": {
+    "4": [
+      {
+        "target_recall": 0.7,
+        "probes": 35,
+        "total_time_s": 15.4935,
+        "avg_time_ms": 15.49
+      },
+      {
+        "target_recall": 0.8,
+        "probes": 60,
+        "total_time_s": 18.821,
+        "avg_time_ms": 18.82
+      },
+      {
+        "target_recall": 0.9,
+        "probes": 150,
+        "total_time_s": 28.8942,
+        "avg_time_ms": 28.89
+      },
+      {
+        "target_recall": 0.95,
+        "probes": 200,
+        "total_time_s": 34.1594,
+        "avg_time_ms": 34.16
+      },
+      {
+        "target_recall": 0.96,
+        "probes": 300,
+        "total_time_s": 44.0439,
+        "avg_time_ms": 44.04
+      },
+      {
+        "target_recall": 0.98,
+        "probes": 400,
+        "total_time_s": 54.0749,
+        "avg_time_ms": 54.07
+      }
+    ],
+    "8": [
+      {
+        "target_recall": 0.7,
+        "probes": 35,
+        "total_time_s": 15.1642,
+        "avg_time_ms": 15.16
+      },
+      {
+        "target_recall": 0.8,
+        "probes": 60,
+        "total_time_s": 17.0514,
+        "avg_time_ms": 17.05
+      },
+      {
+        "target_recall": 0.9,
+        "probes": 150,
+        "total_time_s": 22.68,
+        "avg_time_ms": 22.68
+      },
+      {
+        "target_recall": 0.95,
+        "probes": 200,
+        "total_time_s": 26.2033,
+        "avg_time_ms": 26.2
+      },
+      {
+        "target_recall": 0.96,
+        "probes": 300,
+        "total_time_s": 31.9507,
+        "avg_time_ms": 31.95
+      },
+      {
+        "target_recall": 0.98,
+        "probes": 400,
+        "total_time_s": 37.6806,
+        "avg_time_ms": 37.68
+      }
+    ],
+    "12": [
+      {
+        "target_recall": 0.7,
+        "probes": 35,
+        "total_time_s": 14.6598,
+        "avg_time_ms": 14.66
+      },
+      {
+        "target_recall": 0.8,
+        "probes": 60,
+        "total_time_s": 16.6238,
+        "avg_time_ms": 16.62
+      },
+      {
+        "target_recall": 0.9,
+        "probes": 150,
+        "total_time_s": 20.851,
+        "avg_time_ms": 20.85
+      },
+      {
+        "target_recall": 0.95,
+        "probes": 200,
+        "total_time_s": 23.9736,
+        "avg_time_ms": 23.97
+      },
+      {
+        "target_recall": 0.96,
+        "probes": 300,
+        "total_time_s": 27.9846,
+        "avg_time_ms": 27.98
+      },
+      {
+        "target_recall": 0.98,
+        "probes": 400,
+        "total_time_s": 31.7038,
+        "avg_time_ms": 31.7
+      }
+    ]
+  }
+}
