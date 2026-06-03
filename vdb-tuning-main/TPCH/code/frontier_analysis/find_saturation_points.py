@@ -1,26 +1,21 @@
 #!/usr/bin/env python3
 """
-Step 2 of Throughput Frontier: Build Grid Graph & Extract Frontier.
+Step 1 of Throughput Frontier: Find Saturation Points.
 
 Following the methodology of "How Good is My HTAP System?" (SIGMOD'22, Section 3.3),
-this script:
-  1. Reads saturation points from Step 1 (X^ANN, X^OLAP, tau_max, alpha_max)
-  2. Builds the grid graph:
-     - Fixed-ANN lines: fix ANN workers at fractions of tau_max, vary OLAP workers
-     - Fixed-OLAP lines: fix OLAP workers at fractions of alpha_max, vary ANN workers
-  3. Extracts the throughput frontier (Pareto-optimal boundary)
-  4. Computes metrics: AUC, proportional line, bounding box ratio
+this script finds:
+  - X^ANN: Maximum ANN throughput when running ANN alone (no OLAP)
+  - X^OLAP: Maximum OLAP throughput when running OLAP alone (no ANN)
+
+These saturation points define the bounds of the throughput frontier.
+
+The script runs each workload in isolation with increasing number of workers
+until throughput stops improving (saturates).
 
 Usage:
-    sudo python3 build_throughput_frontier.py [--skip-measurements] [--fixed-ann-only] [--fixed-olap-only]
+    sudo python3 find_saturation_points.py [--ann-only] [--olap-only]
 
-    --skip-measurements: Only compute frontier from existing grid_graph.json
-    --fixed-ann-only:    Only run fixed-ANN lines
-    --fixed-olap-only:   Only run fixed-OLAP lines
-
-Output:
-    grid_graph.json          - All measurement points
-    throughput_frontier.json  - Frontier points + metrics (AUC, etc.)
+Output: saturation_points.json
 """
 
 import psycopg2
@@ -33,17 +28,16 @@ import random
 import os
 import sys
 import shutil
-import numpy as np
 from pathlib import Path
 from datetime import datetime
 
 # ============== AUTO-DETECT PATHS ==============
-SCRIPT_DIR = Path(__file__).resolve().parent
-TPCH_DIR = SCRIPT_DIR.parent
-PROJECT_DIR = TPCH_DIR.parent
+SCRIPT_DIR = Path(__file__).resolve().parent                    # frontier_analysis/
+TPCH_DIR = SCRIPT_DIR.parent.parent                             # TPCH/
+PROJECT_DIR = TPCH_DIR.parent                                    # vdb-tuning-main/
 
 # ============== LOAD EXPERIMENT CONFIG ==============
-CONFIG_PATH = SCRIPT_DIR / "experiment_config.json"
+CONFIG_PATH = SCRIPT_DIR.parent / "experiment_config.json"      # code/experiment_config.json
 with open(CONFIG_PATH, 'r') as _cf:
     CONFIG = json.load(_cf)
 
@@ -93,15 +87,18 @@ WARM_MODE = False  # Will be {"shared_buffers_gb": X, "cgroup_gb": Y} if --memor
 INDEX_TYPE_OVERRIDE = None  # Set by --index flag (ivfflat, hnsw, parallel_ivfflat)
 INDEX_PARAMS = {}  # Manual params: {"m": 16, "ef_construction": 128} or {"lists": 8192}
 
+# Snapshot mode: skip ensure_index (index already loaded from PGDATA snapshot)
+SNAPSHOT_MODE = False
+
 # ============== EXPERIMENT PARAMETERS ==============
 K = IDX_CFG["k"]
 
-# Measurement duration per data point (same as saturation script)
-MEASUREMENT_SEC = 300  # 5 minutes per point, cold start
+# Worker counts to test for saturation
+ANN_WORKERS_TO_TEST = [1, 2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+OLAP_WORKERS_TO_TEST = [20, 10, 8, 6, 4, 2, 1]
 
-# Grid graph fractions (following paper: 0, 0.1, 0.2, 0.5, 0.8, 1.0 of max)
-GRID_FRACTIONS = [0.0, 0.01, 0.02, 0.2, 0.4, 0.6, 0.8, 1.0]
-DENSE_GRID_FRACTIONS = [0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+# Timing
+MEASUREMENT_SEC = 300    # Measurement window (5 minutes) - cold start, no warmup
 
 # TopK query template
 TOPK_QUERY = "SELECT id FROM gist_data ORDER BY embedding <-> '%s'::vector LIMIT %d"
@@ -229,18 +226,34 @@ def prewarm_database():
 # ============== INDEX MANAGEMENT ==============
 
 def load_tune_config():
-    """Load tuning parameters from tune results JSON."""
+    """Load tuning parameters from tune results JSON.
+    Tries both generic and dataset-specific filenames (e.g., tune_ivfflat_results.json
+    and tune_ivfflat_results_gist.json).
+    """
     index_type = IDX_CFG["index_type"].upper()
     if index_type == "IVFFLAT":
-        tune_file = TUNE_RESULTS_DIR / "tune_ivfflat_results.json"
+        base_name = "tune_ivfflat_results"
     elif index_type == "HNSW":
-        tune_file = TUNE_RESULTS_DIR / "tune_hnsw_results.json"
+        base_name = "tune_hnsw_results"
     else:
         raise ValueError(f"Unknown index_type: {index_type}")
 
-    if not tune_file.exists():
+    # Try multiple filename patterns
+    candidates = [
+        TUNE_RESULTS_DIR / f"{base_name}.json",
+        TUNE_RESULTS_DIR / f"{base_name}_gist.json",
+        TUNE_RESULTS_DIR / f"{base_name}_deep.json",
+    ]
+
+    tune_file = None
+    for c in candidates:
+        if c.exists():
+            tune_file = c
+            break
+
+    if tune_file is None:
         raise FileNotFoundError(
-            f"Tune results not found: {tune_file}\n"
+            f"Tune results not found. Tried: {[str(c) for c in candidates]}\n"
             f"Run the tuning script first to generate index parameters.")
 
     with open(tune_file, "r") as f:
@@ -273,6 +286,7 @@ def ensure_index():
     conn.autocommit = True
     cur = conn.cursor()
 
+    # Check what index currently exists
     cur.execute("""
         SELECT am.amname, ic.reloptions
         FROM pg_index i
@@ -305,11 +319,14 @@ def ensure_index():
 
     if needs_rebuild:
         print(f"  Building {index_type} index from tune config...")
+
+        # Drop existing indexes on gist_data (except pkey)
         cur.execute("SELECT indexname FROM pg_indexes WHERE tablename = 'gist_data' AND indexname != 'gist_data_pkey'")
         for (idx_name,) in cur.fetchall():
             print(f"    Dropping index: {idx_name}")
             cur.execute(f"DROP INDEX IF EXISTS {idx_name}")
 
+        # Create new index
         if index_type == "IVFFLAT":
             lists = tune_cfg["lists"]
             print(f"    Creating IVFFlat index with lists={lists}...")
@@ -325,6 +342,7 @@ def ensure_index():
                 f"CREATE INDEX gist_data_embedding_idx ON gist_data "
                 f"USING hnsw (embedding vector_l2_ops) WITH (m = {m}, ef_construction = {ef_construction})"
             )
+
         print(f"    Index created successfully.")
 
     cur.close()
@@ -364,12 +382,13 @@ def restart_postgres():
 
 
 def load_workload():
-    """Load vector workload from file."""
+    """Load vector workload from file (handles JSON array of arrays)."""
     with open(WORKLOAD_VECTORS_PATH, 'r') as f:
         content = f.read().strip()
 
     data = json.loads(content)
 
+    # If it's a list of lists (e.g., [[vec1], [vec2], ...])
     if isinstance(data[0], list):
         vectors = data
     else:
@@ -382,42 +401,6 @@ def load_workload():
 def vec_to_str(vec):
     """Convert Python list to PostgreSQL vector string."""
     return '[' + ','.join(str(x) for x in vec) + ']'
-
-
-def load_saturation_points():
-    """Load saturation points from Step 1 results."""
-    ann_path = os.path.join(RESULTS_DIR, "saturation_points_ann.json")
-    olap_path = os.path.join(RESULTS_DIR, "saturation_points_olap.json")
-
-    if not os.path.exists(ann_path):
-        raise FileNotFoundError(f"ANN saturation file not found: {ann_path}\n"
-                                f"Run find_saturation_points.py --ann-only first.")
-    if not os.path.exists(olap_path):
-        raise FileNotFoundError(f"OLAP saturation file not found: {olap_path}\n"
-                                f"Run find_saturation_points.py --olap-only first.")
-
-    with open(ann_path, 'r') as f:
-        ann_data = json.load(f)
-    with open(olap_path, 'r') as f:
-        olap_data = json.load(f)
-
-    tau_max = ann_data["ann_saturation"]["saturation_workers"]
-    x_ann = ann_data["ann_saturation"]["X_ANN"]
-    alpha_max = olap_data["olap_saturation"]["saturation_workers"]
-    x_olap = olap_data["olap_saturation"]["X_OLAP"]
-
-    print(f"Saturation points loaded:")
-    print(f"  X^ANN  = {x_ann:.2f} qps (tau_max = {tau_max} workers)")
-    print(f"  X^OLAP = {x_olap:.4f} tps (alpha_max = {alpha_max} workers)")
-
-    return {
-        "tau_max": tau_max,
-        "alpha_max": alpha_max,
-        "X_ANN": x_ann,
-        "X_OLAP": x_olap,
-        "ann_saturation_data": ann_data,
-        "olap_saturation_data": olap_data,
-    }
 
 
 # ============== ANN WORKER ==============
@@ -440,10 +423,13 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
         conn.autocommit = True
         cur = conn.cursor()
 
+        # Disable seqscan so index is used
         cur.execute("SET enable_seqscan = off;")
-        if TUNE_CFG and IDX_CFG["index_type"].upper() == "IVFFLAT":
+        # if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
+        #     cur.execute("SET max_parallel_workers_per_gather = 200;")
+        if TUNE_CFG and (IDX_CFG["index_type"].upper() == "IVFFLAT" or INDEX_TYPE_OVERRIDE in ("ivfflat", "parallel_ivfflat")):
             cur.execute(f"SET ivfflat.probes = {TUNE_CFG['probes']};")
-        elif TUNE_CFG and IDX_CFG["index_type"].upper() == "HNSW":
+        elif TUNE_CFG and (IDX_CFG["index_type"].upper() == "HNSW" or INDEX_TYPE_OVERRIDE == "hnsw"):
             cur.execute(f"SET hnsw.ef_search = {TUNE_CFG.get('ef_search', 100)};")
 
         while not stop_event.is_set():
@@ -472,8 +458,9 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
 
 def olap_worker(thread_id, stop_event, count_lock, results):
     """
-    Closed-loop OLAP worker: continuously runs full TPC-H batches.
-    Each completed batch of all 22 queries counts as 1 OLAP "transaction".
+    Closed-loop OLAP worker: continuously runs full TPC-H batches (all 22 queries).
+    Each completed batch counts as 1 OLAP "transaction".
+    Queries within each batch are executed in random order (like the paper).
     """
     core_id = OLAP_CORES[thread_id % len(OLAP_CORES)]
 
@@ -488,7 +475,7 @@ def olap_worker(thread_id, stop_event, count_lock, results):
     local_batch_latencies = []
     local_query_count = 0
 
-    # Build executable query list
+    # Build executable query list (handle Q15 specially)
     executable_queries = []
     for qname, sql in TPCH_QUERIES:
         if qname == "Q15_create" or sql is None:
@@ -500,9 +487,13 @@ def olap_worker(thread_id, stop_event, count_lock, results):
         conn.autocommit = True
         cur = conn.cursor()
 
+        # Enable seqscan for OLAP
         cur.execute("SET enable_seqscan = on;")
+        cur.execute("SET work_mem = '100MB';")  # Enough for hash joins with indexes
+        cur.execute("SET statement_timeout = '300s';")  # No single query should run > 5min
 
         while not stop_event.is_set():
+            # Run one full batch of all 22 TPC-H queries in random order
             batch_start = time.time()
             batch_order = list(range(len(executable_queries)))
             local_random.shuffle(batch_order)
@@ -515,6 +506,7 @@ def olap_worker(thread_id, stop_event, count_lock, results):
 
                 qname, sql = executable_queries[qi]
 
+                # Handle Q15: create view, run query, drop view
                 if qname == "Q15":
                     try:
                         cur.execute("CREATE OR REPLACE VIEW revenue0 (supplier_no, total_revenue) AS "
@@ -560,11 +552,14 @@ def olap_worker(thread_id, stop_event, count_lock, results):
 def measure_throughput(num_ann_workers, num_olap_workers, workload,
                        measurement_sec=MEASUREMENT_SEC):
     """
-    Restart DB (cold), run mixed workload for fixed measurement period, return throughput.
+    Restart DB (cold), run workload for fixed measurement period, return throughput.
+    Both ANN and OLAP workers run as closed-loop clients.
+    No warmup — measures cold-start performance.
     """
-    print(f"\n  Measuring: {num_ann_workers} ANN workers, {num_olap_workers} OLAP workers "
-          f"({measurement_sec}s, {"warm" if WARM_MODE else "cold start"})")
+    print(f"\n  Measuring: {num_ann_workers} ANN workers, {num_olap_workers} OLAP workers")
+    print(f"  Duration: {measurement_sec}s (cold start, no warmup)")
 
+    # Restart with clean state (clears OS page cache + restarts postgres)
     if not WARM_MODE:
         restart_postgres()
 
@@ -583,23 +578,26 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
         t.start()
         threads.append(t)
 
+    print(f"  Running for {measurement_sec}s...")
     time.sleep(measurement_sec)
 
+    # Stop all threads
     stop_event.set()
     for t in threads:
-        t.join()
+        t.join(timeout=360)  # Wait at most 6 min for thread to finish current query
 
-    # Compute metrics
+    # --- Compute metrics ---
     ann_throughput = measure_results['ann_count'] / measurement_sec
-    olap_throughput = measure_results['olap_count'] / measurement_sec
-    olap_query_throughput = measure_results['olap_query_count'] / measurement_sec
+    olap_throughput = measure_results['olap_count'] / measurement_sec  # batches/sec (tps)
+    olap_query_throughput = measure_results['olap_query_count'] / measurement_sec  # individual queries/sec
 
     ann_latencies = measure_results['ann_latencies']
-    olap_latencies = measure_results['olap_latencies']
+    olap_latencies = measure_results['olap_latencies']  # batch latencies (seconds)
 
     ann_avg_latency = (sum(ann_latencies) / len(ann_latencies) * 1000) if ann_latencies else 0
     olap_avg_batch_time = (sum(olap_latencies) / len(olap_latencies)) if olap_latencies else 0
 
+    # Percentiles
     def percentile(data, p):
         if not data:
             return 0
@@ -611,8 +609,8 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
         "ann_workers": num_ann_workers,
         "olap_workers": num_olap_workers,
         "ann_throughput_qps": round(ann_throughput, 2),
-        "olap_throughput_tps": round(olap_throughput, 4),
-        "olap_throughput_qps": round(olap_query_throughput, 4),
+        "olap_throughput_tps": round(olap_throughput, 4),  # TPC-H batches per second
+        "olap_throughput_qps": round(olap_query_throughput, 4),  # individual queries per second
         "ann_total_queries": measure_results['ann_count'],
         "olap_total_queries": measure_results['olap_query_count'],
         "olap_total_batches": measure_results['olap_count'],
@@ -627,287 +625,97 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
     return result
 
 
-# ============== GRID GRAPH CONSTRUCTION ==============
-
-def compute_grid_points(tau_max, alpha_max):
-    """
-    Compute the (ann_workers, olap_workers) pairs for the grid graph.
-
-    Returns:
-        fixed_ann_lines: dict mapping fixed_ann_count -> list of olap_counts to test
-        fixed_olap_lines: dict mapping fixed_olap_count -> list of ann_counts to test
-    """
-    # Fixed-ANN lines: fix ANN at fractions of tau_max, vary OLAP
-    ann_levels = sorted(set(max(0, round(f * tau_max)) for f in GRID_FRACTIONS))
-    olap_sweep = sorted(set(max(0, round(f * alpha_max)) for f in GRID_FRACTIONS))
-
-    # Fixed-OLAP lines: fix OLAP at fractions of alpha_max, vary ANN
-    olap_levels = sorted(set(max(0, round(f * alpha_max)) for f in GRID_FRACTIONS))
-    ann_sweep = sorted(set(max(0, round(f * tau_max)) for f in GRID_FRACTIONS))
-
-    fixed_ann_lines = {}
-    for ann_count in ann_levels:
-        if ann_count == 0:
-            # ANN=0 is just OLAP-only (already measured in saturation)
-            continue
-        fixed_ann_lines[ann_count] = olap_sweep
-
-    fixed_olap_lines = {}
-    for olap_count in olap_levels:
-        if olap_count == 0:
-            # OLAP=0 is just ANN-only (already measured in saturation)
-            continue
-        fixed_olap_lines[olap_count] = ann_sweep
-
-    return fixed_ann_lines, fixed_olap_lines, ann_levels, olap_levels
-
-
-def run_grid_measurements(workload, saturation, run_fixed_ann=True, run_fixed_olap=True):
-    """Run all grid graph measurements."""
-    tau_max = saturation["tau_max"]
-    alpha_max = saturation["alpha_max"]
-
-    fixed_ann_lines, fixed_olap_lines, ann_levels, olap_levels = compute_grid_points(tau_max, alpha_max)
-
-    # Load existing progress if available
-    grid_file = os.path.join(RESULTS_DIR, "grid_graph.json")
-    if os.path.exists(grid_file):
-        with open(grid_file, 'r') as f:
-            grid_data = json.load(f)
-        measurements = grid_data.get("measurements", [])
-        print(f"Resuming: {len(measurements)} existing measurements found.")
-    else:
-        measurements = []
-        grid_data = {
-            "timestamp_start": datetime.now().isoformat(),
-            "config": {
-                "index_type": IDX_CFG["index_type"],
-                "parallel_index": IDX_CFG["parallel_index"],
-                "io_depth": IDX_CFG["io_depth"],
-                "k": K,
-                "measurement_sec": MEASUREMENT_SEC,
-                "postgres_cores": POSTGRES_CORES,
-                "numa_nodes": PG_NUMA_NODES,
-                "tau_max": tau_max,
-                "alpha_max": alpha_max,
-                "X_ANN": saturation["X_ANN"],
-                "X_OLAP": saturation["X_OLAP"],
-            },
-            "measurements": measurements,
-        }
-
-    # Build set of already-completed measurement keys
-    completed = set()
-    for m in measurements:
-        completed.add((m["ann_workers"], m["olap_workers"]))
-
-    # Count total measurements needed
-    total_new = 0
-    if run_fixed_ann:
-        for ann_count, olap_list in fixed_ann_lines.items():
-            for olap_count in olap_list:
-                if (ann_count, olap_count) not in completed:
-                    total_new += 1
-    if run_fixed_olap:
-        for olap_count, ann_list in fixed_olap_lines.items():
-            for ann_count in ann_list:
-                if (ann_count, olap_count) not in completed:
-                    total_new += 1
-
-    print(f"\nGrid graph plan:")
-    print(f"  ANN levels (fixed-ANN lines): {list(fixed_ann_lines.keys())}")
-    print(f"  OLAP levels (fixed-OLAP lines): {list(fixed_olap_lines.keys())}")
-    print(f"  Total new measurements needed: {total_new}")
-    print(f"  Estimated time: {total_new * MEASUREMENT_SEC / 60:.0f} minutes "
-          f"({total_new * MEASUREMENT_SEC / 3600:.1f} hours)")
-
-    progress = 0
-
-    # Run fixed-ANN lines
-    if run_fixed_ann:
-        for ann_count in sorted(fixed_ann_lines.keys()):
-            olap_list = fixed_ann_lines[ann_count]
-            print(f"\n{'='*70}")
-            print(f"FIXED-ANN LINE: ANN = {ann_count} workers")
-            print(f"  Sweeping OLAP: {olap_list}")
-            print(f"{'='*70}")
-
-            for olap_count in olap_list:
-                if (ann_count, olap_count) in completed:
-                    print(f"  Skipping ({ann_count}, {olap_count}) — already measured")
-                    continue
-
-                progress += 1
-                print(f"\n  [{progress}/{total_new}] Measuring ({ann_count} ANN, {olap_count} OLAP)...")
-
-                result = measure_throughput(ann_count, olap_count, workload)
-                result["line_type"] = "fixed_ann"
-                result["fixed_value"] = ann_count
-
-                measurements.append(result)
-                completed.add((ann_count, olap_count))
-
-                # Save after each measurement (crash-safe)
-                grid_data["measurements"] = measurements
-                grid_data["timestamp_last"] = datetime.now().isoformat()
-                with open(grid_file, 'w') as f:
-                    json.dump(grid_data, f, indent=2)
-
-    # Run fixed-OLAP lines
-    if run_fixed_olap:
-        for olap_count in sorted(fixed_olap_lines.keys()):
-            ann_list = fixed_olap_lines[olap_count]
-            print(f"\n{'='*70}")
-            print(f"FIXED-OLAP LINE: OLAP = {olap_count} workers")
-            print(f"  Sweeping ANN: {ann_list}")
-            print(f"{'='*70}")
-
-            for ann_count in ann_list:
-                if (ann_count, olap_count) in completed:
-                    print(f"  Skipping ({ann_count}, {olap_count}) — already measured")
-                    continue
-
-                progress += 1
-                print(f"\n  [{progress}/{total_new}] Measuring ({ann_count} ANN, {olap_count} OLAP)...")
-
-                result = measure_throughput(ann_count, olap_count, workload)
-                result["line_type"] = "fixed_olap"
-                result["fixed_value"] = olap_count
-
-                measurements.append(result)
-                completed.add((ann_count, olap_count))
-
-                # Save after each measurement (crash-safe)
-                grid_data["measurements"] = measurements
-                grid_data["timestamp_last"] = datetime.now().isoformat()
-                with open(grid_file, 'w') as f:
-                    json.dump(grid_data, f, indent=2)
-
-    print(f"\n\nAll grid measurements complete. Total: {len(measurements)} data points.")
-    return grid_data
-
-
-# ============== FRONTIER EXTRACTION ==============
-
-def extract_frontier(grid_data, saturation):
-    """
-    Extract the throughput frontier from the grid graph data.
-
-    The frontier is the set of Pareto-optimal points: no other measured point
-    has both higher ANN throughput AND higher OLAP throughput.
-
-    Also computes:
-    - AUC (area under frontier curve)
-    - Bounding box area (X^ANN * X^OLAP)
-    - AUC ratio (AUC / bounding box area)
-    """
-    X_ANN = saturation["X_ANN"]
-    X_OLAP = saturation["X_OLAP"]
-
-    # Collect all (ann_throughput, olap_throughput) points
-    points = []
-    for m in grid_data["measurements"]:
-        points.append((m["ann_throughput_qps"], m["olap_throughput_tps"]))
-
-    # Add the saturation endpoints
-    points.append((X_ANN, 0.0))  # Pure ANN
-    points.append((0.0, X_OLAP))  # Pure OLAP
-
-    # Remove duplicates and sort by ANN throughput descending
-    points = list(set(points))
-    points.sort(key=lambda p: p[0], reverse=True)
-
-    # Extract Pareto frontier (non-dominated points)
-    # A point (x, y) is on the frontier if no other point has both x' >= x AND y' >= y
-    frontier = []
-    max_olap_seen = -1
-
-    for ann_tp, olap_tp in points:
-        if olap_tp > max_olap_seen:
-            frontier.append((ann_tp, olap_tp))
-            max_olap_seen = olap_tp
-
-    # Sort frontier by ANN throughput ascending (for plotting/AUC)
-    frontier.sort(key=lambda p: p[0])
-
-    # Compute AUC using trapezoidal rule
-    # The frontier goes from (0, X^OLAP) to (X^ANN, 0)
-    auc = 0.0
-    for i in range(len(frontier) - 1):
-        x1, y1 = frontier[i]
-        x2, y2 = frontier[i + 1]
-        # Trapezoidal area
-        auc += (x2 - x1) * (y1 + y2) / 2.0
-
-    # Bounding box area
-    bounding_box_area = X_ANN * X_OLAP
-
-    # AUC ratio (1.0 = perfect isolation, i.e., frontier is the bounding box boundary)
-    auc_ratio = auc / bounding_box_area if bounding_box_area > 0 else 0
-
-    # Proportional line: connects (X^ANN, 0) to (0, X^OLAP)
-    # Points on this line satisfy: ann/X^ANN + olap/X^OLAP = 1
-    # Area under proportional line = 0.5 * X^ANN * X^OLAP (triangle)
-    proportional_area = 0.5 * bounding_box_area
-    above_proportional = auc > proportional_area
-
-    frontier_result = {
-        "timestamp": datetime.now().isoformat(),
-        "saturation_points": {
-            "X_ANN": X_ANN,
-            "X_OLAP": X_OLAP,
-            "tau_max": saturation["tau_max"],
-            "alpha_max": saturation["alpha_max"],
-        },
-        "frontier_points": [{"ann_throughput_qps": p[0], "olap_throughput_tps": p[1]} for p in frontier],
-        "metrics": {
-            "auc": round(auc, 4),
-            "bounding_box_area": round(bounding_box_area, 4),
-            "auc_ratio": round(auc_ratio, 4),
-            "proportional_line_area": round(proportional_area, 4),
-            "above_proportional_line": above_proportional,
-            "num_frontier_points": len(frontier),
-            "num_total_measurements": len(grid_data["measurements"]),
-        },
-        "interpretation": {
-            "auc_ratio_meaning": (
-                "AUC/BoundingBox ratio: 1.0 = perfect isolation (frontier at bounding box), "
-                "0.5 = proportional line (linear tradeoff), "
-                "<0.5 = negative interference (below proportional line)"
-            ),
-            "system_classification": (
-                "above_proportional" if above_proportional else "below_proportional"
-            ),
-        },
-        "all_points": [
-            {"ann_workers": m["ann_workers"], "olap_workers": m["olap_workers"],
-             "ann_throughput_qps": m["ann_throughput_qps"], "olap_throughput_tps": m["olap_throughput_tps"]}
-            for m in grid_data["measurements"]
-        ],
-    }
-
-    return frontier_result
-
-
 # ============== MAIN ==============
 
+def find_ann_saturation(workload):
+    """Find maximum ANN throughput (no OLAP running)."""
+    print("\n" + "=" * 70)
+    print("PHASE 1: Finding ANN Saturation (X^ANN)")
+    print("Running ANN alone with increasing workers...")
+    print("=" * 70)
+
+    results = []
+    max_throughput = 0
+    saturation_workers = 0
+
+    # Cap ANN workers at 30 for parallel_ivfflat (crashes beyond that due to
+    # internal parallel workers multiplying connection count)
+    ann_workers_list = ANN_WORKERS_TO_TEST
+    if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
+        ann_workers_list = [w for w in ANN_WORKERS_TO_TEST if w <= 30]
+
+    for num_workers in ann_workers_list:
+        result = measure_throughput(
+            num_ann_workers=num_workers,
+            num_olap_workers=0,
+            workload=workload
+        )
+        results.append(result)
+
+        qps = result['ann_throughput_qps']
+        print(f"  >> {num_workers} workers: {qps:.2f} qps")
+
+        if qps > max_throughput:
+            max_throughput = qps
+            saturation_workers = num_workers
+
+    print(f"\n  *** ANN Saturation: X^ANN = {max_throughput:.2f} qps "
+          f"(at {saturation_workers} workers) ***\n")
+
+    return {
+        "X_ANN": max_throughput,
+        "saturation_workers": saturation_workers,
+        "measurements": results
+    }
+
+
+def find_olap_saturation(workload):
+    """Find maximum OLAP throughput (no ANN running)."""
+    print("\n" + "=" * 70)
+    print("PHASE 2: Finding OLAP Saturation (X^OLAP)")
+    print("Running OLAP alone with increasing workers...")
+    print("=" * 70)
+
+    results = []
+    max_throughput = 0
+    saturation_workers = 0
+
+    for num_workers in OLAP_WORKERS_TO_TEST:
+        result = measure_throughput(
+            num_ann_workers=0,
+            num_olap_workers=num_workers,
+            workload=workload
+        )
+        results.append(result)
+
+        qps = result.get("olap_throughput_qps", result["olap_throughput_tps"] * 22)
+
+        print(f"  >> {num_workers} workers: {qps:.4f} qps")
+
+        if qps > max_throughput:
+            max_throughput = qps
+            saturation_workers = num_workers
+
+    print(f"\n  *** OLAP Saturation: X^OLAP = {max_throughput:.4f} qps "
+          f"(at {saturation_workers} workers) ***\n")
+
+    return {
+        "X_OLAP": max_throughput,
+        "saturation_workers": saturation_workers,
+        "measurements": results
+    }
+
+
 def main():
-    global MEMORY_CONFIG, RESULTS_DIR, TUNE_CFG, WARM_MODE, GRID_FRACTIONS, INDEX_TYPE_OVERRIDE, INDEX_PARAMS
+    global MEMORY_CONFIG, RESULTS_DIR, TUNE_CFG, WARM_MODE, INDEX_TYPE_OVERRIDE, INDEX_PARAMS
 
-    run_fixed_ann = True
-    run_fixed_olap = True
-    skip_measurements = False
-    run_extra = False
+    run_ann = True
+    run_olap = True
 
-    if "--skip-measurements" in sys.argv:
-        skip_measurements = True
-    if "--fixed-ann-only" in sys.argv:
-        run_fixed_olap = False
-    if "--fixed-olap-only" in sys.argv:
-        run_fixed_ann = False
-    if "--extra" in sys.argv:
-        run_extra = True
-        skip_measurements = True  # Don't run grid, only extra points
+    if "--ann-only" in sys.argv:
+        run_olap = False
+    if "--olap-only" in sys.argv:
+        run_ann = False
 
     # Parse --memory SB:CG flag (e.g., --memory 12:16 = 12GB shared_buffers, 16GB cgroup)
     if "--memory" in sys.argv:
@@ -934,11 +742,6 @@ def main():
         RESULTS_DIR = RESULTS_DIR.replace("results_frontier_", "results_frontier_warm_")
         os.makedirs(RESULTS_DIR, exist_ok=True)
         print(f"WARM MODE: No restart between measurements. Results: {RESULTS_DIR}")
-
-    # Parse --dense flag
-    if "--dense" in sys.argv:
-        GRID_FRACTIONS = DENSE_GRID_FRACTIONS
-        print(f"DENSE MODE: Using {len(GRID_FRACTIONS)} grid fractions (~280 points)")
         os.makedirs(RESULTS_DIR, exist_ok=True)
 
         print(f"MEMORY CONSTRAINED MODE: shared_buffers={sb_gb}GB, cgroup={cg_gb}GB")
@@ -947,6 +750,7 @@ def main():
         # Apply memory configuration
         set_shared_buffers(sb_gb)
         set_cgroup_memory(cg_gb)
+
 
     # Parse --index flag (ivfflat, hnsw, parallel_ivfflat)
     if "--index" in sys.argv:
@@ -973,9 +777,15 @@ def main():
         idx_l = sys.argv.index("--ivfflat-lists")
         INDEX_PARAMS["lists"] = int(sys.argv[idx_l + 1])
 
+    # Parse --snapshot flag (skip ensure_index, index loaded from snapshot)
+    if "--snapshot" in sys.argv:
+        SNAPSHOT_MODE = True
+        print("SNAPSHOT MODE: Skipping ensure_index (index already in PGDATA snapshot)")
+
     # Modify results dir to include index name (only for non-default indexes)
     if INDEX_TYPE_OVERRIDE and INDEX_TYPE_OVERRIDE != "ivfflat":
         idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", "pivfflat")
+        # Insert index name into results dir path
         RESULTS_DIR = RESULTS_DIR.replace("results_frontier_", f"results_frontier_{idx_short}_")
         os.makedirs(RESULTS_DIR, exist_ok=True)
         print(f"INDEX: {INDEX_TYPE_OVERRIDE.upper()} (results: {RESULTS_DIR})")
@@ -983,137 +793,154 @@ def main():
             print(f"  Manual params: {INDEX_PARAMS}")
 
         print("=" * 70)
-    print("THROUGHPUT FRONTIER - Step 2: Build Grid Graph & Extract Frontier")
+    print("THROUGHPUT FRONTIER - Step 1: Find Saturation Points")
     print(f"Index: {IDX_CFG['index_type']}, Parallel: {IDX_CFG['parallel_index']}, "
           f"io_depth: {IDX_CFG['io_depth']}, K: {K}")
-    print(f"Measurement: {MEASUREMENT_SEC}s per data point ({"warm" if WARM_MODE else "cold start"})")
-    print(f"Grid fractions: {GRID_FRACTIONS}")
+    print(f"Measurement: {MEASUREMENT_SEC}s per data point (cold start, no warmup)")
     print(f"Postgres cores: {POSTGRES_CORES}, NUMA: {PG_NUMA_NODES}")
     print(f"Client cores (TopK): {TOPK_CORES[:4]}...")
     print(f"Client cores (OLAP): {OLAP_CORES[:4]}...")
+    if MEMORY_CONFIG:
+        print(f"Memory: shared_buffers={MEMORY_CONFIG['shared_buffers_gb']}GB, cgroup={MEMORY_CONFIG['cgroup_gb']}GB")
+    else:
+        print(f"No memory constraint (unconstrained cgroup)")
     print("=" * 70)
 
-    # Load saturation points from Step 1
-    saturation = load_saturation_points()
-
-    if run_extra:
-        # Run extra fill-in points to refine frontier
-        EXTRA_POINTS = [
-            (1, 10), (2, 10), (3, 10),
-            (1, 8), (2, 8), (3, 8),
-        ]
-
-        # Ensure correct index exists (from tune config)
+    # Ensure correct index exists (from tune config)
+    if SNAPSHOT_MODE:
+        print("\nSnapshot mode: skipping index creation (already in PGDATA).")
+        # Still load tune config for probes/ef_search settings
+        TUNE_CFG = load_tune_config()
+        if INDEX_PARAMS:
+            TUNE_CFG.update(INDEX_PARAMS)
+    else:
         print("\nEnsuring correct index from tune config...")
         TUNE_CFG = ensure_index()
 
-        # If warm mode, do one cold restart then prewarm
-        if WARM_MODE:
-            print("\nWARM MODE: Performing initial restart and prewarm...")
-            restart_postgres()
-            prewarm_database()
-            print("Database is now in steady state. No more restarts.")
+    # If warm mode, do one cold restart then prewarm
+    if WARM_MODE:
+        print("\nWARM MODE: Performing initial restart and prewarm...")
+        restart_postgres()
+        prewarm_database()
+        print("Database is now in steady state. No more restarts.")
 
-        # Load workload vectors
-        workload = load_workload()
+    # Load workload vectors
+    workload = load_workload()
 
-        grid_file = os.path.join(RESULTS_DIR, "grid_graph.json")
-        with open(grid_file, 'r') as f:
-            grid_data = json.load(f)
-        completed = set((m["ann_workers"], m["olap_workers"]) for m in grid_data["measurements"])
+    output = {
+        "timestamp": datetime.now().isoformat(),
+        "config": {
+            "index_type": IDX_CFG["index_type"],
+            "parallel_index": IDX_CFG["parallel_index"],
+            "io_depth": IDX_CFG["io_depth"],
+            "k": K,
+            "measurement_sec": MEASUREMENT_SEC,
+            "postgres_cores": POSTGRES_CORES,
+            "numa_nodes": PG_NUMA_NODES,
+            "memory_config": MEMORY_CONFIG,
+        }
+    }
 
+    # Check if saturation results already exist (skip if found)
+    ann_file = os.path.join(RESULTS_DIR, "saturation_points_ann.json")
+    olap_file = os.path.join(RESULTS_DIR, "saturation_points_olap.json")
 
-        print(f"\nRunning extra measurements to fill frontier gaps...")
-        for ann_count, olap_count in EXTRA_POINTS:
-            if (ann_count, olap_count) in completed:
-                print(f"  Skipping ({ann_count}, {olap_count}) - already measured")
-                continue
-            result = measure_throughput(ann_count, olap_count, workload)
-            result["line_type"] = "extra_fill"
-            result["fixed_value"] = 0
-            grid_data["measurements"].append(result)
-            completed.add((ann_count, olap_count))
-            grid_data["timestamp_last"] = datetime.now().isoformat()
-            with open(grid_file, 'w') as f:
-                json.dump(grid_data, f, indent=2)
+    # For non-IVFFlat indexes:
+    #   - OLAP saturation: ALWAYS copy from IVFFlat (index-independent)
+    #   - ANN saturation: ALWAYS measure (index-specific)
+    if INDEX_TYPE_OVERRIDE and INDEX_TYPE_OVERRIDE != "ivfflat":
+        # Get default (ivfflat) results directory
+        idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", "pivfflat")
+        default_results = RESULTS_DIR.replace(f"_{idx_short}_", "_")
 
-        print(f"Extra measurements done. Total: {len(grid_data['measurements'])} points.")
+        # Always copy OLAP from IVFFlat
+        default_olap = os.path.join(default_results, "saturation_points_olap.json")
+        if os.path.exists(default_olap):
+            import shutil as _shutil
+            _shutil.copy2(default_olap, olap_file)
+            print(f"  Copied OLAP saturation from IVFFlat run: {default_olap}")
+            print(f"  -> {olap_file}")
+        else:
+            print(f"  WARNING: No OLAP saturation found at {default_olap}")
+            print(f"  Run IVFFlat frontier first!")
 
-    elif not skip_measurements:
-        # Ensure correct index exists (from tune config)
-        print("\nEnsuring correct index from tune config...")
-        TUNE_CFG = ensure_index()
-
-        # If warm mode, do one cold restart then prewarm
-        if WARM_MODE:
-            print("\nWARM MODE: Performing initial restart and prewarm...")
-            restart_postgres()
-            prewarm_database()
-            print("Database is now in steady state. No more restarts.")
-
-        # Load workload vectors
-        workload = load_workload()
-
-        # Run grid measurements
-        grid_data = run_grid_measurements(workload, saturation, run_fixed_ann, run_fixed_olap)
+        # ANN: measure only if file doesn't exist (never copy from IVFFlat)
+        run_olap = False
+        if os.path.exists(ann_file):
+            print(f"  ANN saturation already exists: {ann_file} (skipping)")
+            with open(ann_file, 'r') as f:
+                ann_data = json.load(f)
+            if 'ann_saturation' in ann_data:
+                print(f"  X^ANN  = {ann_data['ann_saturation']['X_ANN']:.2f} qps")
+            run_ann = False
+        else:
+            run_ann = True
+            print(f"  Will measure ANN saturation for {INDEX_TYPE_OVERRIDE}...")
 
     else:
-        # Load existing grid data
-        grid_file = os.path.join(RESULTS_DIR, "grid_graph.json")
-        if not os.path.exists(grid_file):
-            print(f"ERROR: {grid_file} not found. Run measurements first.")
-            sys.exit(1)
-        with open(grid_file, 'r') as f:
-            grid_data = json.load(f)
-        print(f"Loaded {len(grid_data['measurements'])} existing measurements.")
+        # For IVFFlat: check if files exist and skip individually
+        if os.path.exists(olap_file):
+            print(f"\n  OLAP saturation already exists: {olap_file} (skipping)")
+            with open(olap_file, 'r') as f:
+                olap_data = json.load(f)
+            if 'olap_saturation' in olap_data:
+                print(f"  X^OLAP = {olap_data['olap_saturation']['X_OLAP']:.4f} qps")
+            run_olap = False
 
-    # Extract frontier and compute metrics
+        if os.path.exists(ann_file):
+            print(f"  ANN saturation already exists: {ann_file} (skipping)")
+            with open(ann_file, 'r') as f:
+                ann_data = json.load(f)
+            if 'ann_saturation' in ann_data:
+                print(f"  X^ANN  = {ann_data['ann_saturation']['X_ANN']:.2f} qps")
+            run_ann = False
+
+    if not run_olap and not run_ann:
+        print(f"  Both saturation files exist. Nothing to measure.")
+        return
+
+    # Run OLAP saturation FIRST (so we quickly see approximate throughput)
+    if run_olap:
+        olap_result = find_olap_saturation(workload)
+        output["olap_saturation"] = olap_result
+
+    # Run ANN saturation
+    if run_ann:
+        ann_result = find_ann_saturation(workload)
+        output["ann_saturation"] = ann_result
+
+    # Summary
     print("\n" + "=" * 70)
-    print("EXTRACTING THROUGHPUT FRONTIER")
+    print("SUMMARY")
+    print("=" * 70)
+    if run_ann:
+        print(f"  X^ANN  = {ann_result['X_ANN']:.2f} qps "
+              f"(saturates at {ann_result['saturation_workers']} workers)")
+    if run_olap:
+        print(f"  X^OLAP = {olap_result['X_OLAP']:.4f} qps "
+              f"(saturates at {olap_result['saturation_workers']} workers)")
     print("=" * 70)
 
-    frontier_result = extract_frontier(grid_data, saturation)
+    # Save results as separate files (matching build_throughput_frontier.py expectations)
+    if run_ann:
+        ann_file = os.path.join(RESULTS_DIR, "saturation_points_ann.json")
+        ann_output = {k: v for k, v in output.items() if k != "olap_saturation"}
+        with open(ann_file, "w") as f:
+            json.dump(ann_output, f, indent=2)
+        print(f"\nANN results saved to: {ann_file}")
 
-    # Save frontier
-    frontier_file = os.path.join(RESULTS_DIR, "throughput_frontier.json")
-    with open(frontier_file, 'w') as f:
-        json.dump(frontier_result, f, indent=2)
+    if run_olap:
+        olap_file = os.path.join(RESULTS_DIR, "saturation_points_olap.json")
+        olap_output = {k: v for k, v in output.items() if k != "ann_saturation"}
+        with open(olap_file, "w") as f:
+            json.dump(olap_output, f, indent=2)
+        print(f"\nOLAP results saved to: {olap_file}")
 
-    # Print summary
-    metrics = frontier_result["metrics"]
-    sat = frontier_result["saturation_points"]
-
-    print(f"\n{'='*70}")
-    print("THROUGHPUT FRONTIER SUMMARY")
-    print(f"{'='*70}")
-    print(f"  X^ANN  = {sat['X_ANN']:.2f} qps (tau_max = {sat['tau_max']} workers)")
-    print(f"  X^OLAP = {sat['X_OLAP']:.4f} tps (alpha_max = {sat['alpha_max']} workers)")
-    print(f"  ")
-    print(f"  Bounding box area:      {metrics['bounding_box_area']:.4f}")
-    print(f"  Proportional line area: {metrics['proportional_line_area']:.4f}")
-    print(f"  Frontier AUC:           {metrics['auc']:.4f}")
-    print(f"  AUC ratio:              {metrics['auc_ratio']:.4f}")
-    print(f"  Above proportional:     {metrics['above_proportional_line']}")
-    print(f"  Frontier points:        {metrics['num_frontier_points']}")
-    print(f"  Total measurements:     {metrics['num_total_measurements']}")
-    print(f"{'='*70}")
-
-    if metrics['auc_ratio'] > 0.7:
-        print("  => GOOD isolation: Frontier close to bounding box.")
-        print("     The system can serve both workloads with minimal interference.")
-    elif metrics['auc_ratio'] > 0.5:
-        print("  => MODERATE isolation: Frontier above proportional line.")
-        print("     Some interference, but workloads can partially coexist.")
-    elif metrics['auc_ratio'] > 0.3:
-        print("  => LINEAR tradeoff: Frontier near proportional line.")
-        print("     Increasing one workload proportionally decreases the other.")
-    else:
-        print("  => POOR isolation: Frontier below proportional line.")
-        print("     Significant negative interference between workloads.")
-
-    print(f"\nResults saved to:")
-    print(f"  Grid graph: {os.path.join(RESULTS_DIR, 'grid_graph.json')}")
-    print(f"  Frontier:   {frontier_file}")
+    # Also save combined file for reference
+    combined_file = os.path.join(RESULTS_DIR, "saturation_points.json")
+    with open(combined_file, "w") as f:
+        json.dump(output, f, indent=2)
+    print(f"Combined results saved to: {combined_file}")
 
 
 if __name__ == "__main__":

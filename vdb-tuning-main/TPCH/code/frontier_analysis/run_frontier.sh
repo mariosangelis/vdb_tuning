@@ -1,19 +1,19 @@
 #!/bin/bash
 # Run throughput frontier experiments
-# Usage: sudo ./run_frontier.sh 20:50 [--warm] [--dense] [--index ivfflat|hnsw|parallel_ivfflat] [--hnsw-m M] [--hnsw-efc EFC]
+# Usage: sudo ./run_frontier.sh 20:50 [--warm] [--dense] [--index ivfflat|hnsw|parallel_ivfflat] [--hnsw-m M] [--hnsw-efc EFC] [--snapshot]
 #
 # Examples:
-#   sudo ./run_frontier.sh 20:50 --warm                          # IVFFlat (default)
-#   sudo ./run_frontier.sh 20:50 --warm --index hnsw --hnsw-m 16 --hnsw-efc 128
-#   sudo ./run_frontier.sh 20:50 --warm --index parallel_ivfflat
+#   sudo ./run_frontier.sh 20:50 --warm --index ivfflat --ivfflat-lists 8192 --snapshot
+#   sudo ./run_frontier.sh 20:50 --warm --index hnsw --hnsw-m 16 --hnsw-efc 128 --snapshot
+#   sudo ./run_frontier.sh 20:50 --warm --index parallel_ivfflat --ivfflat-lists 8192 --snapshot
 
 set -e
 
 if [ -z "$1" ]; then
     echo "Usage: sudo ./run_frontier.sh <SB:CG> [FLAGS]"
-    echo "  e.g.: sudo ./run_frontier.sh 20:50 --warm"
-    echo "        sudo ./run_frontier.sh 20:50 --warm --index hnsw --hnsw-m 16 --hnsw-efc 128"
-    echo "        sudo ./run_frontier.sh 20:50 --warm --index parallel_ivfflat"
+    echo "  e.g.: sudo ./run_frontier.sh 20:50 --warm --snapshot"
+    echo "        sudo ./run_frontier.sh 20:50 --warm --index hnsw --hnsw-m 16 --hnsw-efc 128 --snapshot"
+    echo "        sudo ./run_frontier.sh 20:50 --warm --index parallel_ivfflat --snapshot"
     echo ""
     echo "Flags:"
     echo "  --warm              Prewarm DB once, no restart between measurements"
@@ -22,6 +22,7 @@ if [ -z "$1" ]; then
     echo "  --hnsw-m M          HNSW M parameter (default: from tune)"
     echo "  --hnsw-efc EFC      HNSW ef_construction (default: from tune)"
     echo "  --ivfflat-lists N   IVFFlat lists parameter (default: from tune)"
+    echo "  --snapshot          Skip ensure_index (index already loaded from snapshot)"
     exit 1
 fi
 
@@ -34,6 +35,7 @@ mkdir -p $LOG_DIR
 
 # Extract index name for log file naming
 INDEX_NAME="ivfflat"
+prev_arg=""
 for arg in "$@"; do
     if [ "$prev_arg" = "--index" ]; then
         INDEX_NAME="$arg"
