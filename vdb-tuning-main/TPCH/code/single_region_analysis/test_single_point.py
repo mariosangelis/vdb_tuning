@@ -547,9 +547,25 @@ if __name__ == '__main__':
     print("\nLoading workload vectors...")
     workload = load_workload_vectors()
 
-    all_results = []
+    # Load existing results from file (append mode)
+    numa_suffix = "" if USE_NUMA else "_nonuma"
+    outfile = f"/tmp/measurement_{index_type}_{sb_gb}sb_{cg_gb}cg{numa_suffix}.json"
+    if os.path.exists(outfile):
+        with open(outfile, "r") as f:
+            existing = json.load(f)
+        all_results = existing.get("results", [])
+        print(f"  Loaded {len(all_results)} existing results from {outfile}")
+    else:
+        all_results = []
+
     for ann in ann_list:
         for olap in olap_list:
+            # Skip if this combo already exists
+            already_done = any(r["ann_w"] == ann and r["olap_w"] == olap for r in all_results)
+            if already_done:
+                print(f"\n  Skipping: {ann} ANN, {olap} OLAP (already measured)")
+                continue
+
             r = measure(ann, olap, workload, duration)
             all_results.append(r)
 
@@ -561,8 +577,6 @@ if __name__ == '__main__':
                 "duration_sec": duration,
                 "results": all_results
             }
-            numa_suffix = "" if USE_NUMA else "_nonuma"
-            outfile = f"/tmp/measurement_{index_type}_{sb_gb}sb_{cg_gb}cg{numa_suffix}.json"
             with open(outfile, "w") as f:
                 json.dump(output, f, indent=2)
 

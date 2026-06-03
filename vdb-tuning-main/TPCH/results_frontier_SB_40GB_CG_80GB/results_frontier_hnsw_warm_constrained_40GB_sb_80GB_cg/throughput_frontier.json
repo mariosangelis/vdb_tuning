@@ -1,0 +1,500 @@
+{
+  "timestamp": "2026-06-01T19:47:48.259181",
+  "saturation_points": {
+    "X_ANN": 496.79,
+    "X_OLAP": 1.8067,
+    "tau_max": 45,
+    "alpha_max": 12
+  },
+  "frontier_points": [
+    {
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 1.8067
+    },
+    {
+      "ann_throughput_qps": 192.26,
+      "olap_throughput_tps": 0.0667
+    },
+    {
+      "ann_throughput_qps": 973.91,
+      "olap_throughput_tps": 0.0467
+    },
+    {
+      "ann_throughput_qps": 1178.37,
+      "olap_throughput_tps": 0.04
+    },
+    {
+      "ann_throughput_qps": 1243.62,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_throughput_qps": 1384.49,
+      "olap_throughput_tps": 0.03
+    },
+    {
+      "ann_throughput_qps": 1507.71,
+      "olap_throughput_tps": 0.0233
+    },
+    {
+      "ann_throughput_qps": 1576.34,
+      "olap_throughput_tps": 0.02
+    },
+    {
+      "ann_throughput_qps": 1584.14,
+      "olap_throughput_tps": 0.0167
+    },
+    {
+      "ann_throughput_qps": 1691.11,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_throughput_qps": 1777.53,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_throughput_qps": 1788.54,
+      "olap_throughput_tps": 0.0
+    }
+  ],
+  "metrics": {
+    "auc": 247.5412,
+    "bounding_box_area": 897.5505,
+    "auc_ratio": 0.2758,
+    "proportional_line_area": 448.7752,
+    "above_proportional_line": false,
+    "num_frontier_points": 12,
+    "num_total_measurements": 71
+  },
+  "interpretation": {
+    "auc_ratio_meaning": "AUC/BoundingBox ratio: 1.0 = perfect isolation (frontier at bounding box), 0.5 = proportional line (linear tradeoff), <0.5 = negative interference (below proportional line)",
+    "system_classification": "below_proportional"
+  },
+  "all_points": [
+    {
+      "ann_workers": 1,
+      "olap_workers": 0,
+      "ann_throughput_qps": 90.15,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 2,
+      "ann_throughput_qps": 89.7,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 5,
+      "ann_throughput_qps": 87.5,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 7,
+      "ann_throughput_qps": 85.23,
+      "olap_throughput_tps": 0.0467
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 10,
+      "ann_throughput_qps": 68.05,
+      "olap_throughput_tps": 0.0667
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 12,
+      "ann_throughput_qps": 57.66,
+      "olap_throughput_tps": 0.0433
+    },
+    {
+      "ann_workers": 9,
+      "olap_workers": 0,
+      "ann_throughput_qps": 725.56,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 9,
+      "olap_workers": 2,
+      "ann_throughput_qps": 726.21,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 9,
+      "olap_workers": 5,
+      "ann_throughput_qps": 707.71,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 9,
+      "olap_workers": 7,
+      "ann_throughput_qps": 629.9,
+      "olap_throughput_tps": 0.0467
+    },
+    {
+      "ann_workers": 9,
+      "olap_workers": 10,
+      "ann_throughput_qps": 479.15,
+      "olap_throughput_tps": 0.04
+    },
+    {
+      "ann_workers": 9,
+      "olap_workers": 12,
+      "ann_throughput_qps": 416.21,
+      "olap_throughput_tps": 0.04
+    },
+    {
+      "ann_workers": 18,
+      "olap_workers": 0,
+      "ann_throughput_qps": 1323.3,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 18,
+      "olap_workers": 2,
+      "ann_throughput_qps": 1317.8,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 18,
+      "olap_workers": 5,
+      "ann_throughput_qps": 1150.7,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 18,
+      "olap_workers": 7,
+      "ann_throughput_qps": 973.91,
+      "olap_throughput_tps": 0.0467
+    },
+    {
+      "ann_workers": 18,
+      "olap_workers": 10,
+      "ann_throughput_qps": 789.45,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 18,
+      "olap_workers": 12,
+      "ann_throughput_qps": 744.57,
+      "olap_throughput_tps": 0.04
+    },
+    {
+      "ann_workers": 27,
+      "olap_workers": 0,
+      "ann_throughput_qps": 1788.54,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 27,
+      "olap_workers": 2,
+      "ann_throughput_qps": 1686.22,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 27,
+      "olap_workers": 5,
+      "ann_throughput_qps": 1361.96,
+      "olap_throughput_tps": 0.03
+    },
+    {
+      "ann_workers": 27,
+      "olap_workers": 7,
+      "ann_throughput_qps": 1189.94,
+      "olap_throughput_tps": 0.0233
+    },
+    {
+      "ann_workers": 27,
+      "olap_workers": 10,
+      "ann_throughput_qps": 1059.57,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 27,
+      "olap_workers": 12,
+      "ann_throughput_qps": 977.85,
+      "olap_throughput_tps": 0.04
+    },
+    {
+      "ann_workers": 36,
+      "olap_workers": 0,
+      "ann_throughput_qps": 1401.14,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 36,
+      "olap_workers": 2,
+      "ann_throughput_qps": 1691.11,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 36,
+      "olap_workers": 5,
+      "ann_throughput_qps": 1499.7,
+      "olap_throughput_tps": 0.0167
+    },
+    {
+      "ann_workers": 36,
+      "olap_workers": 7,
+      "ann_throughput_qps": 1374.68,
+      "olap_throughput_tps": 0.0233
+    },
+    {
+      "ann_workers": 36,
+      "olap_workers": 10,
+      "ann_throughput_qps": 1243.62,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 36,
+      "olap_workers": 12,
+      "ann_throughput_qps": 1178.37,
+      "olap_throughput_tps": 0.04
+    },
+    {
+      "ann_workers": 45,
+      "olap_workers": 0,
+      "ann_throughput_qps": 1455.09,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 45,
+      "olap_workers": 2,
+      "ann_throughput_qps": 1550.18,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 45,
+      "olap_workers": 5,
+      "ann_throughput_qps": 1584.14,
+      "olap_throughput_tps": 0.0167
+    },
+    {
+      "ann_workers": 45,
+      "olap_workers": 7,
+      "ann_throughput_qps": 1507.71,
+      "olap_throughput_tps": 0.0233
+    },
+    {
+      "ann_workers": 45,
+      "olap_workers": 10,
+      "ann_throughput_qps": 1384.49,
+      "olap_throughput_tps": 0.03
+    },
+    {
+      "ann_workers": 45,
+      "olap_workers": 12,
+      "ann_throughput_qps": 1297.11,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 2,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 5,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 7,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0467
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 10,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0667
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 12,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0467
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 1,
+      "ann_throughput_qps": 90.11,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 1,
+      "olap_workers": 3,
+      "ann_throughput_qps": 90.0,
+      "olap_throughput_tps": 0.02
+    },
+    {
+      "ann_workers": 2,
+      "olap_workers": 0,
+      "ann_throughput_qps": 173.32,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 2,
+      "olap_workers": 1,
+      "ann_throughput_qps": 173.53,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 2,
+      "olap_workers": 2,
+      "ann_throughput_qps": 175.51,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 2,
+      "olap_workers": 3,
+      "ann_throughput_qps": 174.77,
+      "olap_throughput_tps": 0.02
+    },
+    {
+      "ann_workers": 2,
+      "olap_workers": 5,
+      "ann_throughput_qps": 173.63,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 2,
+      "olap_workers": 7,
+      "ann_throughput_qps": 165.9,
+      "olap_throughput_tps": 0.0467
+    },
+    {
+      "ann_workers": 2,
+      "olap_workers": 10,
+      "ann_throughput_qps": 132.65,
+      "olap_throughput_tps": 0.0667
+    },
+    {
+      "ann_workers": 2,
+      "olap_workers": 12,
+      "ann_throughput_qps": 111.89,
+      "olap_throughput_tps": 0.04
+    },
+    {
+      "ann_workers": 3,
+      "olap_workers": 0,
+      "ann_throughput_qps": 261.86,
+      "olap_throughput_tps": 0.0
+    },
+    {
+      "ann_workers": 3,
+      "olap_workers": 1,
+      "ann_throughput_qps": 260.3,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 3,
+      "olap_workers": 2,
+      "ann_throughput_qps": 258.62,
+      "olap_throughput_tps": 0.0133
+    },
+    {
+      "ann_workers": 3,
+      "olap_workers": 3,
+      "ann_throughput_qps": 258.56,
+      "olap_throughput_tps": 0.02
+    },
+    {
+      "ann_workers": 3,
+      "olap_workers": 5,
+      "ann_throughput_qps": 256.84,
+      "olap_throughput_tps": 0.0333
+    },
+    {
+      "ann_workers": 3,
+      "olap_workers": 7,
+      "ann_throughput_qps": 244.16,
+      "olap_throughput_tps": 0.0467
+    },
+    {
+      "ann_workers": 3,
+      "olap_workers": 10,
+      "ann_throughput_qps": 192.26,
+      "olap_throughput_tps": 0.0667
+    },
+    {
+      "ann_workers": 3,
+      "olap_workers": 12,
+      "ann_throughput_qps": 159.67,
+      "olap_throughput_tps": 0.04
+    },
+    {
+      "ann_workers": 9,
+      "olap_workers": 1,
+      "ann_throughput_qps": 727.17,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 9,
+      "olap_workers": 3,
+      "ann_throughput_qps": 727.39,
+      "olap_throughput_tps": 0.02
+    },
+    {
+      "ann_workers": 18,
+      "olap_workers": 1,
+      "ann_throughput_qps": 1324.44,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 18,
+      "olap_workers": 3,
+      "ann_throughput_qps": 1306.21,
+      "olap_throughput_tps": 0.02
+    },
+    {
+      "ann_workers": 27,
+      "olap_workers": 1,
+      "ann_throughput_qps": 1777.53,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 27,
+      "olap_workers": 3,
+      "ann_throughput_qps": 1576.34,
+      "olap_throughput_tps": 0.02
+    },
+    {
+      "ann_workers": 36,
+      "olap_workers": 1,
+      "ann_throughput_qps": 1654.07,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 36,
+      "olap_workers": 3,
+      "ann_throughput_qps": 1647.21,
+      "olap_throughput_tps": 0.01
+    },
+    {
+      "ann_workers": 45,
+      "olap_workers": 1,
+      "ann_throughput_qps": 1473.22,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 45,
+      "olap_workers": 3,
+      "ann_throughput_qps": 1633.51,
+      "olap_throughput_tps": 0.01
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 1,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.0067
+    },
+    {
+      "ann_workers": 0,
+      "olap_workers": 3,
+      "ann_throughput_qps": 0.0,
+      "olap_throughput_tps": 0.02
+    }
+  ]
+}
