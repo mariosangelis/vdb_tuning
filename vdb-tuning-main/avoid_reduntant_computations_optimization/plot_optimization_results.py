@@ -2,6 +2,10 @@
 """
 Plot compiler optimization results (with vs without) for IVFFlat and HNSW.
 
+Generates two PDF files:
+  - compiler_optimization_ivfflat_{dataset}.pdf  (cold and warm side by side)
+  - compiler_optimization_hnsw_{dataset}.pdf     (cold and warm side by side)
+
 Usage:
     python3 plot_optimization_results.py --dataset gist
     python3 plot_optimization_results.py --dataset deep
@@ -30,56 +34,38 @@ def load_results(filename):
     return k_vals, times
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Plot compiler optimization results")
-    parser.add_argument("--dataset", required=True, choices=["gist", "deep", "sift"],
-                        help="Dataset name")
-    parser.add_argument("--output", type=str, default=None,
-                        help="Output file path (default: data/compiler_optimization_{dataset}.pdf)")
-    args = parser.parse_args()
+def plot_index(index_type, dataset, data_dir, output_path):
+    """Plot cold and warm side by side for one index type."""
+    idx_upper = index_type.upper()
 
-    dataset = args.dataset
-    data_dir = SCRIPT_DIR / "data"
+    # Try files with mode suffix
+    cold_without = data_dir / f"results_without_optimization_{idx_upper}_{dataset}_cold.txt"
+    cold_with = data_dir / f"results_with_optimization_{idx_upper}_{dataset}_cold.txt"
+    warm_without = data_dir / f"results_without_optimization_{idx_upper}_{dataset}_warm.txt"
+    warm_with = data_dir / f"results_with_optimization_{idx_upper}_{dataset}_warm.txt"
 
-    # Load results
-    ivf_without = data_dir / f"results_without_optimization_IVFFLAT_{dataset}.txt"
-    ivf_with = data_dir / f"results_with_optimization_IVFFLAT_{dataset}.txt"
-    hnsw_without = data_dir / f"results_without_optimization_HNSW_{dataset}.txt"
-    hnsw_with = data_dir / f"results_with_optimization_HNSW_{dataset}.txt"
+    has_cold = cold_without.exists() and cold_with.exists()
+    has_warm = warm_without.exists() and warm_with.exists()
 
-    has_ivfflat = ivf_without.exists() and ivf_with.exists()
-    has_hnsw = hnsw_without.exists() and hnsw_with.exists()
+    if not has_cold and not has_warm:
+        print(f"  No results found for {idx_upper} ({dataset})")
+        return False
 
-    if not has_ivfflat and not has_hnsw:
-        # Try legacy naming (without dataset suffix)
-        ivf_without = data_dir / "results_without_optimization_IVFFLAT.txt"
-        ivf_with = data_dir / "results_with_optimization_IVFFLAT.txt"
-        hnsw_without = data_dir / "results_without_optimization_HNSW.txt"
-        hnsw_with = data_dir / "results_with_optimization_HNSW.txt"
-        has_ivfflat = ivf_without.exists() and ivf_with.exists()
-        has_hnsw = hnsw_without.exists() and hnsw_with.exists()
-
-    if not has_ivfflat and not has_hnsw:
-        print("ERROR: No result files found.")
-        print(f"  Looked in: {data_dir}")
-        print(f"  Expected: results_{{with|without}}_optimization_{{IVFFLAT|HNSW}}_{dataset}.txt")
-        sys.exit(1)
-
-    num_plots = int(has_ivfflat) + int(has_hnsw)
+    num_plots = int(has_cold) + int(has_warm)
     fig, axes = plt.subplots(1, num_plots, figsize=(7 * num_plots, 6))
     if num_plots == 1:
         axes = [axes]
 
     plot_idx = 0
 
-    if has_ivfflat:
-        k_no, t_no = load_results(ivf_without)
-        k_opt, t_opt = load_results(ivf_with)
+    if has_cold:
+        k_no, t_no = load_results(cold_without)
+        k_opt, t_opt = load_results(cold_with)
         gains = [((t1 - t2) / t1) * 100 if t1 > 0 else 0 for t1, t2 in zip(t_no, t_opt)]
 
         ax = axes[plot_idx]
-        ax.plot(k_no, t_no, 'r^--', label='Without Optimization', markersize=8, color='red')
-        ax.plot(k_opt, t_opt, 'gs-', label='With Optimization', markersize=8, color='green')
+        ax.plot(k_no, t_no, 'r^--', label='Without Optimization', markersize=8)
+        ax.plot(k_opt, t_opt, 'gs-', label='With Optimization', markersize=8)
 
         for k, t, gain in zip(k_opt, t_opt, gains):
             if gain > 0:
@@ -88,19 +74,19 @@ def main():
 
         ax.set_xlabel('K (Top-K)', fontsize=11)
         ax.set_ylabel('Total Execution Time (seconds) - 1000 queries', fontsize=10)
-        ax.set_title(f'IVFFlat (recall=0.9) — {dataset.upper()}', fontsize=13)
+        ax.set_title(f'{idx_upper} — Cold Cache (recall=0.9)', fontsize=13)
         ax.legend(fontsize=10, loc='upper left')
         ax.grid(True, alpha=0.3)
         plot_idx += 1
 
-    if has_hnsw:
-        k_no, t_no = load_results(hnsw_without)
-        k_opt, t_opt = load_results(hnsw_with)
+    if has_warm:
+        k_no, t_no = load_results(warm_without)
+        k_opt, t_opt = load_results(warm_with)
         gains = [((t1 - t2) / t1) * 100 if t1 > 0 else 0 for t1, t2 in zip(t_no, t_opt)]
 
         ax = axes[plot_idx]
-        ax.plot(k_no, t_no, 'r^--', label='Without Optimization', markersize=8, color='red')
-        ax.plot(k_opt, t_opt, 'gs-', label='With Optimization', markersize=8, color='green')
+        ax.plot(k_no, t_no, 'r^--', label='Without Optimization', markersize=8)
+        ax.plot(k_opt, t_opt, 'gs-', label='With Optimization', markersize=8)
 
         for k, t, gain in zip(k_opt, t_opt, gains):
             if gain > 0:
@@ -109,33 +95,52 @@ def main():
 
         ax.set_xlabel('K (Top-K)', fontsize=11)
         ax.set_ylabel('Total Execution Time (seconds) - 1000 queries', fontsize=10)
-        ax.set_title(f'HNSW (recall=0.9) — {dataset.upper()}', fontsize=13)
+        ax.set_title(f'{idx_upper} — Warm Cache (recall=0.9)', fontsize=13)
         ax.legend(fontsize=10, loc='upper left')
         ax.grid(True, alpha=0.3)
 
+    plt.suptitle(f'{idx_upper} Compiler Optimization — {dataset.upper()}', fontsize=14, fontweight='bold', y=1.02)
     plt.tight_layout()
-
-    if args.output:
-        output_path = Path(args.output)
-    else:
-        output_path = data_dir / f"compiler_optimization_{dataset}.pdf"
-
     fig.savefig(output_path, format='pdf', bbox_inches='tight')
-    print(f"Plot saved to: {output_path}")
+    print(f"  Saved: {output_path}")
+    plt.close()
+    return True
 
-    # Print percentage gains
-    print(f"\n% Performance Gains by K ({dataset}):")
-    if has_ivfflat and has_hnsw:
-        k_ivf, t_ivf_no = load_results(ivf_without)
-        _, t_ivf_opt = load_results(ivf_with)
-        k_hnsw, t_hnsw_no = load_results(hnsw_without)
-        _, t_hnsw_opt = load_results(hnsw_with)
-        ivf_gains = [((t1 - t2) / t1) * 100 if t1 > 0 else 0 for t1, t2 in zip(t_ivf_no, t_ivf_opt)]
-        hnsw_gains = [((t1 - t2) / t1) * 100 if t1 > 0 else 0 for t1, t2 in zip(t_hnsw_no, t_hnsw_opt)]
-        print(f"{'K':<8} {'IVFFlat Gain':<15} {'HNSW Gain':<15}")
-        print("-" * 38)
-        for k, ig, hg in zip(k_ivf, ivf_gains, hnsw_gains):
-            print(f"{k:<8} {ig:<15.2f} {hg:<15.2f}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Plot compiler optimization results")
+    parser.add_argument("--dataset", required=True, choices=["gist", "deep", "sift"],
+                        help="Dataset name")
+    args = parser.parse_args()
+
+    dataset = args.dataset
+    data_dir = SCRIPT_DIR / "data"
+
+    print(f"Generating compiler optimization plots for {dataset}...")
+
+    # Plot IVFFlat
+    ivf_output = data_dir / f"compiler_optimization_ivfflat_{dataset}.pdf"
+    plot_index("ivfflat", dataset, data_dir, ivf_output)
+
+    # Plot HNSW
+    hnsw_output = data_dir / f"compiler_optimization_hnsw_{dataset}.pdf"
+    plot_index("hnsw", dataset, data_dir, hnsw_output)
+
+    # Print summary table
+    print(f"\n% Performance Gains ({dataset}):")
+    for idx_type in ["IVFFLAT", "HNSW"]:
+        for mode in ["cold", "warm"]:
+            without_f = data_dir / f"results_without_optimization_{idx_type}_{dataset}_{mode}.txt"
+            with_f = data_dir / f"results_with_optimization_{idx_type}_{dataset}_{mode}.txt"
+            if without_f.exists() and with_f.exists():
+                k_no, t_no = load_results(without_f)
+                k_opt, t_opt = load_results(with_f)
+                print(f"\n  {idx_type} ({mode}):")
+                print(f"  {'K':<8} {'Without':>10} {'With':>10} {'Gain':>8}")
+                print(f"  {'-'*38}")
+                for k, t1, t2 in zip(k_no, t_no, t_opt):
+                    gain = ((t1 - t2) / t1 * 100) if t1 > 0 else 0
+                    print(f"  {k:<8} {t1:>9.2f}s {t2:>9.2f}s {gain:>7.1f}%")
 
 
 if __name__ == "__main__":
