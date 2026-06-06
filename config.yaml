@@ -12,11 +12,11 @@ paths:
   # Root of the postgres source tree that gets compiled.
   #   clnode* (CloudLab): /users/mangelis/vdb_tuning/postgres/postgres
   #   vmageirakos box:    /local/home/vmageirakos/projects/vdb_tuning/postgres/postgres
-  pg_src: /users/mangelis/vdb_tuning/postgres/postgres
+  pg_src: /local/home/vmageirakos/projects/vdb_tuning/postgres/postgres
 
   # pgvector source dirs (usually <pg_src>/pgvector and <pg_src>/pgvector_modified_final).
-  pgvector_default:  /users/mangelis/vdb_tuning/postgres/postgres/pgvector
-  pgvector_parallel: /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final
+  pgvector_default:  /local/home/vmageirakos/projects/vdb_tuning/postgres/postgres/pgvector
+  pgvector_parallel: /local/home/vmageirakos/projects/vdb_tuning/postgres/postgres/pgvector_modified_final
 
   # Where PostgreSQL is installed (make install --prefix).
   pg_install: /usr/local/pgsql
@@ -24,18 +24,20 @@ paths:
   # PostgreSQL data directory (initdb target). Put on fast storage.
   #   clnode*:        /mnt/nvme/pgdata
   #   vmageirakos:    /local/home/postgres/pgdata
-  pg_data: /mnt/nvme/pgdata
+  pg_data: /local/home/postgres/pgdata
 
   # Repo postgresql.conf to copy into pg_data.
-  pg_conf_src: /users/mangelis/vdb_tuning/postgres_configurations/postgresql.conf
+  pg_conf_src: /local/home/vmageirakos/projects/vdb_tuning/postgres_configurations/postgresql.conf
 
   # Directory where PGDATA snapshots (tar.gz) are saved/loaded.
   #   clnode*:        /mnt/nvme/saved_indexes
-  #   vmageirakos:    /local/home/saved_indexes
-  snapshot_dir: /mnt/nvme/saved_indexes
+  #   vmageirakos:    /local/home/vmageirakos/projects/vdb_tuning/saved_indexes
+  snapshot_dir: /local/home/vmageirakos/projects/vdb_tuning/saved_indexes
 
   # tpch-dbgen location.
-  dbgen_dir: /users/mangelis/tpch-dbgen
+  #   clnode*: /users/mangelis/tpch-dbgen
+  #   vmageirakos: /local/home/postgres/tpch-dbgen
+  dbgen_dir: /local/home/postgres/tpch-dbgen
 
 database:
   name: mydb
@@ -47,7 +49,7 @@ build:
 storage:
   # true  -> mkfs + mount nvme_dev at nvme_mount (fresh CloudLab node).
   # false -> skip; assume pg_data already lives on usable storage.
-  setup_nvme: true
+  setup_nvme: false
   nvme_dev: /dev/nvme0n1
   nvme_mount: /mnt/nvme
 
