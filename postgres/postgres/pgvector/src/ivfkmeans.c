@@ -3,6 +3,7 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
+#include <omp.h>
 
 #include "access/genam.h"
 #include "fmgr.h"
@@ -16,29 +17,77 @@
 #endif
 
 /*
+ * Inline distance: computes same result as the IVFFLAT_KMEANS_DISTANCE_PROC
+ * for L2 (Euclidean) distance. For cosine/IP it uses angular distance.
+ * Thread-safe: no palloc.
+ */
+static inline float
+inline_vector_distance(const float *ax, const float *bx, int dim, bool use_angular)
+{
+	if (!use_angular)
+	{
+		/* L2 distance = sqrt(sum of squared differences) */
+		float distance = 0.0f;
+		for (int i = 0; i < dim; i++)
+		{
+			float diff = ax[i] - bx[i];
+			distance += diff * diff;
+		}
+		return sqrtf(distance);
+	}
+	else
+	{
+		/* Angular distance for cosine/IP */
+		float dot = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
+		for (int i = 0; i < dim; i++)
+		{
+			dot += ax[i] * bx[i];
+			norm_a += ax[i] * ax[i];
+			norm_b += bx[i] * bx[i];
+		}
+		float denom = sqrtf(norm_a) * sqrtf(norm_b);
+		if (denom == 0.0f)
+			return 1.0f;
+		float sim = dot / denom;
+		if (sim > 1.0f) sim = 1.0f;
+		if (sim < -1.0f) sim = -1.0f;
+		return acosf(sim) / M_PI;
+	}
+}
+
+/*
+ * Get the float* pointer to vector data from a VectorArray entry
+ */
+static inline float *
+get_vector_data(VectorArray arr, int offset)
+{
+	Vector *v = (Vector *) VectorArrayGet(arr, offset);
+	return v->x;
+}
+
+/*
  * Initialize with kmeans++
  *
  * https://theory.stanford.edu/~sergei/papers/kMeansPP-soda.pdf
  */
 static void
-InitCenters(Relation index, VectorArray samples, VectorArray centers, float *lowerBound)
+InitCenters(Relation index, VectorArray samples, VectorArray centers, float *lowerBound, bool use_angular)
 {
-	FmgrInfo   *procinfo;
-	Oid			collation;
 	int64		j;
-	float	   *weight = palloc(samples->length * sizeof(float));
 	int			numCenters = centers->maxlen;
 	int			numSamples = samples->length;
-
-	procinfo = index_getprocinfo(index, 1, IVFFLAT_KMEANS_DISTANCE_PROC);
-	collation = index->rd_indcollation[0];
+	int			dim = samples->dim;
+	float	   *weight = palloc(numSamples * sizeof(float));
 
 	/* Choose an initial center uniformly at random */
-	VectorArraySet(centers, 0, VectorArrayGet(samples, RandomInt() % samples->length));
+	VectorArraySet(centers, 0, VectorArrayGet(samples, RandomInt() % numSamples));
 	centers->length++;
 
 	for (j = 0; j < numSamples; j++)
 		weight[j] = FLT_MAX;
+
+	elog(INFO, "k-means++ init: seeding %d centers from %d samples (%d threads)",
+		 numCenters, numSamples, omp_get_max_threads());
 
 	for (int i = 0; i < numCenters; i++)
 	{
@@ -47,32 +96,33 @@ InitCenters(Relation index, VectorArray samples, VectorArray centers, float *low
 
 		CHECK_FOR_INTERRUPTS();
 
-		sum = 0.0;
+		if (i % 1000 == 0)
+			elog(INFO, "k-means++ init: center %d / %d", i, numCenters);
 
-		for (j = 0; j < numSamples; j++)
+		float *center_i_data = get_vector_data(centers, i);
+
+		/* Parallel: compute distance from each sample to center i */
+		#pragma omp parallel for schedule(static)
+		for (int64 jj = 0; jj < numSamples; jj++)
 		{
-			Datum		vec = PointerGetDatum(VectorArrayGet(samples, j));
-			double		distance;
+			float *sample_data = get_vector_data(samples, jj);
+			float distance = inline_vector_distance(sample_data, center_i_data, dim, use_angular);
 
-			/* Only need to compute distance for new center */
-			/* TODO Use triangle inequality to reduce distance calculations */
-			distance = DatumGetFloat8(FunctionCall2Coll(procinfo, collation, vec, PointerGetDatum(VectorArrayGet(centers, i))));
+			lowerBound[jj * numCenters + i] = distance;
 
-			/* Set lower bound */
-			lowerBound[j * numCenters + i] = distance;
-
-			/* Use distance squared for weighted probability distribution */
-			distance *= distance;
-
-			if (distance < weight[j])
-				weight[j] = distance;
-
-			sum += weight[j];
+			float dist_sq = distance * distance;
+			if (dist_sq < weight[jj])
+				weight[jj] = dist_sq;
 		}
 
 		/* Only compute lower bound on last iteration */
 		if (i + 1 == numCenters)
 			break;
+
+		/* Sum weights (sequential — fast, just numSamples additions) */
+		sum = 0.0;
+		for (j = 0; j < numSamples; j++)
+			sum += weight[j];
 
 		/* Choose new center using weighted probability distribution. */
 		choice = sum * RandomDouble();
@@ -88,6 +138,7 @@ InitCenters(Relation index, VectorArray samples, VectorArray centers, float *low
 	}
 
 	pfree(weight);
+	elog(INFO, "k-means++ initialization complete");
 }
 
 /*
@@ -188,7 +239,7 @@ UpdateCenters(float *agg, VectorArray centers, const IvfflatTypeInfo * typeInfo)
 }
 
 /*
- * Compute new centers
+ * Compute new centers — UNCHANGED from original
  */
 static void
 ComputeNewCenters(VectorArray samples, float *agg, VectorArray newCenters, int *centerCounts, int *closestCenters, FmgrInfo *normprocinfo, Oid collation, const IvfflatTypeInfo * typeInfo)
@@ -256,6 +307,9 @@ ComputeNewCenters(VectorArray samples, float *agg, VectorArray newCenters, int *
  * and angular distance for inner product and cosine distance
  *
  * https://www.aaai.org/Papers/ICML/2003/ICML03-022.pdf
+ *
+ * PARALLELIZED with OpenMP: Steps 1, 2-3, 5, 6 run in parallel.
+ * Step 4 (ComputeNewCenters) uses original sequential code (uses palloc/typeInfo).
  */
 static void
 ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const IvfflatTypeInfo * typeInfo)
@@ -275,6 +329,7 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 	float	   *s;
 	float	   *halfcdist;
 	float	   *newcdist;
+	bool		use_angular;
 
 	/* Calculate allocation sizes */
 	Size		samplesSize = VECTOR_ARRAY_SIZE(samples->maxlen, samples->itemsize);
@@ -309,6 +364,9 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 	normprocinfo = IvfflatOptionalProcInfo(index, IVFFLAT_KMEANS_NORM_PROC);
 	collation = index->rd_indcollation[0];
 
+	/* Determine distance type: if norm proc exists, it's cosine/IP (angular) */
+	use_angular = (normprocinfo != NULL);
+
 	/* Allocate space */
 	/* Use float instead of double to save memory */
 	agg = palloc(aggSize);
@@ -328,10 +386,14 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 	ShowMemoryUsage(MemoryContextGetParent(CurrentMemoryContext), totalSize);
 #endif
 
+	elog(INFO, "Parallel k-means: %d samples, %d centers, %d dims, %d threads",
+		 numSamples, numCenters, dimensions, omp_get_max_threads());
+
 	/* Pick initial centers */
-	InitCenters(index, samples, centers, lowerBound);
+	InitCenters(index, samples, centers, lowerBound, use_angular);
 
 	/* Assign each x to its closest initial center c(x) = argmin d(x,c) */
+	#pragma omp parallel for schedule(static)
 	for (int64 j = 0; j < numSamples; j++)
 	{
 		float		minDistance = FLT_MAX;
@@ -354,6 +416,8 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 		closestCenters[j] = closestCenter;
 	}
 
+	elog(INFO, "Starting Elkan iterations...");
+
 	/* Give 500 iterations to converge */
 	for (int iteration = 0; iteration < 500; iteration++)
 	{
@@ -363,21 +427,24 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 		/* Can take a while, so ensure we can interrupt */
 		CHECK_FOR_INTERRUPTS();
 
-		/* Step 1: For all centers, compute distance */
+		/* Step 1: For all centers, compute pairwise distance — PARALLEL */
+		#pragma omp parallel for schedule(dynamic)
 		for (int64 j = 0; j < numCenters; j++)
 		{
-			Datum		vec = PointerGetDatum(VectorArrayGet(centers, j));
+			float *cj_data = get_vector_data(centers, j);
 
 			for (int64 k = j + 1; k < numCenters; k++)
 			{
-				float		distance = 0.5 * DatumGetFloat8(FunctionCall2Coll(procinfo, collation, vec, PointerGetDatum(VectorArrayGet(centers, k))));
+				float *ck_data = get_vector_data(centers, k);
+				float distance = 0.5f * inline_vector_distance(cj_data, ck_data, dimensions, use_angular);
 
 				halfcdist[j * numCenters + k] = distance;
 				halfcdist[k * numCenters + j] = distance;
 			}
 		}
 
-		/* For all centers c, compute s(c) */
+		/* For all centers c, compute s(c) — PARALLEL */
+		#pragma omp parallel for schedule(static)
 		for (int64 j = 0; j < numCenters; j++)
 		{
 			float		minDistance = FLT_MAX;
@@ -399,6 +466,8 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 
 		rjreset = iteration != 0;
 
+		/* Steps 2-3: Assignment update — PARALLEL (biggest hotspot) */
+		#pragma omp parallel for schedule(dynamic, 256) reduction(+:changes)
 		for (int64 j = 0; j < numSamples; j++)
 		{
 			bool		rj;
@@ -411,7 +480,6 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 
 			for (int64 k = 0; k < numCenters; k++)
 			{
-				Datum		vec;
 				float		dxcx;
 
 				/* Step 3: For all remaining points x and centers c */
@@ -424,12 +492,13 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 				if (upperBound[j] <= halfcdist[closestCenters[j] * numCenters + k])
 					continue;
 
-				vec = PointerGetDatum(VectorArrayGet(samples, j));
+				float *sample_data = get_vector_data(samples, j);
 
 				/* Step 3a */
 				if (rj)
 				{
-					dxcx = DatumGetFloat8(FunctionCall2Coll(procinfo, collation, vec, PointerGetDatum(VectorArrayGet(centers, closestCenters[j]))));
+					float *cc_data = get_vector_data(centers, closestCenters[j]);
+					dxcx = inline_vector_distance(sample_data, cc_data, dimensions, use_angular);
 
 					/* d(x,c(x)) computed, which is a form of d(x,c) */
 					lowerBound[j * numCenters + closestCenters[j]] = dxcx;
@@ -443,7 +512,8 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 				/* Step 3b */
 				if (dxcx > lowerBound[j * numCenters + k] || dxcx > halfcdist[closestCenters[j] * numCenters + k])
 				{
-					float		dxc = DatumGetFloat8(FunctionCall2Coll(procinfo, collation, vec, PointerGetDatum(VectorArrayGet(centers, k))));
+					float *ck_data = get_vector_data(centers, k);
+					float dxc = inline_vector_distance(sample_data, ck_data, dimensions, use_angular);
 
 					/* d(x,c) calculated */
 					lowerBound[j * numCenters + k] = dxc;
@@ -462,12 +532,20 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 		}
 
 		/* Step 4: For each center c, let m(c) be mean of all points assigned */
+		/* This uses original sequential code with typeInfo/palloc — unchanged */
 		ComputeNewCenters(samples, agg, newCenters, centerCounts, closestCenters, normprocinfo, collation, typeInfo);
 
-		/* Step 5 */
+		/* Step 5: compute center movement — PARALLEL */
+		#pragma omp parallel for schedule(static)
 		for (int j = 0; j < numCenters; j++)
-			newcdist[j] = DatumGetFloat8(FunctionCall2Coll(procinfo, collation, PointerGetDatum(VectorArrayGet(centers, j)), PointerGetDatum(VectorArrayGet(newCenters, j))));
+		{
+			float *old_data = get_vector_data(centers, j);
+			float *new_data = get_vector_data(newCenters, j);
+			newcdist[j] = inline_vector_distance(old_data, new_data, dimensions, use_angular);
+		}
 
+		/* Step 5b: update lower bounds — PARALLEL */
+		#pragma omp parallel for schedule(static)
 		for (int64 j = 0; j < numSamples; j++)
 		{
 			for (int64 k = 0; k < numCenters; k++)
@@ -481,8 +559,8 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 			}
 		}
 
-		/* Step 6 */
-		/* We reset r(x) before Step 3 in the next iteration */
+		/* Step 6: update upper bounds — PARALLEL */
+		#pragma omp parallel for schedule(static)
 		for (int j = 0; j < numSamples; j++)
 			upperBound[j] += newcdist[closestCenters[j]];
 
@@ -490,8 +568,14 @@ ElkanKmeans(Relation index, VectorArray samples, VectorArray centers, const Ivff
 		for (int j = 0; j < numCenters; j++)
 			VectorArraySet(centers, j, VectorArrayGet(newCenters, j));
 
+		if (iteration > 0 && iteration % 10 == 0)
+			elog(INFO, "k-means iteration %d: %d changes", iteration, changes);
+
 		if (changes == 0 && iteration != 0)
+		{
+			elog(INFO, "k-means converged after %d iterations", iteration + 1);
 			break;
+		}
 	}
 }
 
