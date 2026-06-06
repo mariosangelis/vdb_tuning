@@ -71,8 +71,8 @@ else:
 SNAPSHOT_DIR = Path(get_path("snapshot_dir"))
 
 # === TUNING PARAMETERS ===
-M_VALUES_TO_TEST = [16]
-EF_CONSTRUCTION_VALUES = [128]
+M_VALUES_TO_TEST = [8,16,32,64]
+EF_CONSTRUCTION_VALUES = [128,256]
 
 # ef_search values to test (ascending order)
 EF_SEARCH_TO_TEST = [10, 20, 40, 60, 80, 100, 120, 150, 200, 250, 300, 400, 500, 600, 800, 1000]

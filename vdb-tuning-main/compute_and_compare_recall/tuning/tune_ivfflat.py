@@ -61,7 +61,7 @@ PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
 SNAPSHOT_DIR = Path(get_path("snapshot_dir"))
 
 # === TUNING PARAMETERS ===
-LISTS_TO_TEST = [8192]
+LISTS_TO_TEST = [2048,4096,8192]
 
 # Probes to search through (ascending order)
 PROBES_TO_TEST = [1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 35, 40, 50, 60, 80,
