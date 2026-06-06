@@ -61,7 +61,7 @@ PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
 SNAPSHOT_DIR = Path(get_path("snapshot_dir"))
 
 # === TUNING PARAMETERS ===
-LISTS_TO_TEST = [2048,4096,8192]
+DEFAULT_LISTS_TO_TEST = [2048, 4096, 8192]
 
 # Probes to search through (ascending order)
 PROBES_TO_TEST = [1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 35, 40, 50, 60, 80,
@@ -79,6 +79,7 @@ DATASET_CONFIGS = {
         "exact_results_dir": "exact_results_gist",
         "distance_op": "<->",
         "index_ops": "vector_l2_ops",
+        "lists_to_test": [2048, 4096, 8192],
     },
     "sift": {
         "table": "sift_data",
@@ -87,6 +88,7 @@ DATASET_CONFIGS = {
         "exact_results_dir": "exact_results_sift",
         "distance_op": "<->",
         "index_ops": "vector_l2_ops",
+        "lists_to_test": [2048, 4096, 8192],
     },
     "deep": {
         "table": "deep_data",
@@ -95,6 +97,7 @@ DATASET_CONFIGS = {
         "exact_results_dir": "exact_results_deep",
         "distance_op": "<=>",
         "index_ops": "vector_cosine_ops",
+        "lists_to_test": [16384, 32768],
     },
 }
 
@@ -422,6 +425,7 @@ def main():
     table_name = config["table"]
     distance_op = config.get("distance_op", "<->")
     index_ops = config.get("index_ops", "vector_l2_ops")
+    lists_to_test = config.get("lists_to_test", DEFAULT_LISTS_TO_TEST)
 
     print(f"{'='*70}")
     print(f"IVFFlat Tuning for {dataset.upper()} dataset")
@@ -431,7 +435,7 @@ def main():
     print(f"Table: {table_name}")
     print(f"Distance op: {distance_op}")
     print(f"Index ops: {index_ops}")
-    print(f"Lists to test: {LISTS_TO_TEST}")
+    print(f"Lists to test: {lists_to_test}")
 
     # Workload path: in project root
     workload_path = PROJECT_ROOT / config["workload_path"]
@@ -514,10 +518,11 @@ def main():
     }
 
     print(f"\n{'='*70}")
-    print(f"Testing {len(LISTS_TO_TEST)} configurations")
+    print(f"Testing {len(lists_to_test)} configurations")
     print(f"{'='*70}")
 
-    for lists in LISTS_TO_TEST:
+
+    for lists in lists_to_test:
         print(f"\n--- Configuration: lists={lists} ---")
 
         snapshot_path = get_snapshot_path(dataset, "ivfflat", {"lists": lists})
