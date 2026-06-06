@@ -1,33 +1,51 @@
 #!/bin/bash
-# Generate and load TPC-H SF10 data
-# Usage: sudo ./setup_tpch.sh
-# Run AFTER setup_postgres.sh
+# Generate and load TPC-H data (scale factor from config).
+# Usage: sudo ./setup_tpch.sh   (run AFTER setup_postgres.sh)
+# Machine-specific paths/flags come from setup_config.sh.
 set -e
 
-export PATH=/usr/local/pgsql/bin:$PATH
-DBGEN_DIR=/users/mangelis/tpch-dbgen
+# ---- Load central config ----
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${SETUP_CONFIG:-${SCRIPT_DIR}/setup_config.sh}"
+if [ ! -f "${CONFIG_FILE}" ]; then
+    echo "ERROR: config file not found: ${CONFIG_FILE}"
+    echo "       Create it (see setup_config.sh) or set SETUP_CONFIG=/path/to/setup_config.sh"
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "${CONFIG_FILE}"
+echo "Loaded config: ${CONFIG_FILE}"
+
+PGBIN=${PG_INSTALL}/bin
+DBGEN_PARENT="$(dirname "${DBGEN_DIR}")"
+
+echo "========================================"
+echo "TPC-H SF${TPCH_SCALE} setup"
+echo "  DBGEN_DIR = ${DBGEN_DIR}"
+echo "  DB_NAME   = ${DB_NAME}"
+echo "========================================"
 
 echo "[1/4] Cloning and compiling dbgen..."
-cd /users/mangelis
-if [ ! -d tpch-dbgen ]; then
-    git clone https://github.com/electrum/tpch-dbgen.git
+mkdir -p "${DBGEN_PARENT}"
+cd "${DBGEN_PARENT}"
+if [ ! -d "${DBGEN_DIR}" ]; then
+    git clone https://github.com/electrum/tpch-dbgen.git "$(basename "${DBGEN_DIR}")"
 fi
-cd tpch-dbgen
+cd "${DBGEN_DIR}"
 make clean > /dev/null 2>&1 || true
-make -j$(nproc)
+make -j"$(nproc)"
 echo "  Done."
 
-echo "[2/4] Generating SF10 data (~10GB)..."
-./dbgen -s 10 -f
+echo "[2/4] Generating SF${TPCH_SCALE} data..."
+./dbgen -s "${TPCH_SCALE}" -f
 # Remove trailing delimiter that dbgen adds
 sed -i 's/|$//' *.tbl
 echo "  Generated:"
 ls -lh *.tbl
 
 echo "[3/4] Creating TPC-H tables and loading data..."
-chmod 644 ${DBGEN_DIR}/*.tbl
+chmod 644 "${DBGEN_DIR}"/*.tbl
 
-# Write SQL to a temp file to avoid quoting issues
 cat > /tmp/create_tpch.sql << 'SQLEOF'
 CREATE TABLE IF NOT EXISTS region (r_regionkey INTEGER PRIMARY KEY, r_name CHAR(25) NOT NULL, r_comment VARCHAR(152));
 CREATE TABLE IF NOT EXISTS nation (n_nationkey INTEGER PRIMARY KEY, n_name CHAR(25) NOT NULL, n_regionkey INTEGER NOT NULL REFERENCES region(r_regionkey), n_comment VARCHAR(152));
@@ -39,7 +57,7 @@ CREATE TABLE IF NOT EXISTS orders (o_orderkey INTEGER PRIMARY KEY, o_custkey INT
 CREATE TABLE IF NOT EXISTS lineitem (l_orderkey INTEGER NOT NULL REFERENCES orders(o_orderkey), l_partkey INTEGER NOT NULL REFERENCES part(p_partkey), l_suppkey INTEGER NOT NULL REFERENCES supplier(s_suppkey), l_linenumber INTEGER NOT NULL, l_quantity DECIMAL(15,2) NOT NULL, l_extendedprice DECIMAL(15,2) NOT NULL, l_discount DECIMAL(15,2) NOT NULL, l_tax DECIMAL(15,2) NOT NULL, l_returnflag CHAR(1) NOT NULL, l_linestatus CHAR(1) NOT NULL, l_shipdate DATE NOT NULL, l_commitdate DATE NOT NULL, l_receiptdate DATE NOT NULL, l_shipinstruct CHAR(25) NOT NULL, l_shipmode CHAR(10) NOT NULL, l_comment VARCHAR(44), PRIMARY KEY (l_orderkey, l_linenumber));
 SQLEOF
 
-su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH && psql mydb -f /tmp/create_tpch.sql"
+su - postgres -c "export PATH=${PGBIN}:\$PATH && psql ${DB_NAME} -f /tmp/create_tpch.sql"
 echo "  Tables created."
 
 echo "[4/4] Loading data with COPY..."
@@ -55,13 +73,13 @@ cat > /tmp/load_tpch.sql << SQLEOF
 ANALYZE;
 SQLEOF
 
-su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH && psql mydb -f /tmp/load_tpch.sql"
+su - postgres -c "export PATH=${PGBIN}:\$PATH && psql ${DB_NAME} -f /tmp/load_tpch.sql"
 
 echo ""
 echo "Verifying:"
-su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH && psql mydb -c \"SELECT tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size FROM pg_tables WHERE schemaname='public' ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;\""
+su - postgres -c "export PATH=${PGBIN}:\$PATH && psql ${DB_NAME} -c \"SELECT tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size FROM pg_tables WHERE schemaname='public' ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;\""
 
 echo ""
-echo "TPC-H SF10 loaded successfully!"
-su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH && psql mydb -t -c 'SELECT count(*) FROM lineitem;'"
+echo "TPC-H SF${TPCH_SCALE} loaded successfully!"
+su - postgres -c "export PATH=${PGBIN}:\$PATH && psql ${DB_NAME} -t -c 'SELECT count(*) FROM lineitem;'"
 echo "lineitem rows above"
