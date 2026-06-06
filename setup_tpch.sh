@@ -1,19 +1,51 @@
 #!/bin/bash
 # Generate and load TPC-H data (scale factor from config).
 # Usage: sudo ./setup_tpch.sh   (run AFTER setup_postgres.sh)
-# Machine-specific paths/flags come from setup_config.sh.
+# Machine-specific paths/flags come from config.yaml.
 set -e
 
-# ---- Load central config ----
+# ---- Load central config (config.yaml) ----
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${SETUP_CONFIG:-${SCRIPT_DIR}/setup_config.sh}"
-if [ ! -f "${CONFIG_FILE}" ]; then
-    echo "ERROR: config file not found: ${CONFIG_FILE}"
-    echo "       Create it (see setup_config.sh) or set SETUP_CONFIG=/path/to/setup_config.sh"
+if [ -n "${VDB_CONFIG}" ]; then
+    CONFIG_FILE="${VDB_CONFIG}"
+elif [ -f "${SCRIPT_DIR}/vdb-tuning-main/config.yaml" ]; then
+    CONFIG_FILE="${SCRIPT_DIR}/vdb-tuning-main/config.yaml"
+elif [ -f "${SCRIPT_DIR}/config.yaml" ]; then
+    CONFIG_FILE="${SCRIPT_DIR}/config.yaml"
+else
+    d="${SCRIPT_DIR}"
+    while [ "${d}" != "/" ]; do
+        if [ -f "${d}/vdb-tuning-main/config.yaml" ]; then CONFIG_FILE="${d}/vdb-tuning-main/config.yaml"; break; fi
+        if [ -f "${d}/config.yaml" ]; then CONFIG_FILE="${d}/config.yaml"; break; fi
+        d="$(dirname "${d}")"
+    done
+fi
+if [ -z "${CONFIG_FILE}" ] || [ ! -f "${CONFIG_FILE}" ]; then
+    echo "ERROR: config.yaml not found. Set VDB_CONFIG=/path/to/config.yaml"
     exit 1
 fi
-# shellcheck source=/dev/null
-source "${CONFIG_FILE}"
+
+# Minimal dependency-free YAML reader for flat 'key: value' lines under a section.
+yget() {
+    local section="$1" key="$2"
+    awk -v sec="$section" -v key="$key" '
+        /^[a-zA-Z0-9_]+:/ { cur=$1; sub(":","",cur) }
+        $0 ~ "^[[:space:]]+" key ":" {
+            if (cur==sec) {
+                sub("^[[:space:]]*" key ":[[:space:]]*", "")
+                gsub(/^["'"'"']|["'"'"']$/, "")
+                sub(/[[:space:]]*#.*$/, "")
+                gsub(/[[:space:]]+$/, "")
+                print; exit
+            }
+        }
+    ' "${CONFIG_FILE}"
+}
+
+PG_INSTALL="$(yget paths pg_install)"
+DBGEN_DIR="$(yget paths dbgen_dir)"
+DB_NAME="$(yget database name)"
+TPCH_SCALE="$(yget tpch scale)"
 echo "Loaded config: ${CONFIG_FILE}"
 
 PGBIN=${PG_INSTALL}/bin

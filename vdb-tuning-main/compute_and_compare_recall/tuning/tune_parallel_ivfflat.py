@@ -33,6 +33,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent                    # tuning/
 RECALL_DIR = SCRIPT_DIR.parent                                  # compute_and_compare_recall/
 PROJECT_ROOT = RECALL_DIR.parent                                # vdb-tuning-main/
 
+# Central machine-specific config (paths) from config.yaml at the repo root.
+sys.path.insert(0, str(PROJECT_ROOT.parent))  # config_loader lives at ~/vdb_tuning (repo root)
+from config_loader import get_path  # noqa: E402
+
 # === DB CONFIG ===
 DB_CONFIG = {
     "dbname": "mydb",
@@ -42,12 +46,13 @@ DB_CONFIG = {
 }
 
 # PostgreSQL paths
-PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
+PG_INSTALL = get_path("pg_install")
+PG_CTL_PATH = shutil.which("pg_ctl") or f"{PG_INSTALL}/bin/pg_ctl"
 _pgdata_result = subprocess.run(
     "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
 )
-PG_DATA_DIR = _pgdata_result.stdout.strip() or "/mnt/nvme/pgdata"
-SNAPSHOT_DIR = Path("/mnt/nvme/saved_indexes")
+PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
+SNAPSHOT_DIR = Path(get_path("snapshot_dir"))
 
 # Load NUMA config from experiment_config.json if available
 _config_path = PROJECT_ROOT / "TPCH" / "code" / "experiment_config.json"
@@ -62,7 +67,7 @@ else:
     NUMA_NODE = "0"
 
 # Parallel pgvector source path (one level above PROJECT_DIR)
-PGVECTOR_PARALLEL_DIR = PROJECT_ROOT.parent / "postgres" / "postgres" / "pgvector_modified_final"
+PGVECTOR_PARALLEL_DIR = Path(get_path("pgvector_parallel"))
 
 # === DATASET CONFIGS ===
 DATASETS = {
@@ -133,7 +138,7 @@ def compile_parallel_pgvector():
         sys.exit(1)
 
     print(f"  Compiling parallel pgvector from {PGVECTOR_PARALLEL_DIR}...")
-    env_prefix = "export PATH=/usr/local/pgsql/bin:$PATH"
+    env_prefix = f"export PATH={PG_INSTALL}/bin:$PATH"
     result = subprocess.run(
         f"cd {PGVECTOR_PARALLEL_DIR} && {env_prefix} && make clean > /dev/null 2>&1; make -j$(nproc) && make install",
         shell=True, capture_output=True, text=True,

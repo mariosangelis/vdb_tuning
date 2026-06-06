@@ -39,6 +39,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent                    # tuning/
 RECALL_DIR = SCRIPT_DIR.parent                                  # compute_and_compare_recall/
 PROJECT_ROOT = RECALL_DIR.parent                                # vdb-tuning-main/
 
+# Central machine-specific config (paths) from config.yaml at the repo root.
+sys.path.insert(0, str(PROJECT_ROOT.parent))  # config_loader lives at ~/vdb_tuning (repo root)
+from config_loader import get_path  # noqa: E402
+
 # === DB CONFIG ===
 DB_CONFIG = {
     "dbname": "mydb",
@@ -47,16 +51,17 @@ DB_CONFIG = {
     "port": "5432"
 }
 
-# PostgreSQL paths
-PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
+# PostgreSQL paths (from config.yaml; PG_CTL/PGDATA still auto-detected first)
+PG_INSTALL = get_path("pg_install")
+PG_CTL_PATH = shutil.which("pg_ctl") or f"{PG_INSTALL}/bin/pg_ctl"
 _pgdata_result = subprocess.run(
     "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
 )
-PG_DATA_DIR = _pgdata_result.stdout.strip() or "/mnt/nvme/pgdata"
-SNAPSHOT_DIR = Path("/mnt/nvme/saved_indexes")
+PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
+SNAPSHOT_DIR = Path(get_path("snapshot_dir"))
 
 # === TUNING PARAMETERS ===
-LISTS_TO_TEST = [32768]
+LISTS_TO_TEST = [8192]
 
 # Probes to search through (ascending order)
 PROBES_TO_TEST = [1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 35, 40, 50, 60, 80,
@@ -115,8 +120,8 @@ if _config_path.exists():
 else:
     NUMA_NODE = "0"
 
-# Default pgvector source path
-PGVECTOR_DEFAULT_DIR = PROJECT_ROOT.parent / "postgres" / "postgres" / "pgvector"
+# Default pgvector source path (from config.yaml)
+PGVECTOR_DEFAULT_DIR = Path(get_path("pgvector_default"))
 
 
 def compile_default_pgvector():
@@ -125,7 +130,7 @@ def compile_default_pgvector():
         print(f"  WARNING: Default pgvector not found at {PGVECTOR_DEFAULT_DIR}, skipping compile")
         return
     print(f"  Compiling default pgvector from {PGVECTOR_DEFAULT_DIR}...")
-    env_prefix = "export PATH=/usr/local/pgsql/bin:$PATH"
+    env_prefix = f"export PATH={PG_INSTALL}/bin:$PATH"
     result = subprocess.run(
         f"cd {PGVECTOR_DEFAULT_DIR} && {env_prefix} && make clean > /dev/null 2>&1; make -j$(nproc) && make install",
         shell=True, capture_output=True, text=True,
