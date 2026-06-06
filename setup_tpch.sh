@@ -25,7 +25,7 @@ echo "  DBGEN_DIR = ${DBGEN_DIR}"
 echo "  DB_NAME   = ${DB_NAME}"
 echo "========================================"
 
-echo "[1/4] Cloning and compiling dbgen..."
+echo "[1/5] Cloning and compiling dbgen..."
 mkdir -p "${DBGEN_PARENT}"
 cd "${DBGEN_PARENT}"
 if [ ! -d "${DBGEN_DIR}" ]; then
@@ -36,14 +36,14 @@ make clean > /dev/null 2>&1 || true
 make -j"$(nproc)"
 echo "  Done."
 
-echo "[2/4] Generating SF${TPCH_SCALE} data..."
+echo "[2/5] Generating SF${TPCH_SCALE} data..."
 ./dbgen -s "${TPCH_SCALE}" -f
 # Remove trailing delimiter that dbgen adds
 sed -i 's/|$//' *.tbl
 echo "  Generated:"
 ls -lh *.tbl
 
-echo "[3/4] Creating TPC-H tables and loading data..."
+echo "[3/5] Creating TPC-H tables and loading data..."
 chmod 644 "${DBGEN_DIR}"/*.tbl
 
 cat > /tmp/create_tpch.sql << 'SQLEOF'
@@ -60,7 +60,7 @@ SQLEOF
 su - postgres -c "export PATH=${PGBIN}:\$PATH && psql ${DB_NAME} -f /tmp/create_tpch.sql"
 echo "  Tables created."
 
-echo "[4/4] Loading data with COPY..."
+echo "[4/5] Loading data with COPY..."
 cat > /tmp/load_tpch.sql << SQLEOF
 \copy region FROM '${DBGEN_DIR}/region.tbl' WITH (DELIMITER '|', FORMAT csv);
 \copy nation FROM '${DBGEN_DIR}/nation.tbl' WITH (DELIMITER '|', FORMAT csv);
@@ -74,6 +74,29 @@ ANALYZE;
 SQLEOF
 
 su - postgres -c "export PATH=${PGBIN}:\$PATH && psql ${DB_NAME} -f /tmp/load_tpch.sql"
+
+echo "[5/5] Creating TPC-H secondary indexes (benchbase-style)..."
+cat > /tmp/index_tpch.sql << 'SQLEOF'
+CREATE INDEX IF NOT EXISTS l_ok ON lineitem (l_orderkey ASC);
+CREATE INDEX IF NOT EXISTS l_pk ON lineitem (l_partkey ASC);
+CREATE INDEX IF NOT EXISTS l_sk ON lineitem (l_suppkey ASC);
+CREATE INDEX IF NOT EXISTS l_sd ON lineitem (l_shipdate ASC);
+CREATE INDEX IF NOT EXISTS l_cd ON lineitem (l_commitdate ASC);
+CREATE INDEX IF NOT EXISTS l_rd ON lineitem (l_receiptdate ASC);
+CREATE INDEX IF NOT EXISTS l_pk_sk ON lineitem (l_partkey, l_suppkey);
+CREATE INDEX IF NOT EXISTS l_sk_pk ON lineitem (l_suppkey, l_partkey);
+CREATE INDEX IF NOT EXISTS ps_pk ON partsupp (ps_partkey ASC);
+CREATE INDEX IF NOT EXISTS ps_sk ON partsupp (ps_suppkey ASC);
+CREATE INDEX IF NOT EXISTS o_ck ON orders (o_custkey ASC);
+CREATE INDEX IF NOT EXISTS o_od ON orders (o_orderdate ASC);
+CREATE INDEX IF NOT EXISTS c_nk ON customer (c_nationkey ASC);
+CREATE INDEX IF NOT EXISTS s_nk ON supplier (s_nationkey ASC);
+CREATE INDEX IF NOT EXISTS n_rk ON nation (n_regionkey ASC);
+ANALYZE;
+SQLEOF
+
+su - postgres -c "export PATH=${PGBIN}:\$PATH && psql ${DB_NAME} -f /tmp/index_tpch.sql"
+echo "  Secondary indexes created and ANALYZE complete."
 
 echo ""
 echo "Verifying:"
