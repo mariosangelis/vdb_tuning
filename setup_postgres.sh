@@ -72,7 +72,7 @@ export PATH=${PG_INSTALL}/bin:$PATH
 id -u postgres > /dev/null 2>&1 || useradd -m -s /bin/bash postgres
 mkdir -p "${PG_DATA}"
 chown postgres:postgres "${PG_DATA}"
-chmod 700 "${PG_DATA}"
+# chmod 700 "${PG_DATA}"
 su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && initdb -D ${PG_DATA}" > /dev/null 2>&1
 echo "  initdb at ${PG_DATA}"
 
@@ -89,18 +89,18 @@ echo "[6/8] Copying postgresql.conf from repo..."
 cp "${PG_CONF_SRC}" "${PG_DATA}/postgresql.conf"
 chown postgres:postgres "${PG_DATA}/postgresql.conf"
 
-cat > "${PG_DATA}/pg_hba.conf" << 'HBA'
-local   all   all                 trust
-host    all   all   127.0.0.1/32  trust
-host    all   all   ::1/128       trust
-HBA
-chown postgres:postgres "${PG_DATA}/pg_hba.conf"
-echo "  postgresql.conf copied, pg_hba.conf set to trust."
+# cat > "${PG_DATA}/pg_hba.conf" << 'HBA'
+# local   all   all                 trust
+# host    all   all   127.0.0.1/32  trust
+# host    all   all   ::1/128       trust
+# HBA
+# chown postgres:postgres "${PG_DATA}/pg_hba.conf"
+# echo "  postgresql.conf copied, pg_hba.conf set to trust."
 
 # Step 7: Start postgres, create db, extensions
 echo "[7/8] Starting PostgreSQL and creating database '${DB_NAME}'..."
 su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && pg_ctl -D ${PG_DATA} -l /tmp/logfile start" > /dev/null 2>&1
-sleep 3
+sleep 5
 su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && createdb ${DB_NAME}"
 for ext in vector pg_prewarm pg_buffercache; do
     su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && psql ${DB_NAME} -c 'CREATE EXTENSION IF NOT EXISTS ${ext};'"
