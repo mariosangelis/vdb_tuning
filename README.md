@@ -98,6 +98,9 @@ make distclean 2>/dev/null
 # Configure with debug flags
 ./configure --enable-debug --enable-cassert CFLAGS="-O1 -fno-omit-frame-pointer"
 
+# Configure release build
+./configure
+
 # Build and install
 make -j$(nproc)
 sudo make install
@@ -109,7 +112,7 @@ source ~/.bashrc
 
 Default install prefix is `/usr/local/pgsql`. `sudo` is required for `make install`.
 
-### 3.1 Install pg_buffercache Extension (optional, for monitoring)
+### 3.1 Install pg_buffercache and pg_prewarm extensions (optional, for monitoring)
 
 ```bash
 cd ~/vdb_tuning/postgres/postgres/contrib/pg_buffercache
@@ -117,6 +120,11 @@ make
 sudo make install
 ```
 
+```bash
+cd ~/vdb_tuning/postgres/postgres/contrib/pg_prewarm
+make
+sudo make install
+```
 ---
 
 ## 4. Compile and Install pgvector 
@@ -204,6 +212,7 @@ pg_ctl -D $PGDATA -l /tmp/logfile start
 createdb mydb
 psql -d mydb -c "CREATE EXTENSION IF NOT EXISTS vector;"
 psql -d mydb -c "CREATE EXTENSION IF NOT EXISTS pg_buffercache;"
+psql -d mydb -c "CREATE EXTENSION IF NOT EXISTS pg_prewarm;"
 
 # Verify
 psql -d mydb -c "SELECT extversion FROM pg_extension WHERE extname = 'vector';"
@@ -254,6 +263,7 @@ sudo su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH; pg_restore -j 8 
 
 # check
 psql -d mydb -c "\dt+"
+psql -d mydb -P pager=off -c "SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public';"
 psql -d mydb -c "SELECT count(*) FROM gist_data;" # gist 1M
 psql -d mydb -c "SELECT count(*) FROM lineitem;" # if sf10: ~60M
 psql -d mydb -c "\d gist_data" # is there an index
