@@ -409,7 +409,7 @@ def load_exact_results(dataset, k):
 def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, param_name, param_value, mode="warm"):
     """
     Run queries with given param, compute recall and QPS.
-    Returns (recall, qps, avg_latency_ms).
+    Returns (recall, qps, avg_latency_ms, query_times_ms).
     """
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
@@ -429,15 +429,19 @@ def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, 
         cur.execute(f"SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}")
         cur.fetchall()
 
-    # Measurement phase: compute both recall and timing
+    # Measurement phase: compute both recall and timing per query
     total_recall = 0.0
     num_queries = min(QPS_MEASUREMENT_QUERIES, len(workload))
+    query_times = []
 
-    start_time = time.time()
     for i in range(num_queries):
         vec_str = workload[i % len(workload)]
+
+        q_start = time.time()
         cur.execute(f"SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}")
         result_ids = set(row[0] for row in cur.fetchall())
+        q_elapsed = time.time() - q_start
+        query_times.append(round(q_elapsed * 1000, 3))  # ms
 
         # Compute recall against exact results
         if i < len(exact_results):
@@ -445,20 +449,20 @@ def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, 
             hits = len(result_ids & exact_ids)
             total_recall += hits / k
 
-    total_time = time.time() - start_time
-
+    total_time = sum(query_times) / 1000  # back to seconds
     avg_recall = total_recall / min(num_queries, len(exact_results))
-    qps = num_queries / total_time
-    avg_latency_ms = (total_time / num_queries) * 1000
+    qps = num_queries / total_time if total_time > 0 else 0
+    avg_latency_ms = total_time / num_queries * 1000 if num_queries > 0 else 0
 
     cur.close()
     conn.close()
 
-    return avg_recall, qps, avg_latency_ms
-def sweep_recall_qps(workload, exact_results, table_name, distance_op, k, index_type, mode, num_workers=4):
+    return avg_recall, qps, avg_latency_ms, query_times
+def sweep_recall_qps(workload, exact_results, table_name, distance_op, k, index_type, mode, num_workers=4, num_iterations=1):
     """
     Sweep probes/ef_search values and measure recall + QPS at each point.
     Returns list of (param_value, recall, qps, avg_latency_ms) tuples.
+    num_iterations: number of times to repeat the workload per param setting.
     """
     if index_type in ("ivfflat", "parallel_ivfflat"):
         param_name = "ivfflat.probes"
@@ -476,25 +480,55 @@ def sweep_recall_qps(workload, exact_results, table_name, distance_op, k, index_
     sweep_results = []
 
     for pval in param_list:
-        # In cold mode, restart postgres and drop caches before each measurement
-        if mode == "cold":
-            restart_postgres_cold()
+        all_query_times_ms = []
+        all_recalls = []
 
-        recall, qps, latency = compute_recall_and_qps(
-            workload, exact_results, table_name, distance_op, k, param_name, pval, mode
-        )
+        for iteration in range(num_iterations):
+            # In cold mode, restart postgres and drop caches before each iteration
+            if mode == "cold":
+                restart_postgres_cold()
+            elif mode == "warm" and iteration > 0:
+                # Re-prewarm for consistent state on subsequent iterations
+                prewarm_index(table_name)
+
+            recall, qps, latency, query_times_ms = compute_recall_and_qps(
+                workload, exact_results, table_name, distance_op, k, param_name, pval, mode
+            )
+            all_query_times_ms.extend(query_times_ms)
+            all_recalls.append(recall)
+
+            if num_iterations > 1:
+                iter_avg = sum(query_times_ms) / len(query_times_ms) if query_times_ms else 0
+                print(f"      iter {iteration+1}/{num_iterations}: recall={recall:.4f}, avg={iter_avg:.2f}ms")
+
+        # Compute aggregated stats across all iterations
+        avg_recall = sum(all_recalls) / len(all_recalls)
+        total_time_s = sum(all_query_times_ms) / 1000
+        num_queries_total = len(all_query_times_ms)
+        avg_latency = sum(all_query_times_ms) / num_queries_total if num_queries_total else 0
+        agg_qps = num_queries_total / total_time_s if total_time_s > 0 else 0
+
+        sorted_times = sorted(all_query_times_ms)
+        median_ms = sorted_times[len(sorted_times) // 2] if sorted_times else 0
+        p95_ms = sorted_times[int(len(sorted_times) * 0.95)] if sorted_times else 0
+        p99_ms = sorted_times[int(len(sorted_times) * 0.99)] if sorted_times else 0
 
         sweep_results.append({
             param_label: pval,
-            "recall": round(recall, 4),
-            "qps": round(qps, 2),
-            "avg_latency_ms": round(latency, 2),
+            "recall": round(avg_recall, 4),
+            "qps": round(agg_qps, 2),
+            "avg_latency_ms": round(avg_latency, 2),
+            "median_latency_ms": round(median_ms, 2),
+            "p95_latency_ms": round(p95_ms, 2),
+            "p99_latency_ms": round(p99_ms, 2),
+            "num_iterations": num_iterations,
+            "query_times_ms": all_query_times_ms,
         })
 
-        print(f"    {param_label}={pval:>5}: recall={recall:.4f}, QPS={qps:.1f}, latency={latency:.2f}ms")
+        print(f"    {param_label}={pval:>5}: recall={avg_recall:.4f}, QPS={agg_qps:.1f}, avg={avg_latency:.2f}ms, median={median_ms:.2f}ms, p95={p95_ms:.2f}ms")
 
         # Early stop if we've exceeded max recall target
-        if recall >= max(RECALL_TARGETS) + 0.01:
+        if avg_recall >= max(RECALL_TARGETS) + 0.01:
             break
 
     return sweep_results
@@ -543,7 +577,7 @@ def find_recall_qps_points(sweep_results, index_type):
                 })
 
     return points
-def run_for_index(dataset, index_type, mode, dataset_cfg, workload, exact_results, num_workers=None, skip_snapshot=False):
+def run_for_index(dataset, index_type, mode, dataset_cfg, workload, exact_results, num_workers=None, skip_snapshot=False, num_iterations=1):
     """Run the full recall-vs-QPS measurement for one index type.
     
     If num_workers is specified (for parallel_ivfflat), sets NUM_WORKERS before compiling.
@@ -600,9 +634,9 @@ def run_for_index(dataset, index_type, mode, dataset_cfg, workload, exact_result
         restart_postgres_cold()
 
     # Step 5: Sweep probes/ef_search
-    print(f"\n  Sweeping parameters (measuring recall + QPS)...")
+    print(f"\n  Sweeping parameters (measuring recall + QPS, iterations={num_iterations})...")
     sweep_results = sweep_recall_qps(
-        workload, exact_results, table_name, distance_op, k, index_type, mode, num_workers=(num_workers or 4)
+        workload, exact_results, table_name, distance_op, k, index_type, mode, num_workers=(num_workers or 4), num_iterations=num_iterations
     )
 
     # Step 6: Extract recall-vs-QPS points
@@ -646,10 +680,13 @@ def main():
                         help="Override K value (default: from dataset config)")
     parser.add_argument("--workers", type=int, nargs='+', default=None,
                         help="Override worker counts for parallel_ivfflat (default: 4 8 12)")
+    parser.add_argument("--num-iterations", type=int, default=1,
+                        help="Number of times to repeat the workload per param setting (default: 1)")
     args = parser.parse_args()
 
     dataset = args.dataset
     mode = args.mode
+    num_iterations = args.num_iterations
     index_types = ["ivfflat", "hnsw", "parallel_ivfflat"] if args.index == "all" else [args.index]
     worker_counts = args.workers if args.workers else PARALLEL_WORKER_COUNTS
 
@@ -664,6 +701,7 @@ def main():
     print(f"  Index types: {index_types}")
     if "parallel_ivfflat" in index_types:
         print(f"  Parallel worker counts: {worker_counts}")
+    print(f"  Iterations per param: {num_iterations}")
     print(f"  Recall targets: {RECALL_TARGETS}")
     print(f"{'#'*70}")
 
@@ -684,7 +722,7 @@ def main():
             # Load snapshot only once for the first worker count
             for i, nw in enumerate(worker_counts):
                 result_key = f"parallel_ivfflat_w{nw}"
-                result = run_for_index(dataset, idx_type, mode, dataset_cfg, workload, exact_results, num_workers=nw, skip_snapshot=(i > 0))
+                result = run_for_index(dataset, idx_type, mode, dataset_cfg, workload, exact_results, num_workers=nw, skip_snapshot=(i > 0), num_iterations=num_iterations)
                 if result:
 
                     all_results[result_key] = result
@@ -695,7 +733,7 @@ def main():
                         json.dump({result_key: result}, f, indent=2)
                     print(f"\n  Saved: {output_file}")
         else:
-            result = run_for_index(dataset, idx_type, mode, dataset_cfg, workload, exact_results)
+            result = run_for_index(dataset, idx_type, mode, dataset_cfg, workload, exact_results, num_iterations=num_iterations)
             if result:
                 all_results[idx_type] = result
 

@@ -226,8 +226,18 @@ def plot_recall_qps(results, dataset, mode, output_path):
         if not sweep:
             continue
 
-        recalls = [pt["recall"] if "recall" in pt else pt.get("actual_recall", 0) for pt in sweep]
-        qps_vals = [pt["qps"] for pt in sweep]
+        # Filter to only include points within the visible x-range
+        x_min, x_max = 0.65, 1.0
+        recalls = []
+        qps_vals = []
+        for pt in sweep:
+            r = pt["recall"] if "recall" in pt else pt.get("actual_recall", 0)
+            if r >= x_min:
+                recalls.append(r)
+                qps_vals.append(pt["qps"])
+
+        if not recalls:
+            continue
 
         style = get_style(series_key)
         label = get_label(series_key, data)

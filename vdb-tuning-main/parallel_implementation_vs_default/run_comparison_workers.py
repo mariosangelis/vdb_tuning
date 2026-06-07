@@ -35,6 +35,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SCRIPT_DIR.parent
 RECALL_DIR = PROJECT_DIR / "compute_and_compare_recall"
 
+# Central machine-specific config (paths) from config.yaml at the repo root.
+sys.path.insert(0, str(PROJECT_DIR.parent))  # config_loader lives at ~/vdb_tuning (repo root)
+from config_loader import get_path  # noqa: E402
+
 # === LOAD GLOBAL EXPERIMENT CONFIG ===
 CONFIG_PATH = PROJECT_DIR / "TPCH" / "code" / "experiment_config.json"
 with open(CONFIG_PATH, "r") as f:
@@ -42,15 +46,15 @@ with open(CONFIG_PATH, "r") as f:
 HW_CFG = CONFIG["hardware"]
 PG_NUMA_NODES = HW_CFG["postgres_numa_nodes"]
 
-# pgvector directories
-PGVECTOR_DEFAULT = Path("/users/mangelis/vdb_tuning/postgres/postgres/pgvector")
-PGVECTOR_PARALLEL = Path("/users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final")
+# pgvector directories (from config.yaml)
+PGVECTOR_DEFAULT = Path(get_path("pgvector_default"))
+PGVECTOR_PARALLEL = Path(get_path("pgvector_parallel"))
 
 # The ivfscan.c file where NUM_WORKERS is defined
 IVFSCAN_PATH = PGVECTOR_PARALLEL / "src" / "ivfscan.c"
 
-# Snapshot directory
-SNAPSHOT_DIR = Path("/mnt/nvme/saved_indexes")
+# Snapshot directory (from config.yaml)
+SNAPSHOT_DIR = Path(get_path("snapshot_dir"))
 
 # Worker counts to test
 WORKER_COUNTS = [4, 8, 12]
@@ -87,12 +91,13 @@ DB_CONFIG = {
 
 K = 100
 
-# PostgreSQL paths
-PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
+# PostgreSQL paths (from config.yaml)
+PG_INSTALL = get_path("pg_install")
+PG_CTL_PATH = shutil.which("pg_ctl") or f"{PG_INSTALL}/bin/pg_ctl"
 _pgdata_result = subprocess.run(
     "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
 )
-PG_DATA_DIR = _pgdata_result.stdout.strip() or "/mnt/nvme/pgdata"
+PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
 
 
 def get_snapshot_path(dataset, index_type, params):
@@ -225,7 +230,7 @@ def set_num_workers(n):
 def compile_pgvector(pgvector_dir):
     """Compile and install pgvector from given directory."""
     print(f"  Compiling pgvector from {pgvector_dir}...")
-    env_cmd = "export PATH=/usr/local/pgsql/bin:$PATH && export PG_CONFIG=/usr/local/pgsql/bin/pg_config"
+    env_cmd = f"export PATH={PG_INSTALL}/bin:$PATH && export PG_CONFIG={PG_INSTALL}/bin/pg_config"
     result = subprocess.run(
         f"cd {pgvector_dir} && {env_cmd} && make clean > /dev/null 2>&1 && make CFLAGS='-O2 -fno-omit-frame-pointer -g' > /dev/null 2>&1 && make install > /dev/null 2>&1",
         shell=True
@@ -281,13 +286,13 @@ def setup_index(dataset, lists, table_name, index_ops, index_type="ivfflat"):
 
 
 def run_workload(workload, probes, table_name, distance_op):
-    """Run all queries with given probes setting, return total execution time."""
+    """Run all queries with given probes setting, return list of per-query execution times (seconds)."""
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
 
     cur.execute(f"SET ivfflat.probes = {probes}")
 
-    total_exec_time = 0.0
+    query_times = []
 
     for i in range(len(workload)):
         vec_str = workload[i]
@@ -300,24 +305,26 @@ def run_workload(workload, probes, table_name, distance_op):
             line = row[0].strip()
             if 'Execution Time:' in line:
                 parts = line.split()
-                elapsed_time = float(parts[2]) / 1000.0
-                total_exec_time += elapsed_time
+                elapsed_time = float(parts[2]) / 1000.0  # ms -> seconds
+                query_times.append(elapsed_time)
 
     cur.close()
     conn.close()
-    return total_exec_time
+    return query_times
 
 
 def run_implementation(name, pgvector_dir, workload, recall_configs, dataset, lists,
                        table_name, index_ops, distance_op, mode="cold",
-                       index_type="ivfflat", num_workers=None, no_rebuild=False):
+                       index_type="ivfflat", num_workers=None, no_rebuild=False,
+                       num_iterations=1):
     """Run full benchmark for one pgvector implementation.
 
     mode: "cold" = restart + drop caches before each probe measurement
           "warm" = prewarm once after index setup, no restart between probes
+    num_iterations: number of times to repeat the full workload per probe setting
     """
     print(f"\n{'='*60}")
-    print(f"Running: {name} (mode={mode})")
+    print(f"Running: {name} (mode={mode}, iterations={num_iterations})")
     if num_workers:
         print(f"  Workers: {num_workers}")
     print(f"{'='*60}")
@@ -351,19 +358,41 @@ def run_implementation(name, pgvector_dir, workload, recall_configs, dataset, li
         target = config["target_recall"]
         probes = config["probes"]
 
-        if mode == "cold":
-            # Cold: restart and clear caches before each probe measurement
-            restart_postgres(quiet=True)
-        # Warm: do nothing, index is already in shared buffers
+        all_query_times_ms = []
 
-        total_time = run_workload(workload, probes, table_name, distance_op)
-        avg_time_ms = (total_time / len(workload)) * 1000
+        for iteration in range(num_iterations):
+            if mode == "cold":
+                # Cold: restart and clear caches before each iteration
+                restart_postgres(quiet=True)
+            elif mode == "warm" and iteration > 0:
+                # Warm: re-prewarm before subsequent iterations to ensure consistent state
+                prewarm_table_and_index(table_name)
+
+            query_times = run_workload(workload, probes, table_name, distance_op)
+            query_times_ms_iter = [round(t * 1000, 3) for t in query_times]
+            all_query_times_ms.extend(query_times_ms_iter)
+
+            if num_iterations > 1:
+                iter_avg = sum(query_times_ms_iter) / len(query_times_ms_iter) if query_times_ms_iter else 0
+                print(f"    iter {iteration+1}/{num_iterations}: avg={iter_avg:.2f}ms")
+
+        total_time = sum(all_query_times_ms) / 1000  # back to seconds
+        avg_time_ms = sum(all_query_times_ms) / len(all_query_times_ms) if all_query_times_ms else 0
+        sorted_times = sorted(all_query_times_ms)
+        median_time_ms = sorted_times[len(sorted_times) // 2] if sorted_times else 0
+        p95_time_ms = sorted_times[int(len(sorted_times) * 0.95)] if sorted_times else 0
+        p99_time_ms = sorted_times[int(len(sorted_times) * 0.99)] if sorted_times else 0
 
         results.append({
             "target_recall": target,
             "probes": probes,
+            "num_iterations": num_iterations,
             "total_time_s": round(total_time, 4),
-            "avg_time_ms": round(avg_time_ms, 2)
+            "avg_time_ms": round(avg_time_ms, 2),
+            "median_time_ms": round(median_time_ms, 2),
+            "p95_time_ms": round(p95_time_ms, 2),
+            "p99_time_ms": round(p99_time_ms, 2),
+            "query_times_ms": all_query_times_ms,
         })
 
         print(f"  {target:<10} {probes:<10} {total_time:<15.4f} {avg_time_ms:<15.2f}")
@@ -381,6 +410,8 @@ def main():
                         help="Skip the default pgvector run, only test parallel variants")
     parser.add_argument("--no-rebuild", action="store_true",
                         help="Don't rebuild/restore the index, reuse existing one")
+    parser.add_argument("--num-iterations", type=int, default=1,
+                        help="Number of times to repeat the workload per probe setting (default: 1)")
     args = parser.parse_args()
 
     dataset = args.dataset
@@ -422,7 +453,9 @@ def main():
     print(f"Mode: {mode}")
     print(f"K = {K}")
     print(f"Lists = {lists}")
+    num_iterations = args.num_iterations
     print(f"Worker counts to test: {WORKER_COUNTS}")
+    print(f"Iterations per probe: {num_iterations}")
     print(f"Probe source: {recall_qps_file.name}")
     print(f"Recall targets: {[r['target_recall'] for r in recall_configs]}")
     print(f"Probes:         {[r['probes'] for r in recall_configs]}")
@@ -451,6 +484,7 @@ def main():
     output["k"] = K
     output["lists"] = lists
     output["workload_size"] = len(workload)
+    output["num_iterations"] = num_iterations
     output["worker_counts_tested"] = WORKER_COUNTS
 
     # Run default implementation (only once)
@@ -467,7 +501,8 @@ def main():
             distance_op=distance_op,
             mode=mode,
             index_type="ivfflat",
-            no_rebuild=args.no_rebuild
+            no_rebuild=args.no_rebuild,
+            num_iterations=num_iterations
         )
         output["default"] = default_results
         # Save incrementally
@@ -510,7 +545,8 @@ def main():
             mode=mode,
             index_type="parallel_ivfflat",
             num_workers=num_workers,
-            no_rebuild=not should_rebuild
+            no_rebuild=not should_rebuild,
+            num_iterations=num_iterations
         )
         first_parallel = False
         output["parallel_by_workers"][key] = parallel_results
