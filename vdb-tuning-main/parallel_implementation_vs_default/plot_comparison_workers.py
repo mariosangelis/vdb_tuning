@@ -95,9 +95,9 @@ def main():
     # Create figure
     fig, ax = plt.subplots(1, 1, figsize=(10, 7))
 
-    # Plot default
+    # Plot default (use actual_recall for x-axis to match recall_qps plot)
     if default_results:
-        recalls = [r["target_recall"] for r in default_results]
+        recalls = [r.get("actual_recall", r["target_recall"]) for r in default_results]
         latencies = [r["avg_time_ms"] for r in default_results]
         style = STYLES["default"]
         ax.plot(recalls, latencies,
@@ -105,10 +105,10 @@ def main():
                 linestyle=style["linestyle"], linewidth=2, markersize=8,
                 label=style["label"], zorder=5)
 
-    # Plot each worker count
+    # Plot each worker count (use actual_recall for x-axis)
     for worker_key in sorted(parallel_by_workers.keys(), key=int):
         results = parallel_by_workers[worker_key]
-        recalls = [r["target_recall"] for r in results]
+        recalls = [r.get("actual_recall", r["target_recall"]) for r in results]
         latencies = [r["avg_time_ms"] for r in results]
         style = STYLES.get(worker_key, STYLES["4"])
         ax.plot(recalls, latencies,
@@ -139,7 +139,7 @@ def main():
                 speedup = d["avg_time_ms"] / p["avg_time_ms"]
                 if speedup > 1.05:
                     ax.annotate(f"{speedup:.1f}x",
-                                xy=(p["target_recall"], p["avg_time_ms"]),
+                                xy=(p.get("actual_recall", p["target_recall"]), p["avg_time_ms"]),
                                 xytext=(0, -15), textcoords='offset points',
                                 fontsize=9, ha='center', color=STYLES[best_worker]["color"],
                                 fontweight='bold')

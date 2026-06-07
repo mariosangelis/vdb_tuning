@@ -356,6 +356,7 @@ def run_implementation(name, pgvector_dir, workload, recall_configs, dataset, li
 
     for config in recall_configs:
         target = config["target_recall"]
+        actual_recall = config.get("actual_recall", target)
         probes = config["probes"]
 
         all_query_times_ms = []
@@ -385,6 +386,7 @@ def run_implementation(name, pgvector_dir, workload, recall_configs, dataset, li
 
         results.append({
             "target_recall": target,
+            "actual_recall": actual_recall,
             "probes": probes,
             "num_iterations": num_iterations,
             "total_time_s": round(total_time, 4),
