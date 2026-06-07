@@ -120,9 +120,6 @@ RECALL_TARGETS = [0.7, 0.8, 0.9, 0.95, 0.96, 0.98]
 IVFFLAT_PROBES_LIST = [30, 35, 40, 50, 60, 80, 100, 120, 150, 200, 300, 400, 500, 700, 1000]
 HNSW_EF_SEARCH_LIST = [1, 10, 30, 40, 50, 60, 70, 80, 90, 100, 120, 150, 200, 250, 300, 400, 500, 600, 800, 1000, 1500, 2000]
 
-# QPS measurement settings
-QPS_MEASUREMENT_QUERIES = 200  # number of queries to run for QPS measurement
-QPS_WARMUP_QUERIES = 20  # warmup queries before timing
 def wait_for_postgres(max_attempts=60):
     for attempt in range(max_attempts):
         try:
@@ -408,7 +405,8 @@ def load_exact_results(dataset, k):
     sys.exit(1)
 def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, param_name, param_value, mode="warm"):
     """
-    Run queries with given param, compute recall and QPS.
+    Run ALL queries in workload, compute recall and QPS.
+    Prewarming is handled externally via pg_prewarm (for warm mode).
     Returns (recall, qps, avg_latency_ms, query_times_ms).
     """
     conn = psycopg2.connect(**DB_CONFIG)
@@ -423,19 +421,13 @@ def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, 
     cur.execute("SET enable_seqscan = off")
     cur.execute("SET max_parallel_workers_per_gather = 200")
 
-    # Warmup phase
-    for i in range(min(QPS_WARMUP_QUERIES, len(workload))):
-        vec_str = workload[i]
-        cur.execute(f"SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}")
-        cur.fetchall()
-
-    # Measurement phase: compute both recall and timing per query
+    # Measurement phase: run all queries, compute recall and timing per query
     total_recall = 0.0
-    num_queries = min(QPS_MEASUREMENT_QUERIES, len(workload))
+    num_queries = len(workload)
     query_times = []
 
     for i in range(num_queries):
-        vec_str = workload[i % len(workload)]
+        vec_str = workload[i]
 
         q_start = time.time()
         cur.execute(f"SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}")
