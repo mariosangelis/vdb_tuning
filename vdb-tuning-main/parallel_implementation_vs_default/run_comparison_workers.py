@@ -435,10 +435,14 @@ def main():
         sys.exit(1)
     lists = tune_data["best_configuration"]["lists"]
 
-    # Load recall targets and probe values from recall_qps results
-    recall_qps_file = RECALL_DIR / "recall_qps_plots" / "results_recall_qps" / f"recall_qps_{dataset}_ivfflat_cold.json"
+    # Load recall targets and probe values from recall_qps results (try matching mode first, fallback to other)
+    recall_qps_file = RECALL_DIR / "recall_qps_plots" / "results_recall_qps" / f"recall_qps_{dataset}_ivfflat_{mode}.json"
     if not recall_qps_file.exists():
-        print(f"ERROR: {recall_qps_file} not found.")
+        # Fallback: try the other mode
+        fallback_mode = "cold" if mode == "warm" else "warm"
+        recall_qps_file = RECALL_DIR / "recall_qps_plots" / "results_recall_qps" / f"recall_qps_{dataset}_ivfflat_{fallback_mode}.json"
+    if not recall_qps_file.exists():
+        print(f"ERROR: No recall_qps_{dataset}_ivfflat_{{warm,cold}}.json found.")
         print("Run recall_qps_diagram.py first.")
         sys.exit(1)
 
