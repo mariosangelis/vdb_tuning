@@ -421,7 +421,7 @@ def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, 
     cur.execute("SET enable_seqscan = off")
     cur.execute("SET max_parallel_workers_per_gather = 200")
 
-    # Measurement phase: run all queries, compute recall and timing per query
+    # Measurement phase: run all queries with EXPLAIN ANALYZE, compute recall and timing per query
     total_recall = 0.0
     num_queries = len(workload)
     query_times = []
@@ -429,11 +429,24 @@ def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, 
     for i in range(num_queries):
         vec_str = workload[i]
 
-        q_start = time.time()
+        cur.execute(
+            f"EXPLAIN (ANALYZE, BUFFERS) SELECT id FROM {table_name} "
+            f"ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}"
+        )
+        explain_result = cur.fetchall()
+
+        # Parse execution time and result IDs from EXPLAIN output
+        exec_time_ms = 0.0
+        for row in explain_result:
+            line = row[0].strip()
+            if 'Execution Time:' in line:
+                exec_time_ms = float(line.split()[2])
+
+        query_times.append(round(exec_time_ms, 3))  # ms
+
+        # Re-run query without EXPLAIN to get result IDs for recall computation
         cur.execute(f"SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}")
         result_ids = set(row[0] for row in cur.fetchall())
-        q_elapsed = time.time() - q_start
-        query_times.append(round(q_elapsed * 1000, 3))  # ms
 
         # Compute recall against exact results
         if i < len(exact_results):
