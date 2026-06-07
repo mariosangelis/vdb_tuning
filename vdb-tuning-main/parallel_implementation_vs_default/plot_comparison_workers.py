@@ -84,9 +84,15 @@ def main():
     ds_info = DATASET_INFO.get(dataset, {"name": dataset, "distance": "Unknown"})
     mode_label = "Cold Cache" if mode == "cold" else "Warm Cache"
 
-    # Extract data points
-    default_results = data.get("default", None)
-    parallel_by_workers = data.get("parallel_by_workers", {})
+    # Recall targets to exclude from the plot
+    EXCLUDE_RECALLS = {0.96}
+
+    # Extract data points, filtering out excluded recall targets
+    default_results = [r for r in data.get("default", []) if r["target_recall"] not in EXCLUDE_RECALLS] or None
+    parallel_by_workers = {
+        k: [r for r in v if r["target_recall"] not in EXCLUDE_RECALLS]
+        for k, v in data.get("parallel_by_workers", {}).items()
+    }
 
     if not default_results and not parallel_by_workers:
         print("ERROR: No results found in the file.")
