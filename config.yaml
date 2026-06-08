@@ -1,55 +1,21 @@
-# ============================================================================
-# Central machine-specific configuration for the vdb_tuning experiments.
-#
-# EDIT THIS FILE per machine. Both the Python scripts (via config_loader.py)
-# and the shell setup scripts (via yq) read it, so all machine-specific
-# paths/flags live in ONE place.
-#
-# Example values for two machines are shown in comments.
-# ============================================================================
-
 paths:
-  # Root of the postgres source tree that gets compiled.
-  #   clnode* (CloudLab): /users/mangelis/vdb_tuning/postgres/postgres
-  #   vmageirakos box:    /local/home/vmageirakos/projects/vdb_tuning/postgres/postgres
-  pg_src: /local/home/vmageirakos/projects/vdb_tuning/postgres/postgres
-
-  # pgvector source dirs (usually <pg_src>/pgvector and <pg_src>/pgvector_modified_final).
-  pgvector_default:  /local/home/vmageirakos/projects/vdb_tuning/postgres/postgres/pgvector
-  pgvector_parallel: /local/home/vmageirakos/projects/vdb_tuning/postgres/postgres/pgvector_modified_final
-
-  # Where PostgreSQL is installed (make install --prefix).
+  pg_src: /users/mangelis/vdb_tuning/postgres/postgres
+  pgvector_default:  /users/mangelis/vdb_tuning/postgres/postgres/pgvector
+  pgvector_parallel: /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final
   pg_install: /usr/local/pgsql
-
-  # PostgreSQL data directory (initdb target). Put on fast storage.
-  #   clnode*:        /mnt/nvme/pgdata
-  #   vmageirakos:    /local/home/postgres/pgdata
-  pg_data: /local/home/postgres/pgdata
-
-  # Repo postgresql.conf to copy into pg_data.
-  pg_conf_src: /local/home/vmageirakos/projects/vdb_tuning/postgres_configurations/postgresql.conf
-
-  # Directory where PGDATA snapshots (tar.gz) are saved/loaded.
-  #   clnode*:        /mnt/nvme/saved_indexes
-  #   vmageirakos:    /local/home/vmageirakos/projects/vdb_tuning/saved_indexes
-  snapshot_dir: /local/home/vmageirakos/projects/vdb_tuning/saved_indexes
-
-  # tpch-dbgen location.
-  #   clnode*: /users/mangelis/tpch-dbgen
-  #   vmageirakos: /local/home/postgres/tpch-dbgen
-  dbgen_dir: /local/home/postgres/tpch-dbgen
+  pg_data: /mnt/nvme/pgdata
+  pg_conf_src: /users/mangelis/vdb_tuning/postgres_configurations/postgresql.conf
+  snapshot_dir: /mnt/nvme/saved_indexes
+  dbgen_dir: /users/mangelis/tpch-dbgen
 
 database:
   name: mydb
 
 build:
-  # Extra flags for ./configure (e.g. "--without-icu"). Empty string if none.
   configure_flags: "--without-icu"
 
 storage:
-  # true  -> mkfs + mount nvme_dev at nvme_mount (fresh CloudLab node).
-  # false -> skip; assume pg_data already lives on usable storage.
-  setup_nvme: false
+  setup_nvme: true
   nvme_dev: /dev/nvme0n1
   nvme_mount: /mnt/nvme
 
