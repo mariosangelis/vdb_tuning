@@ -1,0 +1,3 @@
+Results directory: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps
+Loaded 5 series: ['ivfflat', 'hnsw', 'parallel_ivfflat_w4', 'parallel_ivfflat_w8', 'parallel_ivfflat_w12']
+Plot saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/figures/recall_qps_gist_warm.png

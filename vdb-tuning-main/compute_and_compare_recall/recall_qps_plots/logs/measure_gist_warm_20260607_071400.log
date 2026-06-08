@@ -1,0 +1,252 @@
+######################################################################
+  Recall vs QPS Diagram
+  Dataset: gist, K: 100, Mode: warm
+  Index types: ['ivfflat', 'hnsw', 'parallel_ivfflat']
+  Parallel worker counts: [4, 8, 12]
+  Recall targets: [0.7, 0.8, 0.9, 0.95, 0.96, 0.98]
+######################################################################
+  Loading workload from /users/mangelis/vdb_tuning/vdb-tuning-main/gist_test_queries.txt...
+    Loaded 1000 query vectors
+  Loaded exact results: exact_search_results_1000_queries_gist_K_100.json (1000 queries)
+
+======================================================================
+  INDEX TYPE: IVFFLAT
+  Dataset: gist, Mode: warm
+======================================================================
+  Compiling pgvector (default) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Loading snapshot: gist_ivfflat_lists8192_pgdata.tar.gz...
+    Loaded in 116.7s
+  Prewarming index...
+    Prewarmed index 'gist_data_ivfflat_idx': 506296 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS)...
+    probes=   30: recall=0.6825, QPS=53.4, latency=18.74ms
+    probes=   35: recall=0.7148, QPS=47.4, latency=21.09ms
+    probes=   40: recall=0.7415, QPS=43.4, latency=23.04ms
+    probes=   50: recall=0.7800, QPS=36.7, latency=27.23ms
+    probes=   60: recall=0.8132, QPS=31.9, latency=31.36ms
+    probes=   80: recall=0.8565, QPS=20.7, latency=48.20ms
+    probes=  100: recall=0.8857, QPS=16.9, latency=59.29ms
+    probes=  120: recall=0.9072, QPS=15.0, latency=66.52ms
+    probes=  150: recall=0.9285, QPS=12.2, latency=82.22ms
+    probes=  200: recall=0.9541, QPS=18.2, latency=54.98ms
+    probes=  300: recall=0.9776, QPS=12.7, latency=78.70ms
+    probes=  400: recall=0.9876, QPS=7.3, latency=137.26ms
+    probes=  500: recall=0.9923, QPS=5.4, latency=183.52ms
+
+  ==================================================
+  RESULTS: IVFFLAT (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7148       47.4    21.09ms
+      0.80   0.8132       31.9    31.36ms
+      0.90   0.9072       15.0    66.52ms
+      0.95   0.9541       18.2    54.98ms
+      0.96   0.9776       12.7    78.70ms
+      0.98   0.9876        7.3   137.26ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_ivfflat_warm.json
+
+======================================================================
+  INDEX TYPE: HNSW
+  Dataset: gist, Mode: warm
+======================================================================
+  Compiling pgvector (default) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: m=16, ef_construction=256
+  Loading snapshot: gist_hnsw_efc256_m16_pgdata.tar.gz...
+    Loaded in 119.1s
+  Prewarming index...
+    Prewarmed index 'gist_data_hnsw_idx': 982903 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS)...
+    ef_search=    1: recall=0.0089, QPS=1349.9, latency=0.74ms
+    ef_search=   10: recall=0.1007, QPS=480.3, latency=2.08ms
+    ef_search=   30: recall=0.3025, QPS=281.4, latency=3.55ms
+    ef_search=   40: recall=0.4013, QPS=245.3, latency=4.08ms
+    ef_search=   50: recall=0.4954, QPS=217.7, latency=4.59ms
+    ef_search=   60: recall=0.5862, QPS=211.0, latency=4.74ms
+    ef_search=   70: recall=0.6680, QPS=232.2, latency=4.31ms
+    ef_search=   80: recall=0.7388, QPS=179.5, latency=5.57ms
+    ef_search=   90: recall=0.7891, QPS=172.6, latency=5.79ms
+    ef_search=  100: recall=0.8177, QPS=163.3, latency=6.12ms
+    ef_search=  120: recall=0.8472, QPS=94.8, latency=10.55ms
+    ef_search=  150: recall=0.8768, QPS=130.2, latency=7.68ms
+    ef_search=  200: recall=0.9127, QPS=110.7, latency=9.03ms
+    ef_search=  250: recall=0.9311, QPS=94.7, latency=10.56ms
+    ef_search=  300: recall=0.9445, QPS=84.2, latency=11.88ms
+    ef_search=  400: recall=0.9624, QPS=40.3, latency=24.79ms
+    ef_search=  500: recall=0.9728, QPS=58.6, latency=17.07ms
+    ef_search=  600: recall=0.9787, QPS=51.8, latency=19.29ms
+    ef_search=  800: recall=0.9861, QPS=23.2, latency=43.08ms
+    ef_search= 1000: recall=0.9906, QPS=34.5, latency=29.02ms
+
+  ==================================================
+  RESULTS: HNSW (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7388      179.5     5.57ms
+      0.80   0.8177      163.3     6.12ms
+      0.90   0.9127      110.7     9.03ms
+      0.95   0.9624       40.4    24.79ms
+      0.96   0.9624       40.4    24.79ms
+      0.98   0.9861       23.2    43.08ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_hnsw_warm.json
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=4)
+  Dataset: gist, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 4 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 4
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Loading snapshot: gist_parallel_ivfflat_lists8192_pgdata.tar.gz...
+    Loaded in 117.4s
+  Prewarming index...
+    Prewarmed index 'gist_data_embedding_parallel_ivfflat_idx': 514427 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS)...
+    probes=   30: recall=0.6873, QPS=68.5, latency=14.59ms
+    probes=   35: recall=0.7160, QPS=64.4, latency=15.54ms
+    probes=   40: recall=0.7418, QPS=65.3, latency=15.31ms
+    probes=   50: recall=0.7817, QPS=58.7, latency=17.04ms
+    probes=   60: recall=0.8120, QPS=50.4, latency=19.86ms
+    probes=   80: recall=0.8530, QPS=45.1, latency=22.16ms
+    probes=  100: recall=0.8840, QPS=38.3, latency=26.13ms
+    probes=  120: recall=0.9071, QPS=35.3, latency=28.35ms
+    probes=  150: recall=0.9301, QPS=29.6, latency=33.73ms
+    probes=  200: recall=0.9546, QPS=24.8, latency=40.32ms
+    probes=  300: recall=0.9770, QPS=19.8, latency=50.44ms
+    probes=  400: recall=0.9883, QPS=16.4, latency=61.05ms
+    probes=  500: recall=0.9932, QPS=14.7, latency=68.17ms
+
+  ==================================================
+  RESULTS: PARALLEL_IVFFLAT (workers=4) (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7160       64.4    15.54ms
+      0.80   0.8120       50.4    19.86ms
+      0.90   0.9071       35.3    28.35ms
+      0.95   0.9546       24.8    40.32ms
+      0.96   0.9770       19.8    50.44ms
+      0.98   0.9883       16.4    61.05ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_parallel_ivfflat_w4_warm.json
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=8)
+  Dataset: gist, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 8 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 8
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Prewarming index...
+    Prewarmed index 'gist_data_embedding_parallel_ivfflat_idx': 514427 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS)...
+    probes=   30: recall=0.6873, QPS=79.7, latency=12.55ms
+    probes=   35: recall=0.7160, QPS=75.3, latency=13.28ms
+    probes=   40: recall=0.7418, QPS=70.4, latency=14.21ms
+    probes=   50: recall=0.7817, QPS=67.6, latency=14.80ms
+    probes=   60: recall=0.8120, QPS=62.2, latency=16.09ms
+    probes=   80: recall=0.8530, QPS=58.2, latency=17.17ms
+    probes=  100: recall=0.8840, QPS=51.4, latency=19.47ms
+    probes=  120: recall=0.9071, QPS=49.9, latency=20.04ms
+    probes=  150: recall=0.9301, QPS=45.5, latency=21.99ms
+    probes=  200: recall=0.9546, QPS=37.1, latency=26.98ms
+    probes=  300: recall=0.9769, QPS=30.4, latency=32.86ms
+    probes=  400: recall=0.9882, QPS=25.0, latency=40.01ms
+    probes=  500: recall=0.9932, QPS=22.3, latency=44.79ms
+
+  ==================================================
+  RESULTS: PARALLEL_IVFFLAT (workers=8) (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7160       75.3    13.28ms
+      0.80   0.8120       62.2    16.09ms
+      0.90   0.9071       49.9    20.04ms
+      0.95   0.9546       37.1    26.98ms
+      0.96   0.9769       30.4    32.86ms
+      0.98   0.9882       25.0    40.01ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_parallel_ivfflat_w8_warm.json
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=12)
+  Dataset: gist, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 12 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 12
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Prewarming index...
+    Prewarmed index 'gist_data_embedding_parallel_ivfflat_idx': 514427 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS)...
+    probes=   30: recall=0.6873, QPS=73.2, latency=13.66ms
+    probes=   35: recall=0.7160, QPS=70.2, latency=14.24ms
+    probes=   40: recall=0.7418, QPS=69.7, latency=14.35ms
+    probes=   50: recall=0.7817, QPS=58.2, latency=17.18ms
+    probes=   60: recall=0.8120, QPS=55.4, latency=18.05ms
+    probes=   80: recall=0.8530, QPS=52.3, latency=19.12ms
+    probes=  100: recall=0.8840, QPS=48.1, latency=20.77ms
+    probes=  120: recall=0.9070, QPS=43.9, latency=22.76ms
+    probes=  150: recall=0.9301, QPS=37.4, latency=26.76ms
+    probes=  200: recall=0.9546, QPS=32.4, latency=30.84ms
+    probes=  300: recall=0.9769, QPS=26.3, latency=37.95ms
+    probes=  400: recall=0.9883, QPS=22.5, latency=44.49ms
+    probes=  500: recall=0.9932, QPS=18.7, latency=53.41ms
+
+  ==================================================
+  RESULTS: PARALLEL_IVFFLAT (workers=12) (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7160       70.2    14.24ms
+      0.80   0.8120       55.4    18.05ms
+      0.90   0.9070       43.9    22.76ms
+      0.95   0.9546       32.4    30.84ms
+      0.96   0.9769       26.4    37.95ms
+      0.98   0.9883       22.5    44.49ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_parallel_ivfflat_w12_warm.json
+
+  Combined results saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_all_warm.json
+
+######################################################################
+  ALL RESULTS SAVED TO: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps
+######################################################################
+
+  COMPARISON TABLE (QPS at each recall target):
+    Recall             ivfflat                hnsw  parallel_ivfflat_w  parallel_ivfflat_w  parallel_ivfflat_w
+  --------  ------------------  ------------------  ------------------  ------------------  ------------------
+      0.70        47.4 QPS       179.5 QPS        64.4 QPS        75.3 QPS        70.2 QPS
+      0.80        31.9 QPS       163.3 QPS        50.4 QPS        62.2 QPS        55.4 QPS
+      0.90        15.0 QPS       110.7 QPS        35.3 QPS        49.9 QPS        43.9 QPS
+      0.95        18.2 QPS        40.4 QPS        24.8 QPS        37.1 QPS        32.4 QPS
+      0.96        12.7 QPS        40.4 QPS        19.8 QPS        30.4 QPS        26.4 QPS
+      0.98         7.3 QPS        23.2 QPS        16.4 QPS        25.0 QPS        22.5 QPS
+
+Done!

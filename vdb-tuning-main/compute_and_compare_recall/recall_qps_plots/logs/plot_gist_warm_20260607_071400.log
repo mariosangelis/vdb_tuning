@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/plot_recall_qps.py", line 30, in <module>
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'

@@ -1,0 +1,11 @@
+######################################################################
+  Recall vs QPS Diagram
+  Dataset: deep, K: 100, Mode: cold
+  Index types: ['ivfflat', 'hnsw', 'parallel_ivfflat']
+  Parallel worker counts: [4, 8, 12]
+  Recall targets: [0.7, 0.8, 0.9, 0.95, 0.96, 0.98]
+######################################################################
+  Loading workload from /users/mangelis/vdb_tuning/vdb-tuning-main/deep_test_queries.txt...
+    Loaded 1000 query vectors
+  ERROR: Exact results not found in /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/exact_results/exact_results_deep
+         Expected pattern: exact_search_results_*_deep_K_100.json

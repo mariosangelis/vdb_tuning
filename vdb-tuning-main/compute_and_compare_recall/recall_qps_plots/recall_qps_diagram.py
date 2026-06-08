@@ -403,16 +403,14 @@ def load_exact_results(dataset, k):
     print(f"  ERROR: Exact results not found in {exact_dir}")
     print(f"         Expected pattern: exact_search_results_*_{dataset}_K_{k}.json")
     sys.exit(1)
-def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, param_name, param_value, mode="warm"):
+def compute_recall(workload, exact_results, table_name, distance_op, k, param_name, param_value):
     """
-    Run ALL queries in workload, compute recall and QPS.
-    Prewarming is handled externally via pg_prewarm (for warm mode).
-    Returns (recall, qps, avg_latency_ms, query_times_ms).
+    Phase 1: Run all queries once (plain SELECT) to compute recall.
+    Returns recall value.
     """
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
 
-    # Set the search parameter
     if param_name == "ivfflat.probes":
         cur.execute(f"SET ivfflat.probes = {param_value}")
     elif param_name == "hnsw.ef_search":
@@ -421,48 +419,60 @@ def compute_recall_and_qps(workload, exact_results, table_name, distance_op, k, 
     cur.execute("SET enable_seqscan = off")
     cur.execute("SET max_parallel_workers_per_gather = 200")
 
-    # Measurement phase: run all queries with EXPLAIN ANALYZE, compute recall and timing per query
     total_recall = 0.0
     num_queries = len(workload)
-    query_times = []
 
     for i in range(num_queries):
         vec_str = workload[i]
+        cur.execute(f"SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}")
+        result_ids = set(row[0] for row in cur.fetchall())
 
+        if i < len(exact_results):
+            exact_ids = set(exact_results[i][:k])
+            hits = len(result_ids & exact_ids)
+            total_recall += hits / k
+
+    cur.close()
+    conn.close()
+
+    return total_recall / min(num_queries, len(exact_results))
+
+
+def compute_timing(workload, table_name, distance_op, k, param_name, param_value):
+    """
+    Phase 2: Run all queries with EXPLAIN ANALYZE to collect per-query execution times.
+    Returns list of per-query times in ms.
+    """
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+
+    if param_name == "ivfflat.probes":
+        cur.execute(f"SET ivfflat.probes = {param_value}")
+    elif param_name == "hnsw.ef_search":
+        cur.execute(f"SET hnsw.ef_search = {param_value}")
+
+    cur.execute("SET enable_seqscan = off")
+    cur.execute("SET max_parallel_workers_per_gather = 200")
+
+    query_times = []
+
+    for i in range(len(workload)):
+        vec_str = workload[i]
         cur.execute(
             f"EXPLAIN (ANALYZE, BUFFERS) SELECT id FROM {table_name} "
             f"ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}"
         )
         explain_result = cur.fetchall()
 
-        # Parse execution time and result IDs from EXPLAIN output
-        exec_time_ms = 0.0
         for row in explain_result:
             line = row[0].strip()
             if 'Execution Time:' in line:
-                exec_time_ms = float(line.split()[2])
-
-        query_times.append(round(exec_time_ms, 3))  # ms
-
-        # Re-run query without EXPLAIN to get result IDs for recall computation
-        cur.execute(f"SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}")
-        result_ids = set(row[0] for row in cur.fetchall())
-
-        # Compute recall against exact results
-        if i < len(exact_results):
-            exact_ids = set(exact_results[i][:k])
-            hits = len(result_ids & exact_ids)
-            total_recall += hits / k
-
-    total_time = sum(query_times) / 1000  # back to seconds
-    avg_recall = total_recall / min(num_queries, len(exact_results))
-    qps = num_queries / total_time if total_time > 0 else 0
-    avg_latency_ms = total_time / num_queries * 1000 if num_queries > 0 else 0
+                query_times.append(float(line.split()[2]))
 
     cur.close()
     conn.close()
 
-    return avg_recall, qps, avg_latency_ms, query_times
+    return query_times
 def sweep_recall_qps(workload, exact_results, table_name, distance_op, k, index_type, mode, num_workers=4, num_iterations=1):
     """
     Sweep probes/ef_search values and measure recall + QPS at each point.
@@ -486,28 +496,26 @@ def sweep_recall_qps(workload, exact_results, table_name, distance_op, k, index_
 
     for pval in param_list:
         all_query_times_ms = []
-        all_recalls = []
 
+        # Phase 1: Compute recall once (plain SELECT, no timing)
+        if mode == "cold":
+            restart_postgres_cold()
+        recall = compute_recall(workload, exact_results, table_name, distance_op, k, param_name, pval)
+
+        # Phase 2: Collect timings over num_iterations (EXPLAIN ANALYZE only)
         for iteration in range(num_iterations):
-            # In cold mode, restart postgres and drop caches before each iteration
             if mode == "cold":
                 restart_postgres_cold()
-            elif mode == "warm" and iteration > 0:
-                # Re-prewarm for consistent state on subsequent iterations
-                prewarm_index(table_name)
 
-            recall, qps, latency, query_times_ms = compute_recall_and_qps(
-                workload, exact_results, table_name, distance_op, k, param_name, pval, mode
-            )
+            query_times_ms = compute_timing(workload, table_name, distance_op, k, param_name, pval)
             all_query_times_ms.extend(query_times_ms)
-            all_recalls.append(recall)
 
             if num_iterations > 1:
                 iter_avg = sum(query_times_ms) / len(query_times_ms) if query_times_ms else 0
-                print(f"      iter {iteration+1}/{num_iterations}: recall={recall:.4f}, avg={iter_avg:.2f}ms")
+                print(f"      iter {iteration+1}/{num_iterations}: avg={iter_avg:.2f}ms")
 
         # Compute aggregated stats across all iterations
-        avg_recall = sum(all_recalls) / len(all_recalls)
+        avg_recall = recall
         total_time_s = sum(all_query_times_ms) / 1000
         num_queries_total = len(all_query_times_ms)
         avg_latency = sum(all_query_times_ms) / num_queries_total if num_queries_total else 0

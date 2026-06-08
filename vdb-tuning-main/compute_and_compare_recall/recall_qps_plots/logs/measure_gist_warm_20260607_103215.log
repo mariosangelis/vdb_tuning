@@ -1,0 +1,26 @@
+######################################################################
+  Recall vs QPS Diagram
+  Dataset: gist, K: 100, Mode: warm
+  Index types: ['ivfflat', 'hnsw', 'parallel_ivfflat']
+  Parallel worker counts: [4, 8, 12]
+  Recall targets: [0.7, 0.8, 0.9, 0.95, 0.96, 0.98]
+######################################################################
+  Loading workload from /users/mangelis/vdb_tuning/vdb-tuning-main/gist_test_queries.txt...
+    Loaded 1000 query vectors
+  Loaded exact results: exact_search_results_1000_queries_gist_K_100.json (1000 queries)
+
+======================================================================
+  INDEX TYPE: IVFFLAT
+  Dataset: gist, Mode: warm
+======================================================================
+  Compiling pgvector (default) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Loading snapshot: gist_ivfflat_lists8192_pgdata.tar.gz...
+    Loaded in 121.7s
+  Prewarming index...
+    Prewarmed index 'gist_data_ivfflat_idx': 506296 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS)...

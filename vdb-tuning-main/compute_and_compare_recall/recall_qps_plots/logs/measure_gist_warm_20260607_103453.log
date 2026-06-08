@@ -1,0 +1,250 @@
+######################################################################
+  Recall vs QPS Diagram
+  Dataset: gist, K: 100, Mode: warm
+  Index types: ['ivfflat', 'hnsw', 'parallel_ivfflat']
+  Parallel worker counts: [4, 8, 12]
+  Iterations per param: 1
+  Recall targets: [0.7, 0.8, 0.9, 0.95, 0.96, 0.98]
+######################################################################
+  Loading workload from /users/mangelis/vdb_tuning/vdb-tuning-main/gist_test_queries.txt...
+    Loaded 1000 query vectors
+  Loaded exact results: exact_search_results_1000_queries_gist_K_100.json (1000 queries)
+
+======================================================================
+  INDEX TYPE: IVFFLAT
+  Dataset: gist, Mode: warm
+======================================================================
+  Compiling pgvector (default) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Loading snapshot: gist_ivfflat_lists8192_pgdata.tar.gz...
+    Loaded in 109.7s
+  Prewarming index...
+    Prewarmed index 'gist_data_ivfflat_idx': 506296 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS, iterations=1)...
+    probes=   30: recall=0.6825, QPS=63.9, avg=15.66ms, median=14.64ms, p95=29.25ms
+    probes=   35: recall=0.7148, QPS=42.6, avg=23.47ms, median=20.87ms, p95=50.21ms
+    probes=   40: recall=0.7415, QPS=32.4, avg=30.87ms, median=28.51ms, p95=58.58ms
+    probes=   50: recall=0.7800, QPS=32.8, avg=30.48ms, median=28.43ms, p95=66.89ms
+    probes=   60: recall=0.8132, QPS=25.5, avg=39.14ms, median=36.65ms, p95=78.49ms
+    probes=   80: recall=0.8565, QPS=19.2, avg=52.03ms, median=48.20ms, p95=97.93ms
+    probes=  100: recall=0.8857, QPS=15.7, avg=63.62ms, median=59.58ms, p95=116.03ms
+    probes=  120: recall=0.9072, QPS=13.4, avg=74.85ms, median=71.83ms, p95=138.35ms
+    probes=  150: recall=0.9285, QPS=11.1, avg=90.23ms, median=85.85ms, p95=162.91ms
+    probes=  200: recall=0.9541, QPS=8.6, avg=116.85ms, median=112.75ms, p95=201.31ms
+    probes=  300: recall=0.9776, QPS=6.1, avg=163.39ms, median=160.08ms, p95=266.29ms
+    probes=  400: recall=0.9876, QPS=4.7, avg=214.15ms, median=213.50ms, p95=328.57ms
+    probes=  500: recall=0.9923, QPS=3.8, avg=261.74ms, median=265.97ms, p95=384.73ms
+
+  ==================================================
+  RESULTS: IVFFLAT (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7148       42.6    23.47ms
+      0.80   0.8132       25.6    39.14ms
+      0.90   0.9072       13.4    74.85ms
+      0.95   0.9541        8.6   116.85ms
+      0.96   0.9776        6.1   163.39ms
+      0.98   0.9876        4.7   214.15ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_ivfflat_warm.json
+
+======================================================================
+  INDEX TYPE: HNSW
+  Dataset: gist, Mode: warm
+======================================================================
+  Compiling pgvector (default) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: m=32, ef_construction=256
+  Loading snapshot: gist_hnsw_efc256_m32_pgdata.tar.gz...
+    Loaded in 114.0s
+  Prewarming index...
+    Prewarmed index 'gist_data_hnsw_idx': 982818 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS, iterations=1)...
+    ef_search=    1: recall=0.0094, QPS=975.8, avg=1.02ms, median=1.01ms, p95=1.64ms
+    ef_search=   10: recall=0.1017, QPS=394.6, avg=2.53ms, median=2.47ms, p95=3.86ms
+    ef_search=   30: recall=0.3049, QPS=239.6, avg=4.17ms, median=4.07ms, p95=6.78ms
+    ef_search=   40: recall=0.4074, QPS=212.8, avg=4.70ms, median=4.37ms, p95=7.92ms
+    ef_search=   50: recall=0.5091, QPS=190.1, avg=5.26ms, median=4.94ms, p95=8.86ms
+    ef_search=   60: recall=0.6096, QPS=177.2, avg=5.64ms, median=5.33ms, p95=9.54ms
+    ef_search=   70: recall=0.7061, QPS=174.4, avg=5.73ms, median=5.54ms, p95=9.39ms
+    ef_search=   80: recall=0.7973, QPS=123.2, avg=8.11ms, median=7.74ms, p95=14.88ms
+    ef_search=   90: recall=0.8715, QPS=134.5, avg=7.43ms, median=7.13ms, p95=13.36ms
+    ef_search=  100: recall=0.9079, QPS=131.8, avg=7.59ms, median=7.32ms, p95=12.77ms
+    ef_search=  120: recall=0.9285, QPS=125.8, avg=7.95ms, median=7.86ms, p95=11.72ms
+    ef_search=  150: recall=0.9471, QPS=107.6, avg=9.29ms, median=9.25ms, p95=14.73ms
+    ef_search=  200: recall=0.9656, QPS=92.9, avg=10.77ms, median=10.91ms, p95=15.10ms
+    ef_search=  250: recall=0.9761, QPS=82.8, avg=12.08ms, median=12.39ms, p95=17.73ms
+    ef_search=  300: recall=0.9815, QPS=41.1, avg=24.32ms, median=22.00ms, p95=51.44ms
+    ef_search=  400: recall=0.9894, QPS=28.9, avg=34.56ms, median=28.84ms, p95=65.24ms
+    ef_search=  500: recall=0.9929, QPS=43.4, avg=23.03ms, median=23.44ms, p95=31.43ms
+
+  ==================================================
+  RESULTS: HNSW (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7061      174.4     5.73ms
+      0.80   0.8715      134.5     7.43ms
+      0.90   0.9079      131.8     7.59ms
+      0.95   0.9656       92.9    10.77ms
+      0.96   0.9656       92.9    10.77ms
+      0.98   0.9815       41.1    24.32ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_hnsw_warm.json
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=4)
+  Dataset: gist, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 4 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 4
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Loading snapshot: gist_parallel_ivfflat_lists8192_pgdata.tar.gz...
+    Loaded in 116.9s
+  Prewarming index...
+    Prewarmed index 'gist_data_embedding_parallel_ivfflat_idx': 514427 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS, iterations=1)...
+    probes=   30: recall=0.6873, QPS=69.6, avg=14.37ms, median=13.29ms, p95=20.02ms
+    probes=   35: recall=0.7160, QPS=67.4, avg=14.83ms, median=14.24ms, p95=20.97ms
+    probes=   40: recall=0.7418, QPS=55.1, avg=18.16ms, median=17.01ms, p95=24.50ms
+    probes=   50: recall=0.7817, QPS=56.6, avg=17.68ms, median=16.79ms, p95=29.89ms
+    probes=   60: recall=0.8120, QPS=50.4, avg=19.84ms, median=19.02ms, p95=29.51ms
+    probes=   80: recall=0.8530, QPS=46.2, avg=21.64ms, median=20.44ms, p95=34.91ms
+    probes=  100: recall=0.8840, QPS=40.3, avg=24.79ms, median=23.54ms, p95=39.26ms
+    probes=  120: recall=0.9071, QPS=35.8, avg=27.92ms, median=26.94ms, p95=42.26ms
+    probes=  150: recall=0.9301, QPS=31.1, avg=32.19ms, median=31.21ms, p95=49.09ms
+    probes=  200: recall=0.9546, QPS=27.2, avg=36.80ms, median=35.72ms, p95=56.84ms
+    probes=  300: recall=0.9770, QPS=21.4, avg=46.73ms, median=47.06ms, p95=70.93ms
+    probes=  400: recall=0.9883, QPS=16.9, avg=59.09ms, median=58.68ms, p95=82.23ms
+    probes=  500: recall=0.9932, QPS=15.4, avg=64.73ms, median=64.94ms, p95=88.56ms
+
+  ==================================================
+  RESULTS: PARALLEL_IVFFLAT (workers=4) (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7160       67.4    14.83ms
+      0.80   0.8120       50.4    19.84ms
+      0.90   0.9071       35.8    27.92ms
+      0.95   0.9546       27.2    36.80ms
+      0.96   0.9770       21.4    46.73ms
+      0.98   0.9883       16.9    59.09ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_parallel_ivfflat_w4_warm.json
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=8)
+  Dataset: gist, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 8 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 8
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Prewarming index...
+    Prewarmed index 'gist_data_embedding_parallel_ivfflat_idx': 514427 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS, iterations=1)...
+    probes=   30: recall=0.6873, QPS=81.3, avg=12.30ms, median=11.94ms, p95=16.41ms
+    probes=   35: recall=0.7160, QPS=71.5, avg=13.99ms, median=13.72ms, p95=17.55ms
+    probes=   40: recall=0.7418, QPS=70.4, avg=14.21ms, median=13.88ms, p95=17.73ms
+    probes=   50: recall=0.7817, QPS=65.1, avg=15.36ms, median=14.89ms, p95=19.83ms
+    probes=   60: recall=0.8120, QPS=65.1, avg=15.37ms, median=14.91ms, p95=21.28ms
+    probes=   80: recall=0.8530, QPS=58.5, avg=17.09ms, median=16.31ms, p95=23.99ms
+    probes=  100: recall=0.8840, QPS=52.5, avg=19.06ms, median=18.36ms, p95=27.18ms
+    probes=  120: recall=0.9071, QPS=50.1, avg=19.98ms, median=19.33ms, p95=28.84ms
+    probes=  150: recall=0.9301, QPS=43.3, avg=23.07ms, median=21.98ms, p95=32.45ms
+    probes=  200: recall=0.9546, QPS=38.0, avg=26.35ms, median=25.21ms, p95=38.66ms
+    probes=  300: recall=0.9769, QPS=29.2, avg=34.19ms, median=33.23ms, p95=48.73ms
+    probes=  400: recall=0.9882, QPS=24.9, avg=40.24ms, median=39.31ms, p95=56.83ms
+    probes=  500: recall=0.9932, QPS=21.5, avg=46.45ms, median=46.15ms, p95=64.02ms
+
+  ==================================================
+  RESULTS: PARALLEL_IVFFLAT (workers=8) (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7160       71.5    13.99ms
+      0.80   0.8120       65.1    15.37ms
+      0.90   0.9071       50.0    19.98ms
+      0.95   0.9546       38.0    26.35ms
+      0.96   0.9769       29.2    34.19ms
+      0.98   0.9882       24.9    40.24ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_parallel_ivfflat_w8_warm.json
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=12)
+  Dataset: gist, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 12 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 12
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=8192
+  Prewarming index...
+    Prewarmed index 'gist_data_embedding_parallel_ivfflat_idx': 514427 blocks
+    Prewarmed table 'gist_data': 6384 blocks
+
+  Sweeping parameters (measuring recall + QPS, iterations=1)...
+    probes=   30: recall=0.6873, QPS=78.1, avg=12.81ms, median=12.24ms, p95=16.97ms
+    probes=   35: recall=0.7160, QPS=72.9, avg=13.72ms, median=12.90ms, p95=18.32ms
+    probes=   40: recall=0.7418, QPS=71.2, avg=14.04ms, median=13.66ms, p95=19.48ms
+    probes=   50: recall=0.7817, QPS=66.2, avg=15.11ms, median=14.62ms, p95=21.80ms
+    probes=   60: recall=0.8120, QPS=63.0, avg=15.87ms, median=15.24ms, p95=22.62ms
+    probes=   80: recall=0.8530, QPS=56.3, avg=17.76ms, median=17.17ms, p95=25.66ms
+    probes=  100: recall=0.8840, QPS=51.2, avg=19.54ms, median=18.65ms, p95=28.73ms
+    probes=  120: recall=0.9070, QPS=48.3, avg=20.69ms, median=19.61ms, p95=30.67ms
+    probes=  150: recall=0.9301, QPS=42.6, avg=23.45ms, median=22.41ms, p95=34.12ms
+    probes=  200: recall=0.9546, QPS=37.2, avg=26.88ms, median=26.19ms, p95=40.63ms
+    probes=  300: recall=0.9769, QPS=28.5, avg=35.05ms, median=34.21ms, p95=53.24ms
+    probes=  400: recall=0.9883, QPS=24.3, avg=41.07ms, median=39.87ms, p95=59.52ms
+    probes=  500: recall=0.9932, QPS=21.0, avg=47.67ms, median=47.55ms, p95=63.99ms
+
+  ==================================================
+  RESULTS: PARALLEL_IVFFLAT (workers=12) (warm)
+  ==================================================
+    Target   Actual        QPS    Latency
+  ----------------------------------------
+      0.70   0.7160       72.9    13.72ms
+      0.80   0.8120       63.0    15.87ms
+      0.90   0.9070       48.3    20.69ms
+      0.95   0.9546       37.2    26.88ms
+      0.96   0.9769       28.5    35.05ms
+      0.98   0.9883       24.4    41.07ms
+
+  Saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_parallel_ivfflat_w12_warm.json
+
+  Combined results saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_gist_all_warm.json
+
+######################################################################
+  ALL RESULTS SAVED TO: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps
+######################################################################
+
+  COMPARISON TABLE (QPS at each recall target):
+    Recall             ivfflat                hnsw  parallel_ivfflat_w  parallel_ivfflat_w  parallel_ivfflat_w
+  --------  ------------------  ------------------  ------------------  ------------------  ------------------
+      0.70        42.6 QPS       174.4 QPS        67.4 QPS        71.5 QPS        72.9 QPS
+      0.80        25.6 QPS       134.5 QPS        50.4 QPS        65.1 QPS        63.0 QPS
+      0.90        13.4 QPS       131.8 QPS        35.8 QPS        50.0 QPS        48.3 QPS
+      0.95         8.6 QPS        92.9 QPS        27.2 QPS        38.0 QPS        37.2 QPS
+      0.96         6.1 QPS        92.9 QPS        21.4 QPS        29.2 QPS        28.5 QPS
+      0.98         4.7 QPS        41.1 QPS        16.9 QPS        24.9 QPS        24.4 QPS
+
+Done!

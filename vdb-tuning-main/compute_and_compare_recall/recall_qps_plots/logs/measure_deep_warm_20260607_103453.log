@@ -1,0 +1,145 @@
+######################################################################
+  Recall vs QPS Diagram
+  Dataset: deep, K: 100, Mode: warm
+  Index types: ['ivfflat', 'hnsw', 'parallel_ivfflat']
+  Parallel worker counts: [4, 8, 12]
+  Iterations per param: 1
+  Recall targets: [0.7, 0.8, 0.9, 0.95, 0.96, 0.98]
+######################################################################
+  Loading workload from /users/mangelis/vdb_tuning/vdb-tuning-main/deep_test_queries.txt...
+    Loaded 1000 query vectors
+  Loaded exact results: exact_search_results_1000_queries_deep_K_100.json (1000 queries)
+
+======================================================================
+  INDEX TYPE: IVFFLAT
+  Dataset: deep, Mode: warm
+======================================================================
+  Compiling pgvector (default) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=32768
+  ERROR: No cached snapshot found for ivfflat with params {'lists': 32768}
+         Expected in: /mnt/nvme/saved_indexes
+         Available snapshots:
+           gist_hnsw_efc128_m16_pgdata.tar.gz
+           gist_hnsw_efc128_m32_pgdata.tar.gz
+           gist_hnsw_efc128_m64_pgdata.tar.gz
+           gist_hnsw_efc128_m8_pgdata.tar.gz
+           gist_hnsw_efc256_m16_pgdata.tar.gz
+           gist_hnsw_efc256_m32_pgdata.tar.gz
+           gist_hnsw_efc256_m64_pgdata.tar.gz
+           gist_hnsw_efc256_m8_pgdata.tar.gz
+           gist_ivfflat_lists2048_pgdata.tar.gz
+           gist_ivfflat_lists4096_pgdata.tar.gz
+           gist_ivfflat_lists8192_pgdata.tar.gz
+           gist_parallel_ivfflat_lists8192_pgdata.tar.gz
+
+======================================================================
+  INDEX TYPE: HNSW
+  Dataset: deep, Mode: warm
+======================================================================
+  Compiling pgvector (default) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: m=16, ef_construction=128
+  ERROR: No cached snapshot found for hnsw with params {'m': 16, 'ef_construction': 128}
+         Expected in: /mnt/nvme/saved_indexes
+         Available snapshots:
+           gist_hnsw_efc128_m16_pgdata.tar.gz
+           gist_hnsw_efc128_m32_pgdata.tar.gz
+           gist_hnsw_efc128_m64_pgdata.tar.gz
+           gist_hnsw_efc128_m8_pgdata.tar.gz
+           gist_hnsw_efc256_m16_pgdata.tar.gz
+           gist_hnsw_efc256_m32_pgdata.tar.gz
+           gist_hnsw_efc256_m64_pgdata.tar.gz
+           gist_hnsw_efc256_m8_pgdata.tar.gz
+           gist_ivfflat_lists2048_pgdata.tar.gz
+           gist_ivfflat_lists4096_pgdata.tar.gz
+           gist_ivfflat_lists8192_pgdata.tar.gz
+           gist_parallel_ivfflat_lists8192_pgdata.tar.gz
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=4)
+  Dataset: deep, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 4 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 4
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=32768
+  ERROR: No cached snapshot found for parallel_ivfflat with params {'lists': 32768}
+         Expected in: /mnt/nvme/saved_indexes
+         Available snapshots:
+           gist_hnsw_efc128_m16_pgdata.tar.gz
+           gist_hnsw_efc128_m32_pgdata.tar.gz
+           gist_hnsw_efc128_m64_pgdata.tar.gz
+           gist_hnsw_efc128_m8_pgdata.tar.gz
+           gist_hnsw_efc256_m16_pgdata.tar.gz
+           gist_hnsw_efc256_m32_pgdata.tar.gz
+           gist_hnsw_efc256_m64_pgdata.tar.gz
+           gist_hnsw_efc256_m8_pgdata.tar.gz
+           gist_ivfflat_lists2048_pgdata.tar.gz
+           gist_ivfflat_lists4096_pgdata.tar.gz
+           gist_ivfflat_lists8192_pgdata.tar.gz
+           gist_parallel_ivfflat_lists8192_pgdata.tar.gz
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=8)
+  Dataset: deep, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 8 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 8
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=32768
+  ERROR: No cached snapshot found for parallel_ivfflat with params {'lists': 32768}
+         Expected in: /mnt/nvme/saved_indexes
+         Available snapshots:
+           gist_hnsw_efc128_m16_pgdata.tar.gz
+           gist_hnsw_efc128_m32_pgdata.tar.gz
+           gist_hnsw_efc128_m64_pgdata.tar.gz
+           gist_hnsw_efc128_m8_pgdata.tar.gz
+           gist_hnsw_efc256_m16_pgdata.tar.gz
+           gist_hnsw_efc256_m32_pgdata.tar.gz
+           gist_hnsw_efc256_m64_pgdata.tar.gz
+           gist_hnsw_efc256_m8_pgdata.tar.gz
+           gist_ivfflat_lists2048_pgdata.tar.gz
+           gist_ivfflat_lists4096_pgdata.tar.gz
+           gist_ivfflat_lists8192_pgdata.tar.gz
+           gist_parallel_ivfflat_lists8192_pgdata.tar.gz
+
+======================================================================
+  INDEX TYPE: PARALLEL_IVFFLAT (workers=12)
+  Dataset: deep, Mode: warm
+======================================================================
+  Setting NUM_WORKERS = 12 in /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final/src/ivfscan.c...
+    Verified: #define NUM_WORKERS 12
+  Compiling pgvector (parallel) from /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final...
+    Compiled and installed successfully.
+    Restarting PostgreSQL to load new extension binary...
+  Best params: lists=32768
+  ERROR: No cached snapshot found for parallel_ivfflat with params {'lists': 32768}
+         Expected in: /mnt/nvme/saved_indexes
+         Available snapshots:
+           gist_hnsw_efc128_m16_pgdata.tar.gz
+           gist_hnsw_efc128_m32_pgdata.tar.gz
+           gist_hnsw_efc128_m64_pgdata.tar.gz
+           gist_hnsw_efc128_m8_pgdata.tar.gz
+           gist_hnsw_efc256_m16_pgdata.tar.gz
+           gist_hnsw_efc256_m32_pgdata.tar.gz
+           gist_hnsw_efc256_m64_pgdata.tar.gz
+           gist_hnsw_efc256_m8_pgdata.tar.gz
+           gist_ivfflat_lists2048_pgdata.tar.gz
+           gist_ivfflat_lists4096_pgdata.tar.gz
+           gist_ivfflat_lists8192_pgdata.tar.gz
+           gist_parallel_ivfflat_lists8192_pgdata.tar.gz
+
+  Combined results saved: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps/recall_qps_deep_all_warm.json
+
+######################################################################
+  ALL RESULTS SAVED TO: /users/mangelis/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/recall_qps_plots/results_recall_qps
+######################################################################
+
+Done!
