@@ -79,7 +79,7 @@ DATASET_CONFIGS = {
         "exact_results_dir": "exact_results_gist",
         "distance_op": "<->",
         "index_ops": "vector_l2_ops",
-        "lists_to_test": [2048, 4096, 8192],
+        "lists_to_test": [8192],
     },
     "sift": {
         "table": "sift_data",

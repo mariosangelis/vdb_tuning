@@ -7,18 +7,18 @@ For each K value, finds the minimum probes/ef_search that achieves recall >= 0.9
 using precomputed exact results, then measures total execution time.
 
 Usage:
-    sudo python3 compute_optimization_results_for_different_K.py <ivfflat|hnsw> <with|without> <dataset>
+    sudo python3 compute_optimization_results_for_different_K.py <ivfflat|hnsw> <with|without> <dataset> <cold|warm> [--iterations N]
 
 Examples:
-    sudo python3 compute_optimization_results_for_different_K.py ivfflat with gist
-    sudo python3 compute_optimization_results_for_different_K.py ivfflat without gist
-    sudo python3 compute_optimization_results_for_different_K.py hnsw with deep
-    sudo python3 compute_optimization_results_for_different_K.py hnsw without deep
+    sudo python3 compute_optimization_results_for_different_K.py ivfflat with gist cold
+    sudo python3 compute_optimization_results_for_different_K.py ivfflat without gist warm --iterations 3
+    sudo python3 compute_optimization_results_for_different_K.py hnsw with deep cold --iterations 5
 
 The script will:
-  1. Load the appropriate PGDATA snapshot from /mnt/nvme/saved_indexes/
+  1. Load the appropriate PGDATA snapshot from configured snapshot directory
   2. Toggle the compiler optimization flag in execExpr.c and recompile PostgreSQL
   3. For each K: find optimal probes/ef_search for recall >= 0.9, then measure execution time
+  4. Repeat measurements based on --iterations and report averages
 """
 
 import psycopg2
@@ -30,6 +30,8 @@ import os
 import sys
 import glob
 import re
+import argparse
+import numpy as np
 from pathlib import Path
 
 # === AUTO-DETECT PATHS ===
@@ -37,31 +39,43 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SCRIPT_DIR.parent                                     # vdb-tuning-main/
 RECALL_DIR = PROJECT_DIR / "compute_and_compare_recall"
 
+# Central machine-specific config (paths) from config.yaml at the repo root.
+sys.path.insert(0, str(PROJECT_DIR.parent))  # config_loader lives at ~/vdb_tuning
+from config_loader import get_path  # noqa: E402
+
 # === CONFIG ===
 K_VALUES = [1, 10, 100, 200, 400, 800, 1000]
 TARGET_RECALL = 0.9
 
-SNAPSHOTS_DIR = Path("/mnt/nvme/saved_indexes")
-PG_DATA_DIR = "/mnt/nvme/pgdata"
-PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
+# PostgreSQL paths from config.yaml
+PG_INSTALL = get_path("pg_install")
+PG_CTL_PATH = shutil.which("pg_ctl") or f"{PG_INSTALL}/bin/pg_ctl"
+_pgdata_result = subprocess.run(
+    "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
+)
+PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
+SNAPSHOTS_DIR = Path(get_path("snapshot_dir"))
 
 # PostgreSQL source for compiler optimization toggle
-POSTGRES_SRC_DIR = PROJECT_DIR.parent / "postgres" / "postgres"
+POSTGRES_SRC_DIR = Path(get_path("pg_src"))
 EXECEXPR_PATH = POSTGRES_SRC_DIR / "src" / "backend" / "executor" / "execExpr.c"
 
 # Default pgvector extension (must be compiled before running)
-PGVECTOR_DEFAULT_DIR = PROJECT_DIR.parent / "postgres" / "postgres" / "pgvector"
+PGVECTOR_DEFAULT_DIR = Path(get_path("pgvector_default"))
 
 # Probes/ef_search values to sweep when finding optimal params
 IVFFLAT_PROBES = [1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 35, 40, 50, 60, 80,
                   100, 120, 150, 200, 250, 300, 400, 500, 600, 800, 1000]
 HNSW_EF_SEARCH = [10, 20, 40, 60, 80, 100, 120, 150, 200, 250, 300, 400, 500, 600, 800, 1000]
 
-# Load NUMA config
+# Load NUMA config from experiment_config.json if available
 _config_path = PROJECT_DIR / "TPCH" / "code" / "experiment_config.json"
+if not _config_path.exists():
+    _config_path = PROJECT_DIR / "TPCH" / "code" / "experiment_config.json"
 if _config_path.exists():
-    with open(_config_path) as _f:
-        NUMA_NODE = str(json.load(_f).get("hardware", {}).get("postgres_numa_nodes", "0"))
+    with open(_config_path, "r") as _f:
+        _hw_cfg = json.load(_f).get("hardware", {})
+    NUMA_NODE = str(_hw_cfg.get("postgres_numa_nodes", "0"))
 else:
     NUMA_NODE = "0"
 
@@ -127,22 +141,22 @@ def restart_postgres():
 
 
 def load_snapshot(snapshot_path):
-    # """Load snapshot into PGDATA."""
-    # print(f"  Loading snapshot: {snapshot_path.name}")
-    # stop_postgres()
+    """Load snapshot into PGDATA."""
+    print(f"  Loading snapshot: {snapshot_path.name}")
+    stop_postgres()
 
-    # subprocess.run(f"rm -rf {PG_DATA_DIR}/*", shell=True, check=True)
-    # subprocess.run(f"mkdir -p {PG_DATA_DIR}", shell=True, check=True)
+    subprocess.run(f"rm -rf {PG_DATA_DIR}/*", shell=True, check=True)
+    subprocess.run(f"mkdir -p {PG_DATA_DIR}", shell=True, check=True)
 
-    # pigz = shutil.which("pigz")
-    # if pigz:
-    #     cmd = f"pigz -dc '{snapshot_path}' | tar -xf - -C {PG_DATA_DIR}"
-    # else:
-    #     cmd = f"tar -xzf '{snapshot_path}' -C {PG_DATA_DIR}"
-    # subprocess.run(cmd, shell=True, check=True)
+    pigz = shutil.which("pigz")
+    if pigz:
+        cmd = f"pigz -dc '{snapshot_path}' | tar -xf - -C {PG_DATA_DIR}"
+    else:
+        cmd = f"tar -xzf '{snapshot_path}' -C {PG_DATA_DIR}"
+    subprocess.run(cmd, shell=True, check=True)
 
-    # subprocess.run(f"chown -R postgres:postgres {PG_DATA_DIR}", shell=True, check=True)
-    # subprocess.run(f"chmod 700 {PG_DATA_DIR}", shell=True, check=True)
+    subprocess.run(f"chown -R postgres:postgres {PG_DATA_DIR}", shell=True, check=True)
+    subprocess.run(f"chmod 700 {PG_DATA_DIR}", shell=True, check=True)
     print("  Snapshot loaded.")
 
 
@@ -177,7 +191,7 @@ def compile_default_pgvector():
         print(f"  WARNING: Default pgvector not found at {PGVECTOR_DEFAULT_DIR}, skipping")
         return
     print(f"  Compiling default pgvector from {PGVECTOR_DEFAULT_DIR}...")
-    env_cmd = "export PATH=/usr/local/pgsql/bin:$PATH && export PG_CONFIG=/usr/local/pgsql/bin/pg_config"
+    env_cmd = f"export PATH={PG_INSTALL}/bin:$PATH && export PG_CONFIG={PG_INSTALL}/bin/pg_config"
     result = subprocess.run(
         f"cd {PGVECTOR_DEFAULT_DIR} && {env_cmd} && make clean > /dev/null 2>&1 && make > /dev/null 2>&1 && make install > /dev/null 2>&1",
         shell=True
@@ -322,7 +336,7 @@ def prewarm_table_and_index(table_name):
 
 def run_measurement(workload, k, optimal_param, table_name, distance_op, index_type, mode="cold"):
     """Run full workload measurement with given K and optimal param.
-    
+
     mode='cold': restart + drop caches before measurement
     mode='warm': do nothing (data stays cached from prewarm)
     """
@@ -360,31 +374,41 @@ def run_measurement(workload, k, optimal_param, table_name, distance_op, index_t
     return total_exec_time
 
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Compute execution times for different K values with/without compiler optimization",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  sudo python3 compute_optimization_results_for_different_K.py ivfflat with gist cold
+  sudo python3 compute_optimization_results_for_different_K.py ivfflat without gist warm --iterations 3
+  sudo python3 compute_optimization_results_for_different_K.py hnsw with deep cold --iterations 5
+        """
+    )
+
+    parser.add_argument("index_type", choices=["ivfflat", "hnsw"],
+                        help="Vector index type to test")
+    parser.add_argument("optimization", choices=["with", "without"],
+                        help="Whether to enable compiler optimization")
+    parser.add_argument("dataset", choices=list(DATASET_CONFIGS.keys()),
+                        help="Dataset to use")
+    parser.add_argument("mode", choices=["cold", "warm"],
+                        help="Cache mode for measurements")
+    parser.add_argument("--iterations", type=int, default=1,
+                        help="Number of iterations for each K value (default: 1)")
+
+    return parser.parse_args()
+
+
 def main():
-    if len(sys.argv) < 5 or sys.argv[1] not in ("ivfflat", "hnsw") or sys.argv[2] not in ("with", "without"):
-        print("Usage: sudo python3 compute_optimization_results_for_different_K.py <ivfflat|hnsw> <with|without> <dataset> <cold|warm>")
-        print()
-        print("  index_type:   ivfflat | hnsw")
-        print("  optimization: with | without")
-        print("  dataset:      gist | deep | sift")
-        print("  mode:         cold | warm")
-        print()
-        print("Examples:")
-        print("  sudo python3 compute_optimization_results_for_different_K.py ivfflat with gist cold")
-        print("  sudo python3 compute_optimization_results_for_different_K.py hnsw without deep warm")
-        sys.exit(1)
+    args = parse_args()
 
-    index_type = sys.argv[1]
-    optimization = sys.argv[2]
-    dataset = sys.argv[3]
-    mode = sys.argv[4]
-    if mode not in ("cold", "warm"):
-        print(f"ERROR: mode must be 'cold' or 'warm', got '{mode}'")
-        sys.exit(1)
-
-    if dataset not in DATASET_CONFIGS:
-        print(f"ERROR: Unknown dataset '{dataset}'. Available: {list(DATASET_CONFIGS.keys())}")
-        sys.exit(1)
+    index_type = args.index_type
+    optimization = args.optimization
+    dataset = args.dataset
+    mode = args.mode
+    iterations = args.iterations
 
     ds_cfg = DATASET_CONFIGS[dataset]
     table_name = ds_cfg["table"]
@@ -403,9 +427,13 @@ def main():
     print(f"  Dataset:       {dataset}")
     print(f"  Table:         {table_name}")
     print(f"  Mode:          {mode}")
+    print(f"  Iterations:    {iterations}")
     print(f"  Target recall: {TARGET_RECALL}")
     print(f"  K values:      {K_VALUES}")
     print(f"  Workload:      {workload_path}")
+    print(f"  PostgreSQL:    {PG_INSTALL}")
+    print(f"  PGDATA:        {PG_DATA_DIR}")
+    print(f"  Snapshots:     {SNAPSHOTS_DIR}")
     print("=" * 70)
 
     # Validate workload file
@@ -494,60 +522,105 @@ def main():
     # === MEASUREMENT PHASE ===
     if mode == "warm":
         print("\n[PREWARM] Prewarming index and table into shared buffers...")
-        _conn = psycopg2.connect(dbname="mydb", user="postgres", host="localhost", port="5432")
-        _conn.autocommit = True
-        _cur = _conn.cursor()
-        _cur.execute("CREATE EXTENSION IF NOT EXISTS pg_prewarm")
-        _cur.execute(f"SELECT pg_prewarm('{table_name}')")
-        _tbl_blocks = _cur.fetchone()[0]
-        print(f"  Prewarmed table '{table_name}': {_tbl_blocks} blocks")
-        _cur.execute("SELECT i.relname FROM pg_index ix JOIN pg_class t ON t.oid = ix.indrelid JOIN pg_class i ON i.oid = ix.indexrelid JOIN pg_am am ON am.oid = i.relam WHERE t.relname = '" + table_name + "' AND am.amname IN ('ivfflat', 'hnsw')")
-        _idx = _cur.fetchone()
-        if _idx:
-            _cur.execute(f"SELECT pg_prewarm('{_idx[0]}')")
-            _idx_blocks = _cur.fetchone()[0]
-            print(f"  Prewarmed index '{_idx[0]}': {_idx_blocks} blocks")
-        _cur.close()
-        _conn.close()
-        print("  Prewarm complete.")
+        prewarm_table_and_index(table_name)
 
+    print(f"\n[MEASUREMENT] Running experiments ({optimization} optimization, {iterations} iteration{'s' if iterations > 1 else ''})...")
 
-    print(f"\n[MEASUREMENT] Running experiments ({optimization} optimization)...")
-    results = []
+    # Store results for each K across iterations
+    all_results = {}  # k -> list of total_times
 
     for k in K_VALUES:
         if k not in optimal_params:
             print(f"  K={k}: skipped (no optimal params)")
-            results.append((k, 0.0))
             continue
 
-        total_time = run_measurement(
-            workload, k, optimal_params[k], table_name, distance_op, index_type, mode=mode
-        )
-        avg_ms = (total_time / len(workload)) * 1000
-        results.append((k, total_time))
-        print(f"  K={k:>5}: {param_label}={optimal_params[k]}, total={total_time:.4f}s, avg={avg_ms:.3f}ms/query")
+        all_results[k] = []
+
+        for iteration in range(iterations):
+            if iterations > 1:
+                print(f"\n  Iteration {iteration + 1}/{iterations} for K={k}:")
+
+            total_time = run_measurement(
+                workload, k, optimal_params[k], table_name, distance_op, index_type, mode=mode
+            )
+            all_results[k].append(total_time)
+
+            avg_ms = (total_time / len(workload)) * 1000
+            print(f"    K={k:>5}: {param_label}={optimal_params[k]}, total={total_time:.4f}s, avg={avg_ms:.3f}ms/query")
+
+    # Compute statistics
+    results_summary = []
+    detailed_results = {}
+
+    for k in K_VALUES:
+        if k not in all_results:
+            results_summary.append((k, 0.0, 0.0, 0.0))
+            continue
+
+        times = all_results[k]
+        mean_time = np.mean(times)
+        std_time = np.std(times) if len(times) > 1 else 0.0
+        median_time = np.median(times)
+
+        results_summary.append((k, mean_time, std_time, median_time))
+        detailed_results[k] = {
+            "times": times,
+            "mean": mean_time,
+            "std": std_time,
+            "median": median_time,
+            "min": min(times),
+            "max": max(times),
+            "iterations": len(times)
+        }
 
     # Write results
     output_dir = SCRIPT_DIR / "data"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Original format (for backward compatibility)
     output_file = output_dir / f"results_{optimization}_optimization_{index_type.upper()}_{dataset}_{mode}.txt"
-
     with open(output_file, "w") as f:
-        for k, exec_time in results:
-            f.write(f"K={k}, exec_time={exec_time:.6f}\n")
+        for k, mean_time, _, _ in results_summary:
+            f.write(f"K={k}, exec_time={mean_time:.6f}\n")
 
-    # Optimal params already saved during tuning phase
+    # Detailed results with statistics
+    if iterations > 1:
+        detailed_file = output_dir / f"results_{optimization}_optimization_{index_type.upper()}_{dataset}_{mode}_detailed.json"
+        with open(detailed_file, "w") as f:
+            json.dump({
+                "config": {
+                    "index_type": index_type,
+                    "optimization": optimization,
+                    "dataset": dataset,
+                    "mode": mode,
+                    "iterations": iterations,
+                    "num_queries": len(workload),
+                    "target_recall": TARGET_RECALL
+                },
+                "results": detailed_results,
+                "optimal_params": {str(k): v for k, v in optimal_params.items()}
+            }, f, indent=2)
+        print(f"\nDetailed results written to: {detailed_file}")
 
+    # Print summary
     print(f"\n{'=' * 70}")
     print(f"RESULTS SUMMARY ({optimization} optimization, {index_type.upper()}, {dataset})")
     print(f"{'=' * 70}")
-    for k, exec_time in results:
-        if exec_time > 0:
-            avg_ms = (exec_time / len(workload)) * 1000
-            print(f"  K={k:>5}: total={exec_time:.4f}s, avg={avg_ms:.3f}ms/query")
+
+    if iterations > 1:
+        print(f"  {'K':>5} {'Mean (s)':>12} {'Std (s)':>12} {'Median (s)':>12} {'Avg/query (ms)':>15}")
+        print(f"  {'-'*5} {'-'*12} {'-'*12} {'-'*12} {'-'*15}")
+        for k, mean_time, std_time, median_time in results_summary:
+            if mean_time > 0:
+                avg_ms = (mean_time / len(workload)) * 1000
+                print(f"  {k:>5} {mean_time:>12.4f} {std_time:>12.4f} {median_time:>12.4f} {avg_ms:>15.3f}")
+    else:
+        for k, mean_time, _, _ in results_summary:
+            if mean_time > 0:
+                avg_ms = (mean_time / len(workload)) * 1000
+                print(f"  K={k:>5}: total={mean_time:.4f}s, avg={avg_ms:.3f}ms/query")
+
     print(f"\nResults written to: {output_file}")
-    # Optimal params already saved during tuning phase
 
 
 if __name__ == "__main__":
