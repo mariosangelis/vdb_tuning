@@ -1,15 +1,12 @@
 {
   "index_config": {
-    "index_type": "IVFFLAT",
-    "parallel_index": false,
-    "io_depth": 1000,
     "k": 100,
     "workload_vectors_file": "gist_test_queries.txt"
   },
   "hardware": {
     "num_pg_cores": 32,
     "postgres_cores": "0-31",
-    "postgres_numa_nodes": "0",
+    "postgres_numa_nodes": "0-7",
     "_comment_numa": "postgres_numa_nodes: single node e.g. '0' or range e.g. '0-6'",
     "topk_producers_cores": [
       32,

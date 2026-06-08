@@ -36,6 +36,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent                    # frontier_analy
 TPCH_DIR = SCRIPT_DIR.parent.parent                             # TPCH/
 PROJECT_DIR = TPCH_DIR.parent                                    # vdb-tuning-main/
 
+# Central machine-specific config (paths) from config.yaml at the repo root.
+sys.path.insert(0, str(PROJECT_DIR.parent))  # config_loader lives at ~/vdb_tuning (repo root)
+from config_loader import get_path  # noqa: E402
+
 # ============== LOAD EXPERIMENT CONFIG ==============
 CONFIG_PATH = SCRIPT_DIR.parent / "experiment_config.json"      # code/experiment_config.json
 with open(CONFIG_PATH, 'r') as _cf:
@@ -52,25 +56,26 @@ DB_CONFIG = {
     "port": "5432"
 }
 
-# Paths
+# Paths (from config.yaml)
+PG_INSTALL = get_path("pg_install")
 WORKLOAD_VECTORS_PATH = str(PROJECT_DIR / IDX_CFG["workload_vectors_file"])
 TUNE_RESULTS_DIR = PROJECT_DIR / "compute_and_compare_recall" / "results_from_tune_scripts"
 
 RESULTS_DIR = str(TPCH_DIR / "results_throughput_frontier")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-# CPU pinning
+# CPU pinning (from experiment_config.json)
 POSTGRES_CORES = HW_CFG["postgres_cores"]
 PG_NUMA_NODES = HW_CFG["postgres_numa_nodes"]
 TOPK_CORES = HW_CFG["topk_producers_cores"]
 OLAP_CORES = HW_CFG["olap_producers_cores"]
 
-# PostgreSQL paths
-PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
+# PostgreSQL paths (from config.yaml)
+PG_CTL_PATH = shutil.which("pg_ctl") or f"{PG_INSTALL}/bin/pg_ctl"
 _pgdata_result = subprocess.run(
     "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
 )
-PG_DATA_DIR = _pgdata_result.stdout.strip() or "/mnt/nvme/pgdata"
+PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
 PG_CONF_PATH = os.path.join(PG_DATA_DIR, "postgresql.conf")
 CGROUP_MEM_PATH = "/sys/fs/cgroup/postgres_test/memory.max"
 
@@ -93,9 +98,12 @@ SNAPSHOT_MODE = False
 # ============== EXPERIMENT PARAMETERS ==============
 K = IDX_CFG["k"]
 
-# Worker counts to test for saturation
-ANN_WORKERS_TO_TEST = [1, 2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
-OLAP_WORKERS_TO_TEST = [20, 10, 8, 6, 4, 2, 1]
+# Worker counts to test for saturation (stop when < 5% improvement)
+#ANN_WORKERS_TO_TEST = [20, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90]
+ANN_WORKERS_TO_TEST = [30, 50, 55, 60, 65, 70, 75, 80, 85, 90]
+ANN_WORKERS_PARALLEL_IVFFLAT = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+OLAP_WORKERS_TO_TEST = [5, 8, 10, 12, 14, 16]
+SATURATION_THRESHOLD = 0.005  # Stop if throughput improves less than 5%
 
 # Timing
 MEASUREMENT_SEC = 300    # Measurement window (5 minutes) - cold start, no warmup
@@ -230,7 +238,9 @@ def load_tune_config():
     Tries both generic and dataset-specific filenames (e.g., tune_ivfflat_results.json
     and tune_ivfflat_results_gist.json).
     """
-    index_type = IDX_CFG["index_type"].upper()
+    index_type = (INDEX_TYPE_OVERRIDE or "ivfflat").upper()
+    if index_type == "PARALLEL_IVFFLAT":
+        index_type = "IVFFLAT"
     if index_type == "IVFFLAT":
         base_name = "tune_ivfflat_results"
     elif index_type == "HNSW":
@@ -265,88 +275,115 @@ def load_tune_config():
     return best
 
 
+def compile_pgvector(variant="default"):
+    """Compile and install pgvector extension (default or parallel), then restart postgres."""
+    if variant == "parallel":
+        src_dir = get_path("pgvector_parallel")
+    else:
+        src_dir = get_path("pgvector_default")
+
+    print(f"  Compiling pgvector ({variant}) from {src_dir}...")
+    env_prefix = f"export PATH={PG_INSTALL}/bin:$PATH"
+    result = subprocess.run(
+        f"cd {src_dir} && {env_prefix} && make clean > /dev/null 2>&1; make -j$(nproc) > /dev/null 2>&1 && make install > /dev/null 2>&1",
+        shell=True,
+    )
+    if result.returncode != 0:
+        subprocess.run(
+            f"cd {src_dir} && {env_prefix} && make clean && make -j$(nproc) && make install",
+            shell=True, check=True,
+        )
+    print(f"  pgvector ({variant}) compiled and installed.")
+
+
+def load_snapshot(snapshot_path):
+    """Stop postgres, restore PGDATA from snapshot, restart postgres."""
+    print(f"  Loading snapshot: {Path(snapshot_path).name}...")
+
+    # Stop postgres
+    subprocess.run(
+        f"su - postgres -c '{PG_CTL_PATH} -D {PG_DATA_DIR} stop -m fast'",
+        shell=True, capture_output=True,
+    )
+    time.sleep(2)
+
+    # Clear and restore
+    subprocess.run(f"rm -rf {PG_DATA_DIR}/*", shell=True, check=True)
+
+    pigz = shutil.which("pigz")
+    if pigz:
+        cmd = f"pigz -dc {snapshot_path} | tar -xf - -C {PG_DATA_DIR}"
+    else:
+        cmd = f"tar -xzf {snapshot_path} -C {PG_DATA_DIR}"
+
+    start = time.time()
+    subprocess.run(cmd, shell=True, check=True)
+    elapsed = time.time() - start
+
+    subprocess.run(f"chown -R postgres:postgres {PG_DATA_DIR}", shell=True, check=True)
+    subprocess.run(f"chmod 700 {PG_DATA_DIR}", shell=True, check=True)
+    print(f"  Snapshot loaded in {elapsed:.1f}s")
+
+    # Restart postgres with NUMA binding
+    subprocess.run(
+        f"su - postgres -c 'numactl --cpunodebind={PG_NUMA_NODES} --membind={PG_NUMA_NODES} "
+        f"{PG_CTL_PATH} -D {PG_DATA_DIR} -l /tmp/logfile start'",
+        shell=True, capture_output=True,
+    )
+    time.sleep(3)
+    wait_for_postgres()
+
+
 def ensure_index():
-    """Ensure the correct index exists based on tune config or CLI override. Build if needed."""
-    # Determine index type: CLI override > config
+    """Always compile the correct pgvector extension and load the correct snapshot."""
+    # Determine index type
     if INDEX_TYPE_OVERRIDE:
         if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
-            index_type = "IVFFLAT"  # Same index, different query strategy
+            index_type = "IVFFLAT"
         else:
             index_type = INDEX_TYPE_OVERRIDE.upper()
     else:
-        index_type = IDX_CFG["index_type"].upper()
+        index_type = (INDEX_TYPE_OVERRIDE or "ivfflat").upper()
+    if index_type == "PARALLEL_IVFFLAT":
+        index_type = "IVFFLAT"
 
-    # Load tune config, then override with manual CLI params
+    # Load tune config
     tune_cfg = load_tune_config()
     if INDEX_PARAMS:
         tune_cfg.update(INDEX_PARAMS)
         print(f"  Overriding tune config with CLI params: {INDEX_PARAMS}")
 
-    conn = psycopg2.connect(**DB_CONFIG)
-    conn.autocommit = True
-    cur = conn.cursor()
+    # Step 1: Compile the correct pgvector extension
+    if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
+        compile_pgvector("parallel")
+    else:
+        compile_pgvector("default")
 
-    # Check what index currently exists
-    cur.execute("""
-        SELECT am.amname, ic.reloptions
-        FROM pg_index i
-        JOIN pg_class ic ON ic.oid = i.indexrelid
-        JOIN pg_class tc ON tc.oid = i.indrelid
-        JOIN pg_am am ON am.oid = ic.relam
-        WHERE tc.relname = 'gist_data'
-        AND ic.relname != 'gist_data_pkey'
-    """)
-    existing = cur.fetchall()
+    # Step 2: Find and load the correct snapshot
+    snapshot_dir = Path(get_path("snapshot_dir"))
+    if index_type == "IVFFLAT":
+        lists = tune_cfg["lists"]
+        if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
+            snapshot_name = f"gist_parallel_ivfflat_lists{lists}_pgdata.tar.gz"
+        else:
+            snapshot_name = f"gist_ivfflat_lists{lists}_pgdata.tar.gz"
+    elif index_type == "HNSW":
+        m = tune_cfg["m"]
+        efc = tune_cfg["ef_construction"]
+        snapshot_name = f"gist_hnsw_efc{efc}_m{m}_pgdata.tar.gz"
+    else:
+        raise ValueError(f"Unknown index type: {index_type}")
 
-    needs_rebuild = True
+    snapshot_path = snapshot_dir / snapshot_name
+    if not snapshot_path.exists():
+        print(f"  ERROR: Snapshot not found: {snapshot_path}")
+        print(f"  Available snapshots:")
+        for f in sorted(snapshot_dir.iterdir()):
+            print(f"    {f.name}")
+        raise FileNotFoundError(f"Snapshot not found: {snapshot_path}")
 
-    if existing:
-        current_am = existing[0][0]
-        current_opts = existing[0][1] or []
+    load_snapshot(str(snapshot_path))
 
-        if index_type == "IVFFLAT" and current_am == "ivfflat":
-            for opt in current_opts:
-                if opt.startswith("lists=") and int(opt.split("=")[1]) == tune_cfg["lists"]:
-                    needs_rebuild = False
-                    print(f"  Index OK: ivfflat with lists={tune_cfg['lists']} already exists")
-                    break
-        elif index_type == "HNSW" and current_am == "hnsw":
-            for opt in current_opts:
-                if opt.startswith("m=") and int(opt.split("=")[1]) == tune_cfg["m"]:
-                    needs_rebuild = False
-                    print(f"  Index OK: hnsw with m={tune_cfg['m']} already exists")
-                    break
-
-    if needs_rebuild:
-        print(f"  Building {index_type} index from tune config...")
-
-        # Drop existing indexes on gist_data (except pkey)
-        cur.execute("SELECT indexname FROM pg_indexes WHERE tablename = 'gist_data' AND indexname != 'gist_data_pkey'")
-        for (idx_name,) in cur.fetchall():
-            print(f"    Dropping index: {idx_name}")
-            cur.execute(f"DROP INDEX IF EXISTS {idx_name}")
-
-        # Create new index
-        if index_type == "IVFFLAT":
-            lists = tune_cfg["lists"]
-            print(f"    Creating IVFFlat index with lists={lists}...")
-            cur.execute(
-                f"CREATE INDEX gist_data_embedding_idx ON gist_data "
-                f"USING ivfflat (embedding vector_l2_ops) WITH (lists = {lists})"
-            )
-        elif index_type == "HNSW":
-            m = tune_cfg["m"]
-            ef_construction = tune_cfg["ef_construction"]
-            print(f"    Creating HNSW index with m={m}, ef_construction={ef_construction}...")
-            cur.execute(
-                f"CREATE INDEX gist_data_embedding_idx ON gist_data "
-                f"USING hnsw (embedding vector_l2_ops) WITH (m = {m}, ef_construction = {ef_construction})"
-            )
-
-        print(f"    Index created successfully.")
-
-    cur.close()
-    conn.close()
     return tune_cfg
 
 
@@ -427,9 +464,11 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
         cur.execute("SET enable_seqscan = off;")
         # if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
         #     cur.execute("SET max_parallel_workers_per_gather = 200;")
-        if TUNE_CFG and (IDX_CFG["index_type"].upper() == "IVFFLAT" or INDEX_TYPE_OVERRIDE in ("ivfflat", "parallel_ivfflat")):
+        if TUNE_CFG and INDEX_TYPE_OVERRIDE in ("ivfflat", "parallel_ivfflat"):
+            #print("probes are  ", TUNE_CFG['probes'])
             cur.execute(f"SET ivfflat.probes = {TUNE_CFG['probes']};")
-        elif TUNE_CFG and (IDX_CFG["index_type"].upper() == "HNSW" or INDEX_TYPE_OVERRIDE == "hnsw"):
+        elif TUNE_CFG and INDEX_TYPE_OVERRIDE == "hnsw":
+            #print("ef_search is  ", TUNE_CFG['ef_search'])
             cur.execute(f"SET hnsw.ef_search = {TUNE_CFG.get('ef_search', 100)};")
 
         while not stop_event.is_set():
@@ -628,7 +667,9 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
 # ============== MAIN ==============
 
 def find_ann_saturation(workload):
-    """Find maximum ANN throughput (no OLAP running)."""
+    """Find maximum ANN throughput (no OLAP running).
+    Resumes from existing measurements if saturation_points_ann.json exists.
+    """
     print("\n" + "=" * 70)
     print("PHASE 1: Finding ANN Saturation (X^ANN)")
     print("Running ANN alone with increasing workers...")
@@ -638,13 +679,38 @@ def find_ann_saturation(workload):
     max_throughput = 0
     saturation_workers = 0
 
-    # Cap ANN workers at 30 for parallel_ivfflat (crashes beyond that due to
-    # internal parallel workers multiplying connection count)
-    ann_workers_list = ANN_WORKERS_TO_TEST
+    # Load existing measurements to skip already-computed points
+    ann_file = os.path.join(RESULTS_DIR, "saturation_points_ann.json")
+    existing_workers = set()
+    if os.path.exists(ann_file):
+        with open(ann_file, 'r') as f:
+            existing_data = json.load(f)
+        if 'ann_saturation' in existing_data:
+            for m in existing_data['ann_saturation'].get('measurements', []):
+                w = m.get('ann_workers', m.get('num_ann_workers'))
+                if w is not None:
+                    existing_workers.add(w)
+                    results.append(m)
+                    qps = m['ann_throughput_qps']
+                    if qps > max_throughput:
+                        max_throughput = qps
+                        saturation_workers = w
+            if existing_workers:
+                print(f"  Resuming: found existing measurements for workers {sorted(existing_workers)}")
+                print(f"  Current best: {max_throughput:.2f} qps at {saturation_workers} workers")
+
+    # Use separate range for parallel_ivfflat
     if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
-        ann_workers_list = [w for w in ANN_WORKERS_TO_TEST if w <= 30]
+        ann_workers_list = ANN_WORKERS_PARALLEL_IVFFLAT
+    else:
+        ann_workers_list = ANN_WORKERS_TO_TEST
 
     for num_workers in ann_workers_list:
+        # Skip already-computed points
+        if num_workers in existing_workers:
+            print(f"  >> {num_workers} workers: SKIPPED (already measured)")
+            continue
+
         result = measure_throughput(
             num_ann_workers=num_workers,
             num_olap_workers=0,
@@ -656,8 +722,20 @@ def find_ann_saturation(workload):
         print(f"  >> {num_workers} workers: {qps:.2f} qps")
 
         if qps > max_throughput:
+            # Check if improvement is less than threshold (saturated)
+            if max_throughput > 0:
+                improvement = (qps - max_throughput) / max_throughput
+                if improvement < SATURATION_THRESHOLD:
+                    print(f"     (improvement {improvement*100:.1f}% < {SATURATION_THRESHOLD*100:.0f}% threshold, saturated)")
+                    max_throughput = qps
+                    saturation_workers = num_workers
+                    break
             max_throughput = qps
             saturation_workers = num_workers
+        else:
+            # Throughput decreased — already past saturation
+            print(f"     (throughput decreased, saturated)")
+            break
 
     print(f"\n  *** ANN Saturation: X^ANN = {max_throughput:.2f} qps "
           f"(at {saturation_workers} workers) ***\n")
@@ -693,8 +771,20 @@ def find_olap_saturation(workload):
         print(f"  >> {num_workers} workers: {qps:.4f} qps")
 
         if qps > max_throughput:
+            # Check if improvement is less than threshold (saturated)
+            if max_throughput > 0:
+                improvement = (qps - max_throughput) / max_throughput
+                if improvement < SATURATION_THRESHOLD:
+                    print(f"     (improvement {improvement*100:.1f}% < {SATURATION_THRESHOLD*100:.0f}% threshold, saturated)")
+                    max_throughput = qps
+                    saturation_workers = num_workers
+                    break
             max_throughput = qps
             saturation_workers = num_workers
+        else:
+            # Throughput decreased — already past saturation
+            print(f"     (throughput decreased, saturated)")
+            break
 
     print(f"\n  *** OLAP Saturation: X^OLAP = {max_throughput:.4f} qps "
           f"(at {saturation_workers} workers) ***\n")
@@ -707,7 +797,7 @@ def find_olap_saturation(workload):
 
 
 def main():
-    global MEMORY_CONFIG, RESULTS_DIR, TUNE_CFG, WARM_MODE, INDEX_TYPE_OVERRIDE, INDEX_PARAMS
+    global MEMORY_CONFIG, RESULTS_DIR, TUNE_CFG, WARM_MODE, INDEX_TYPE_OVERRIDE, INDEX_PARAMS, SNAPSHOT_MODE
 
     run_ann = True
     run_olap = True
@@ -794,8 +884,8 @@ def main():
 
         print("=" * 70)
     print("THROUGHPUT FRONTIER - Step 1: Find Saturation Points")
-    print(f"Index: {IDX_CFG['index_type']}, Parallel: {IDX_CFG['parallel_index']}, "
-          f"io_depth: {IDX_CFG['io_depth']}, K: {K}")
+    print(f"Index: {INDEX_TYPE_OVERRIDE or "ivfflat"}, K: {K}, "
+          f"Measurement: {MEASUREMENT_SEC}s per data point")
     print(f"Measurement: {MEASUREMENT_SEC}s per data point (cold start, no warmup)")
     print(f"Postgres cores: {POSTGRES_CORES}, NUMA: {PG_NUMA_NODES}")
     print(f"Client cores (TopK): {TOPK_CORES[:4]}...")
@@ -830,9 +920,9 @@ def main():
     output = {
         "timestamp": datetime.now().isoformat(),
         "config": {
-            "index_type": IDX_CFG["index_type"],
-            "parallel_index": IDX_CFG["parallel_index"],
-            "io_depth": IDX_CFG["io_depth"],
+            "index_type": INDEX_TYPE_OVERRIDE or "ivfflat",
+            "parallel_index": INDEX_TYPE_OVERRIDE == "parallel_ivfflat",
+            "io_depth": 1000,
             "k": K,
             "measurement_sec": MEASUREMENT_SEC,
             "postgres_cores": POSTGRES_CORES,
@@ -866,7 +956,7 @@ def main():
 
         # ANN: measure only if file doesn't exist (never copy from IVFFlat)
         run_olap = False
-        if os.path.exists(ann_file):
+        if os.path.exists(ann_file) and "--ann-only" not in sys.argv:
             print(f"  ANN saturation already exists: {ann_file} (skipping)")
             with open(ann_file, 'r') as f:
                 ann_data = json.load(f)
@@ -887,7 +977,7 @@ def main():
                 print(f"  X^OLAP = {olap_data['olap_saturation']['X_OLAP']:.4f} qps")
             run_olap = False
 
-        if os.path.exists(ann_file):
+        if os.path.exists(ann_file) and "--ann-only" not in sys.argv:
             print(f"  ANN saturation already exists: {ann_file} (skipping)")
             with open(ann_file, 'r') as f:
                 ann_data = json.load(f)

@@ -1,0 +1,82 @@
+{
+  "timestamp": "2026-06-07T20:13:10.124161",
+  "config": {
+    "index_type": "IVFFLAT",
+    "parallel_index": false,
+    "io_depth": 1000,
+    "k": 100,
+    "measurement_sec": 300,
+    "postgres_cores": "0-31",
+    "numa_nodes": "0-7",
+    "memory_config": {
+      "shared_buffers_gb": 10,
+      "cgroup_gb": 15
+    }
+  },
+  "ann_saturation": {
+    "X_ANN": 214.56,
+    "saturation_workers": 35,
+    "measurements": [
+      {
+        "ann_workers": 20,
+        "olap_workers": 0,
+        "ann_throughput_qps": 195.24,
+        "olap_throughput_tps": 0.0,
+        "olap_throughput_qps": 0.0,
+        "ann_total_queries": 58572,
+        "olap_total_queries": 0,
+        "olap_total_batches": 0,
+        "ann_avg_latency_ms": 101.35,
+        "ann_p50_latency_ms": 91.72,
+        "ann_p99_latency_ms": 243.19,
+        "olap_avg_batch_time_sec": 0,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 30,
+        "olap_workers": 0,
+        "ann_throughput_qps": 211.56,
+        "olap_throughput_tps": 0.0,
+        "olap_throughput_qps": 0.0,
+        "ann_total_queries": 63468,
+        "olap_total_queries": 0,
+        "olap_total_batches": 0,
+        "ann_avg_latency_ms": 140.75,
+        "ann_p50_latency_ms": 127.98,
+        "ann_p99_latency_ms": 350.09,
+        "olap_avg_batch_time_sec": 0,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 35,
+        "olap_workers": 0,
+        "ann_throughput_qps": 214.56,
+        "olap_throughput_tps": 0.0,
+        "olap_throughput_qps": 0.0,
+        "ann_total_queries": 64368,
+        "olap_total_queries": 0,
+        "olap_total_batches": 0,
+        "ann_avg_latency_ms": 162.06,
+        "ann_p50_latency_ms": 144.4,
+        "ann_p99_latency_ms": 439.28,
+        "olap_avg_batch_time_sec": 0,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 40,
+        "olap_workers": 0,
+        "ann_throughput_qps": 197.6,
+        "olap_throughput_tps": 0.0,
+        "olap_throughput_qps": 0.0,
+        "ann_total_queries": 59280,
+        "olap_total_queries": 0,
+        "olap_total_batches": 0,
+        "ann_avg_latency_ms": 201.38,
+        "ann_p50_latency_ms": 177.45,
+        "ann_p99_latency_ms": 561.97,
+        "olap_avg_batch_time_sec": 0,
+        "measurement_duration_sec": 300
+      }
+    ]
+  }
+}

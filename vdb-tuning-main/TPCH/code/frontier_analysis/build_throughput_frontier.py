@@ -42,6 +42,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent                    # frontier_analy
 TPCH_DIR = SCRIPT_DIR.parent.parent                             # TPCH/
 PROJECT_DIR = TPCH_DIR.parent                                    # vdb-tuning-main/
 
+# Central machine-specific config (paths) from config.yaml at the repo root.
+sys.path.insert(0, str(PROJECT_DIR.parent))  # config_loader lives at ~/vdb_tuning (repo root)
+from config_loader import get_path  # noqa: E402
+
 # ============== LOAD EXPERIMENT CONFIG ==============
 CONFIG_PATH = SCRIPT_DIR.parent / "experiment_config.json"      # code/experiment_config.json
 with open(CONFIG_PATH, 'r') as _cf:
@@ -58,25 +62,26 @@ DB_CONFIG = {
     "port": "5432"
 }
 
-# Paths
+# Paths (from config.yaml)
+PG_INSTALL = get_path("pg_install")
 WORKLOAD_VECTORS_PATH = str(PROJECT_DIR / IDX_CFG["workload_vectors_file"])
 TUNE_RESULTS_DIR = PROJECT_DIR / "compute_and_compare_recall" / "results_from_tune_scripts"
 
 RESULTS_DIR = str(TPCH_DIR / "results_throughput_frontier")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-# CPU pinning
+# CPU pinning (from experiment_config.json)
 POSTGRES_CORES = HW_CFG["postgres_cores"]
 PG_NUMA_NODES = HW_CFG["postgres_numa_nodes"]
 TOPK_CORES = HW_CFG["topk_producers_cores"]
 OLAP_CORES = HW_CFG["olap_producers_cores"]
 
-# PostgreSQL paths
-PG_CTL_PATH = shutil.which("pg_ctl") or "/usr/local/pgsql/bin/pg_ctl"
+# PostgreSQL paths (from config.yaml)
+PG_CTL_PATH = shutil.which("pg_ctl") or f"{PG_INSTALL}/bin/pg_ctl"
 _pgdata_result = subprocess.run(
     "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
 )
-PG_DATA_DIR = _pgdata_result.stdout.strip() or "/mnt/nvme/pgdata"
+PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
 PG_CONF_PATH = os.path.join(PG_DATA_DIR, "postgresql.conf")
 CGROUP_MEM_PATH = "/sys/fs/cgroup/postgres_test/memory.max"
 
@@ -102,10 +107,10 @@ K = IDX_CFG["k"]
 # Measurement duration per data point (same as saturation script)
 MEASUREMENT_SEC = 300  # 5 minutes per point, cold start
 
-# Grid graph fractions (following paper: 0, 0.1, 0.2, 0.5, 0.8, 1.0 of max)
-#GRID_FRACTIONS = [0.0, 0.01, 0.02, 0.2, 0.4, 0.6, 0.8, 1.0]
-GRID_FRACTIONS = [0.0, 0.1, 0.3, 0.6, 1.0]
-DENSE_GRID_FRACTIONS = [0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+# Grid: 4 evenly-spaced points from 1 to saturation max
+# [1, tau_max/3, 2*tau_max/3, tau_max] for each axis
+# Fractions: [0.0 maps to 1 worker, 0.33, 0.67, 1.0 maps to max workers]
+GRID_FRACTIONS = [0.0, 1/3, 2/3, 1.0]
 
 # TopK query template
 TOPK_QUERY = "SELECT id FROM gist_data ORDER BY embedding <-> '%s'::vector LIMIT %d"
@@ -237,7 +242,7 @@ def load_tune_config():
     Tries both generic and dataset-specific filenames (e.g., tune_ivfflat_results.json
     and tune_ivfflat_results_gist.json).
     """
-    index_type = IDX_CFG["index_type"].upper()
+    index_type = (INDEX_TYPE_OVERRIDE or "ivfflat").upper()
     if index_type == "IVFFLAT":
         base_name = "tune_ivfflat_results"
     elif index_type == "HNSW":
@@ -281,7 +286,7 @@ def ensure_index():
         else:
             index_type = INDEX_TYPE_OVERRIDE.upper()
     else:
-        index_type = IDX_CFG["index_type"].upper()
+        index_type = (INDEX_TYPE_OVERRIDE or "ivfflat").upper()
 
     # Load tune config, then override with manual CLI params
     tune_cfg = load_tune_config()
@@ -463,11 +468,12 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
         #cur.execute("SET enable_seqscan = off;")
         # if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
         #     cur.execute("SET max_parallel_workers_per_gather = 200;")
-        if TUNE_CFG and (IDX_CFG["index_type"].upper() == "IVFFLAT" or INDEX_TYPE_OVERRIDE in ("ivfflat", "parallel_ivfflat")):
-            print("PROBEEEEEEEEEEEEEEEEESSSSS ARE  ", TUNE_CFG['probes'])
+        if TUNE_CFG and INDEX_TYPE_OVERRIDE in ("ivfflat", "parallel_ivfflat"):
+            print("probes are  ", TUNE_CFG['probes'])
             cur.execute(f"SET ivfflat.probes = {TUNE_CFG['probes']};")
-        elif TUNE_CFG and (IDX_CFG["index_type"].upper() == "HNSW" or INDEX_TYPE_OVERRIDE == "hnsw"):
-            cur.execute(f"SET hnsw.ef_search = {TUNE_CFG.get('ef_search', 100)};")
+        elif TUNE_CFG and INDEX_TYPE_OVERRIDE == "hnsw":
+            print("ef_search is  ", TUNE_CFG['ef_search'])
+            cur.execute(f"SET hnsw.ef_search = {TUNE_CFG.get('ef_search')};")
 
         while not stop_event.is_set():
             idx = local_random.randint(0, len(workload) - 1)
@@ -656,42 +662,38 @@ def compute_grid_points(tau_max, alpha_max):
     """
     Compute the (ann_workers, olap_workers) pairs for the grid graph.
 
+    Grid uses 4 evenly-spaced points: [1, max/3, 2*max/3, max] for each axis.
+
     Returns:
         fixed_ann_lines: dict mapping fixed_ann_count -> list of olap_counts to test
         fixed_olap_lines: dict mapping fixed_olap_count -> list of ann_counts to test
     """
-    # Always include low worker counts (1,2,3) for both ANN and OLAP
-    ALWAYS_ANN = [1, 2, 3]
-    ALWAYS_OLAP = [1, 2, 3]
+    # Compute 4 points: [1, tau_max/3, 2*tau_max/3, tau_max]
+    def four_points(max_val):
+        if max_val <= 1:
+            return [1]
+        points = [1]
+        for frac in GRID_FRACTIONS[1:]:  # skip 0.0
+            pt = max(2, round(frac * max_val))
+            if pt not in points:
+                points.append(pt)
+        return sorted(set(points))
 
-    # Fixed-ANN lines: fix ANN at fractions of tau_max, vary OLAP
-    ann_levels = sorted(set(
-        [max(0, round(f * tau_max)) for f in GRID_FRACTIONS] + ALWAYS_ANN
-    ))
-    olap_sweep = sorted(set(
-        [max(0, round(f * alpha_max)) for f in GRID_FRACTIONS] + ALWAYS_OLAP
-    ))
+    ann_levels = four_points(tau_max)
+    olap_levels = four_points(alpha_max)
 
-    # Fixed-OLAP lines: fix OLAP at fractions of alpha_max, vary ANN
-    olap_levels = sorted(set(
-        [max(0, round(f * alpha_max)) for f in GRID_FRACTIONS] + ALWAYS_OLAP
-    ))
-    ann_sweep = sorted(set(
-        [max(0, round(f * tau_max)) for f in GRID_FRACTIONS] + ALWAYS_ANN
-    ))
+    # For sweeping: use the same 4 points on the other axis
+    ann_sweep = ann_levels
+    olap_sweep = olap_levels
 
+    # Fixed-ANN lines: fix ANN at each level, vary OLAP through all levels
     fixed_ann_lines = {}
     for ann_count in ann_levels:
-        if ann_count == 0:
-            # ANN=0 is just OLAP-only (already measured in saturation)
-            continue
         fixed_ann_lines[ann_count] = olap_sweep
 
+    # Fixed-OLAP lines: fix OLAP at each level, vary ANN through all levels
     fixed_olap_lines = {}
     for olap_count in olap_levels:
-        if olap_count == 0:
-            # OLAP=0 is just ANN-only (already measured in saturation)
-            continue
         fixed_olap_lines[olap_count] = ann_sweep
 
     return fixed_ann_lines, fixed_olap_lines, ann_levels, olap_levels
@@ -716,9 +718,9 @@ def run_grid_measurements(workload, saturation, run_fixed_ann=True, run_fixed_ol
         grid_data = {
             "timestamp_start": datetime.now().isoformat(),
             "config": {
-                "index_type": IDX_CFG["index_type"],
-                "parallel_index": IDX_CFG["parallel_index"],
-                "io_depth": IDX_CFG["io_depth"],
+                "index_type": INDEX_TYPE_OVERRIDE or "ivfflat",
+                "parallel_index": INDEX_TYPE_OVERRIDE == "parallel_ivfflat",
+                "io_depth": 1000,
                 "k": K,
                 "measurement_sec": MEASUREMENT_SEC,
                 "postgres_cores": POSTGRES_CORES,
@@ -927,7 +929,7 @@ def extract_frontier(grid_data, saturation):
 # ============== MAIN ==============
 
 def main():
-    global MEMORY_CONFIG, RESULTS_DIR, TUNE_CFG, WARM_MODE, GRID_FRACTIONS, INDEX_TYPE_OVERRIDE, INDEX_PARAMS
+    global MEMORY_CONFIG, RESULTS_DIR, TUNE_CFG, WARM_MODE, GRID_FRACTIONS, INDEX_TYPE_OVERRIDE, INDEX_PARAMS, SNAPSHOT_MODE
 
     run_fixed_ann = True
     run_fixed_olap = True
@@ -1029,8 +1031,8 @@ def main():
 
         print("=" * 70)
     print("THROUGHPUT FRONTIER - Step 2: Build Grid Graph & Extract Frontier")
-    print(f"Index: {IDX_CFG['index_type']}, Parallel: {IDX_CFG['parallel_index']}, "
-          f"io_depth: {IDX_CFG['io_depth']}, K: {K}")
+    print(f"Index: {INDEX_TYPE_OVERRIDE or "ivfflat"}, K: {K}, "
+          f"Measurement: {MEASUREMENT_SEC}s per data point")
     print(f"Measurement: {MEASUREMENT_SEC}s per data point ({"warm" if WARM_MODE else "cold start"})")
     print(f"Grid fractions: {GRID_FRACTIONS}")
     print(f"Postgres cores: {POSTGRES_CORES}, NUMA: {PG_NUMA_NODES}")

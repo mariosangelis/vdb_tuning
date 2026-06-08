@@ -46,7 +46,7 @@ import numpy as np
 
 STYLES = {
     "ivfflat": {"color": "#2ca02c", "marker": "o", "label": "IVFFlat (nlist=8192)"},
-    "hnsw": {"color": "#1f77b4", "marker": "s", "label": "HNSW (m=16, efc=128)"},
+    "hnsw": {"color": "#1f77b4", "marker": "s", "label": "HNSW (m=32, efc=256)"},
     "parallel_ivfflat": {"color": "#d62728", "marker": "^", "label": "Parallel IVFFlat (nlist=8192, 8w)"},
 }
 
@@ -54,7 +54,9 @@ QUERIES_PER_BATCH = 22
 
 
 def compute_frontier(points):
-    """Correct Pareto frontier: keep only non-dominated points."""
+    """Correct Pareto frontier: keep only non-dominated points.
+    Always includes axis endpoints (0, max_olap) and (max_ann, 0) to connect to axes.
+    """
     points = list(set(points))
     frontier = []
     for i, (ann_i, olap_i) in enumerate(points):
@@ -67,6 +69,19 @@ def compute_frontier(points):
                 break
         if not dominated:
             frontier.append((ann_i, olap_i))
+
+    # Ensure frontier connects to both axes
+    # Y-axis: include (0, max_olap) endpoint
+    for p in points:
+        if p[0] == 0 and p not in frontier:
+            frontier.append(p)
+
+    # X-axis: extend to (max_ann, 0) using the maximum ANN observed
+    max_ann = max(p[0] for p in points) if points else 0
+    x_endpoint = (max_ann, 0)
+    if x_endpoint not in frontier:
+        frontier.append(x_endpoint)
+
     frontier.sort(key=lambda p: p[0])
     return frontier
 
@@ -82,7 +97,12 @@ def load_single_point_json(path):
 
 
 def load_grid_graph_json(path):
-    """Load grid_graph.json from frontier analysis."""
+    """Load grid_graph.json from frontier analysis.
+    Also includes saturation endpoints (ANN-only and OLAP-only) from the same directory.
+    """
+    from pathlib import Path
+    results_dir = Path(path).parent
+
     with open(path) as f:
         data = json.load(f)
     measurements = data["measurements"]
@@ -93,6 +113,25 @@ def load_grid_graph_json(path):
         olap = m.get("olap_throughput_qps", m.get("olap_throughput_tps", 0) * QUERIES_PER_BATCH)
         points.append((ann, olap))
         annotations.append((ann, olap, f"{m['ann_workers']},{m['olap_workers']}"))
+
+    # Add saturation endpoints: ANN-only (x-axis) and OLAP-only (y-axis)
+    ann_sat_file = results_dir / "saturation_points_ann.json"
+    olap_sat_file = results_dir / "saturation_points_olap.json"
+
+    if ann_sat_file.exists():
+        with open(ann_sat_file) as f:
+            ann_sat = json.load(f)
+        x_ann = ann_sat["ann_saturation"]["X_ANN"]
+        points.append((x_ann, 0))
+        annotations.append((x_ann, 0, f"X^ANN={x_ann:.0f}"))
+
+    if olap_sat_file.exists():
+        with open(olap_sat_file) as f:
+            olap_sat = json.load(f)
+        x_olap = olap_sat["olap_saturation"]["X_OLAP"]
+        points.append((0, x_olap))
+        annotations.append((0, x_olap, f"X^OLAP={x_olap:.4f}"))
+
     return points, annotations
 
 

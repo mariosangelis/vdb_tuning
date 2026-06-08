@@ -29,8 +29,8 @@ fi
 MEMORY="$1"
 SB=$(echo $MEMORY | cut -d: -f1)
 CG=$(echo $MEMORY | cut -d: -f2)
-SCRIPT_DIR=/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code
-LOG_DIR=/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/logs
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOG_DIR="${SCRIPT_DIR}/../logs"
 mkdir -p $LOG_DIR
 
 # Extract index name for log file naming
@@ -52,12 +52,14 @@ echo "Flags: ${EXTRA_FLAGS}"
 echo "Log file: ${LOGFILE}"
 echo "========================================"
 
+FRONTIER_DIR="${SCRIPT_DIR}/frontier_analysis"
+
 echo "[Step 1/2] find_saturation_points.py --memory ${MEMORY} ${EXTRA_FLAGS}" | tee $LOGFILE
-python3 -u ${SCRIPT_DIR}/find_saturation_points.py --memory ${MEMORY} ${EXTRA_FLAGS} 2>&1 | tee -a $LOGFILE
+python3 -u ${FRONTIER_DIR}/find_saturation_points.py --memory ${MEMORY} ${EXTRA_FLAGS} 2>&1 | tee -a $LOGFILE
 
 echo "" | tee -a $LOGFILE
 echo "[Step 2/2] build_throughput_frontier.py --memory ${MEMORY} ${EXTRA_FLAGS}" | tee -a $LOGFILE
-python3 -u ${SCRIPT_DIR}/build_throughput_frontier.py --memory ${MEMORY} ${EXTRA_FLAGS} 2>&1 | tee -a $LOGFILE
+python3 -u ${FRONTIER_DIR}/build_throughput_frontier.py --memory ${MEMORY} ${EXTRA_FLAGS} 2>&1 | tee -a $LOGFILE
 
 echo "" | tee -a $LOGFILE
 echo "DONE! Index: ${INDEX_NAME}, Memory: ${SB}GB/${CG}GB" | tee -a $LOGFILE

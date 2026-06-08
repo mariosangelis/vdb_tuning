@@ -21,17 +21,40 @@ MEMORY="$1"
 SB=$(echo $MEMORY | cut -d: -f1)
 CG=$(echo $MEMORY | cut -d: -f2)
 
-SCRIPT_DIR=/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code
-PG_DIR=/users/mangelis/vdb_tuning/postgres/postgres
-PGVECTOR_DEFAULT=${PG_DIR}/pgvector
-PGVECTOR_PARALLEL=${PG_DIR}/pgvector_modified_final
-SNAPSHOTS_DIR=/mnt/nvme/saved_indexes
-PGDATA_DIR=/mnt/nvme/pgdata
-export PATH=/usr/local/pgsql/bin:$PATH
+# Auto-detect paths from config.yaml using yq or python
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONFIG_YAML="$(cd "$SCRIPT_DIR/../../.." && pwd)/config.yaml"
+
+if command -v yq &> /dev/null; then
+    PG_SRC=$(yq '.paths.pg_src' "$CONFIG_YAML")
+    PG_INSTALL=$(yq '.paths.pg_install' "$CONFIG_YAML")
+    PGDATA_DIR=$(yq '.paths.pg_data' "$CONFIG_YAML")
+    SNAPSHOTS_DIR=$(yq '.paths.snapshot_dir' "$CONFIG_YAML")
+    PGVECTOR_DEFAULT=$(yq '.paths.pgvector_default' "$CONFIG_YAML")
+    PGVECTOR_PARALLEL=$(yq '.paths.pgvector_parallel' "$CONFIG_YAML")
+else
+    # Fallback: use python to parse yaml
+    eval $(python3 -c "
+import yaml
+with open('$CONFIG_YAML') as f:
+    c = yaml.safe_load(f)['paths']
+print(f\"PG_SRC={c['pg_src']}\")
+print(f\"PG_INSTALL={c['pg_install']}\")
+print(f\"PGDATA_DIR={c['pg_data']}\")
+print(f\"SNAPSHOTS_DIR={c['snapshot_dir']}\")
+print(f\"PGVECTOR_DEFAULT={c['pgvector_default']}\")
+print(f\"PGVECTOR_PARALLEL={c['pgvector_parallel']}\")
+")
+fi
+
+export PATH=${PG_INSTALL}/bin:$PATH
+
+# Read NUMA config from experiment_config.json
+PG_NUMA_NODES=$(python3 -c "import json; print(json.load(open('${SCRIPT_DIR}/experiment_config.json'))['hardware']['postgres_numa_nodes'])")
 
 # Snapshot files for GIST dataset
 SNAPSHOT_IVFFLAT=${SNAPSHOTS_DIR}/gist_ivfflat_lists8192_pgdata.tar.gz
-SNAPSHOT_HNSW=${SNAPSHOTS_DIR}/gist_hnsw_efc128_m16_pgdata.tar.gz
+SNAPSHOT_HNSW=${SNAPSHOTS_DIR}/gist_hnsw_efc256_m32_pgdata.tar.gz
 SNAPSHOT_PARALLEL=${SNAPSHOTS_DIR}/gist_parallel_ivfflat_lists8192_pgdata.tar.gz
 
 # Verify snapshots exist
@@ -63,7 +86,7 @@ load_snapshot() {
     echo "    Source: ${SNAPSHOT_PATH}"
 
     # Stop postgres if running
-    su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH && pg_ctl -D ${PGDATA_DIR} stop -m fast" 2>/dev/null || true
+    su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && pg_ctl -D ${PGDATA_DIR} stop -m fast" 2>/dev/null || true
     sleep 2
 
     # Clear existing PGDATA contents (keep the directory, same as recall_qps_diagram.py)
@@ -91,40 +114,40 @@ load_snapshot() {
 # Function: Create TPC-H secondary indexes (benchbase-style)
 # These are missing from the snapshots (only PKs were created by dbgen)
 # ============================================================
-create_tpch_indexes() {
-    echo "    Creating TPC-H secondary indexes (if not exist)..."
-    su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH && psql -h /tmp -d mydb" <<'EOF'
-CREATE INDEX IF NOT EXISTS l_ok ON lineitem (l_orderkey ASC);
-CREATE INDEX IF NOT EXISTS l_pk ON lineitem (l_partkey ASC);
-CREATE INDEX IF NOT EXISTS l_sk ON lineitem (l_suppkey ASC);
-CREATE INDEX IF NOT EXISTS l_sd ON lineitem (l_shipdate ASC);
-CREATE INDEX IF NOT EXISTS l_cd ON lineitem (l_commitdate ASC);
-CREATE INDEX IF NOT EXISTS l_rd ON lineitem (l_receiptdate ASC);
-CREATE INDEX IF NOT EXISTS l_pk_sk ON lineitem (l_partkey, l_suppkey);
-CREATE INDEX IF NOT EXISTS l_sk_pk ON lineitem (l_suppkey, l_partkey);
-CREATE INDEX IF NOT EXISTS ps_pk ON partsupp (ps_partkey ASC);
-CREATE INDEX IF NOT EXISTS ps_sk ON partsupp (ps_suppkey ASC);
-CREATE INDEX IF NOT EXISTS o_ck ON orders (o_custkey ASC);
-CREATE INDEX IF NOT EXISTS o_od ON orders (o_orderdate ASC);
-CREATE INDEX IF NOT EXISTS c_nk ON customer (c_nationkey ASC);
-CREATE INDEX IF NOT EXISTS s_nk ON supplier (s_nationkey ASC);
-CREATE INDEX IF NOT EXISTS n_rk ON nation (n_regionkey ASC);
-ANALYZE;
-EOF
-    echo "    TPC-H indexes created and ANALYZE complete."
-}
+##create_tpch_indexes() {
+#    echo "    Creating TPC-H secondary indexes (if not exist)..."
+#    su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && psql -h /tmp -d mydb" <<'EOF'
+#CREATE INDEX IF NOT EXISTS l_ok ON lineitem (l_orderkey ASC);
+#CREATE INDEX IF NOT EXISTS l_pk ON lineitem (l_partkey ASC);
+#CREATE INDEX IF NOT EXISTS l_sk ON lineitem (l_suppkey ASC);
+#CREATE INDEX IF NOT EXISTS l_sd ON lineitem (l_shipdate ASC);
+#CREATE INDEX IF NOT EXISTS l_cd ON lineitem (l_commitdate ASC);
+#CREATE INDEX IF NOT EXISTS l_rd ON lineitem (l_receiptdate ASC);
+#CREATE INDEX IF NOT EXISTS l_pk_sk ON lineitem (l_partkey, l_suppkey);
+#CREATE INDEX IF NOT EXISTS l_sk_pk ON lineitem (l_suppkey, l_partkey);
+#CREATE INDEX IF NOT EXISTS ps_pk ON partsupp (ps_partkey ASC);
+#CREATE INDEX IF NOT EXISTS ps_sk ON partsupp (ps_suppkey ASC);
+#CREATE INDEX IF NOT EXISTS o_ck ON orders (o_custkey ASC);
+#CREATE INDEX IF NOT EXISTS o_od ON orders (o_orderdate ASC);
+#CREATE INDEX IF NOT EXISTS c_nk ON customer (c_nationkey ASC);
+#CREATE INDEX IF NOT EXISTS s_nk ON supplier (s_nationkey ASC);
+#CREATE INDEX IF NOT EXISTS n_rk ON nation (n_regionkey ASC);
+#ANALYZE;
+#EOF
+#    echo "    TPC-H indexes created and ANALYZE complete."
+#}
 
 # ============================================================
 # Function: Start postgres with NUMA pinning
 # ============================================================
 start_postgres() {
-    echo "    Starting PostgreSQL..."
-    su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH && numactl --cpunodebind=0 --membind=0 pg_ctl -D ${PGDATA_DIR} -l /tmp/logfile start"
+    echo "    Starting PostgreSQL (NUMA nodes: ${PG_NUMA_NODES})..."
+    su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && numactl --cpunodebind=${PG_NUMA_NODES} --membind=${PG_NUMA_NODES} pg_ctl -D ${PGDATA_DIR} -l /tmp/logfile start"
     sleep 3
 
     # Wait for postgres to be ready
     for i in $(seq 1 30); do
-        if su - postgres -c "export PATH=/usr/local/pgsql/bin:\$PATH && pg_isready" > /dev/null 2>&1; then
+        if su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && pg_isready" > /dev/null 2>&1; then
             echo "    PostgreSQL is ready."
             return 0
         fi
@@ -154,11 +177,11 @@ echo "  Done."
 echo "[1b] Loading IVFFlat snapshot..."
 load_snapshot "$SNAPSHOT_IVFFLAT" "IVFFlat (lists=8192)"
 start_postgres
-create_tpch_indexes
+#create_tpch_indexes
 
 # Run IVFFlat frontier
 echo "[1c] Running IVFFlat frontier..."
-cd ${SCRIPT_DIR}
+cd ${SCRIPT_DIR}/frontier_analysis
 ./run_frontier.sh ${MEMORY} --warm --index ivfflat --ivfflat-lists 8192 --snapshot
 
 echo ""
@@ -175,14 +198,14 @@ echo "========================================================================"
 # pgvector default is already compiled (supports HNSW)
 # Load HNSW snapshot
 echo "[2a] Loading HNSW snapshot..."
-load_snapshot "$SNAPSHOT_HNSW" "HNSW (m=16, efc=128)"
+load_snapshot "$SNAPSHOT_HNSW" "HNSW (m=32, efc=256)"
 start_postgres
-create_tpch_indexes
+#create_tpch_indexes
 
 # Run HNSW frontier
 echo "[2b] Running HNSW frontier..."
-cd ${SCRIPT_DIR}
-./run_frontier.sh ${MEMORY} --warm --index hnsw --hnsw-m 16 --hnsw-efc 128 --snapshot
+cd ${SCRIPT_DIR}/frontier_analysis
+./run_frontier.sh ${MEMORY} --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot
 
 echo ""
 echo "PHASE 2 COMPLETE: HNSW frontier done at $(date)"
@@ -207,11 +230,11 @@ echo "  Done."
 echo "[3b] Loading Parallel IVFFlat snapshot..."
 load_snapshot "$SNAPSHOT_PARALLEL" "Parallel IVFFlat (lists=8192)"
 start_postgres
-create_tpch_indexes
+#create_tpch_indexes
 
 # Run parallel IVFFlat frontier
 echo "[3c] Running Parallel IVFFlat frontier..."
-cd ${SCRIPT_DIR}
+cd ${SCRIPT_DIR}/frontier_analysis
 ./run_frontier.sh ${MEMORY} --warm --index parallel_ivfflat --ivfflat-lists 8192 --snapshot
 
 echo ""
