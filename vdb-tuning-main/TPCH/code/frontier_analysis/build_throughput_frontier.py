@@ -469,10 +469,10 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
         # if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
         #     cur.execute("SET max_parallel_workers_per_gather = 200;")
         if TUNE_CFG and INDEX_TYPE_OVERRIDE in ("ivfflat", "parallel_ivfflat"):
-            print("probes are  ", TUNE_CFG['probes'])
+            #print("probes are  ", TUNE_CFG['probes'])
             cur.execute(f"SET ivfflat.probes = {TUNE_CFG['probes']};")
         elif TUNE_CFG and INDEX_TYPE_OVERRIDE == "hnsw":
-            print("ef_search is  ", TUNE_CFG['ef_search'])
+            #print("ef_search is  ", TUNE_CFG['ef_search'])
             cur.execute(f"SET hnsw.ef_search = {TUNE_CFG.get('ef_search')};")
 
         while not stop_event.is_set():
@@ -935,6 +935,7 @@ def main():
     run_fixed_olap = True
     skip_measurements = False
     run_extra = False
+    extra_points_from_args = []
     single_point = None
 
     if "--skip-measurements" in sys.argv:
@@ -943,9 +944,25 @@ def main():
         run_fixed_olap = False
     if "--fixed-olap-only" in sys.argv:
         run_fixed_ann = False
+    print(f"DEBUG: sys.argv = {sys.argv}")
     if "--extra" in sys.argv:
-        run_extra = True
-        skip_measurements = True  # Don't run grid, only extra points
+        idx = sys.argv.index("--extra")
+        if idx + 1 < len(sys.argv) and not sys.argv[idx + 1].startswith("--"):
+            extra_arg = sys.argv[idx + 1]
+            try:
+                for pair in extra_arg.split(","):
+                    ann_w, olap_w = pair.split(":")
+                    extra_points_from_args.append((int(ann_w), int(olap_w)))
+                print(f"Parsed {len(extra_points_from_args)} extra points from --extra argument")
+                print(f"DEBUG: extra_points_from_args = {extra_points_from_args}")
+                run_extra = False  # Disabled - using new extra processing after grid
+            except ValueError as e:
+                print(f"ERROR: Invalid --extra format '{extra_arg}'. Use ANN:OLAP,ANN:OLAP format (e.g., 10:15,20:30)")
+                sys.exit(1)
+        else:
+            # Legacy mode: use hardcoded EXTRA_POINTS
+            run_extra = False  # Disabled - using new extra processing after grid
+            print("Using legacy hardcoded extra points")
     if "--single" in sys.argv:
         idx = sys.argv.index("--single")
         ann_w, olap_w = sys.argv[idx + 1].split(",")
@@ -1135,6 +1152,48 @@ def main():
 
         # Run grid measurements
         grid_data = run_grid_measurements(workload, saturation, run_fixed_ann, run_fixed_olap)
+
+
+        # Process extra points if specified
+        print(f"DEBUG: Checking extra_points_from_args = {extra_points_from_args}")
+        if extra_points_from_args:
+            print(f"\n{'='*70}")
+            print(f"PROCESSING EXTRA POINTS")
+            print(f"{'='*70}")
+
+            # Load the current grid data
+            grid_file = os.path.join(RESULTS_DIR, "grid_graph.json")
+            if os.path.exists(grid_file):
+                with open(grid_file, 'r') as f:
+                    grid_data = json.load(f)
+
+            completed = set((m["ann_workers"], m["olap_workers"]) for m in grid_data["measurements"])
+            added_count = 0
+
+            print(f"\nAdding {len(extra_points_from_args)} extra points to grid...")
+            for ann_count, olap_count in extra_points_from_args:
+                if (ann_count, olap_count) in completed:
+                    print(f"  Skipping ({ann_count}, {olap_count}) - already measured")
+                    continue
+
+                print(f"\n  Measuring extra point: ANN={ann_count}, OLAP={olap_count}")
+                result = measure_throughput(ann_count, olap_count, workload)
+                result["line_type"] = "extra_fill"
+                result["fixed_value"] = 0
+                grid_data["measurements"].append(result)
+                completed.add((ann_count, olap_count))
+                added_count += 1
+
+                # Save after each measurement (crash-safe)
+                grid_data["timestamp_last"] = datetime.now().isoformat()
+                with open(grid_file, 'w') as f:
+                    json.dump(grid_data, f, indent=2)
+                print(f"  ✓ Saved. ANN={result["ann_throughput_qps"]:.1f}, OLAP={result["olap_throughput_qps"]:.1f} queries/sec")
+
+            print(f"\nExtra measurements done:")
+            print(f"  Added: {added_count} new points")
+            print(f"  Skipped: {len(extra_points_from_args) - added_count} existing points")
+            print(f"  Total grid size: {len(grid_data['measurements'])} points")
 
     else:
         # Load existing grid data

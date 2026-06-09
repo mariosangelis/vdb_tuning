@@ -99,11 +99,11 @@ SNAPSHOT_MODE = False
 K = IDX_CFG["k"]
 
 # Worker counts to test for saturation (stop when < 5% improvement)
-#ANN_WORKERS_TO_TEST = [20, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90]
-ANN_WORKERS_TO_TEST = [30, 50, 55, 60, 65, 70, 75, 80, 85, 90]
+ANN_WORKERS_TO_TEST = [20, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90]
+#ANN_WORKERS_TO_TEST = [30, 50, 55, 60, 65, 70, 75, 80, 85, 90]
 ANN_WORKERS_PARALLEL_IVFFLAT = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-OLAP_WORKERS_TO_TEST = [5, 8, 10, 12, 14, 16]
-SATURATION_THRESHOLD = 0.005  # Stop if throughput improves less than 5%
+OLAP_WORKERS_TO_TEST = [5, 8, 10, 12, 14, 16,18,20]
+SATURATION_THRESHOLD = 0.005  # Stop if throughput improves less than 0.05%
 
 # Timing
 MEASUREMENT_SEC = 300    # Measurement window (5 minutes) - cold start, no warmup

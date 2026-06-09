@@ -21,6 +21,14 @@ MEMORY="$1"
 SB=$(echo $MEMORY | cut -d: -f1)
 CG=$(echo $MEMORY | cut -d: -f2)
 
+# Check for --extra parameter
+EXTRA_FLAG=""
+if [ "$2" = "--extra" ] && [ -n "$3" ]; then
+    EXTRA_FLAG="--extra $3"
+    echo "Extra points specified: $3"
+    echo "DEBUG: EXTRA_FLAG = "${EXTRA_FLAG}""
+fi
+
 # Auto-detect paths from config.yaml using yq or python
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_YAML="$(cd "$SCRIPT_DIR/../../.." && pwd)/config.yaml"
@@ -111,33 +119,6 @@ load_snapshot() {
 }
 
 # ============================================================
-# Function: Create TPC-H secondary indexes (benchbase-style)
-# These are missing from the snapshots (only PKs were created by dbgen)
-# ============================================================
-##create_tpch_indexes() {
-#    echo "    Creating TPC-H secondary indexes (if not exist)..."
-#    su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && psql -h /tmp -d mydb" <<'EOF'
-#CREATE INDEX IF NOT EXISTS l_ok ON lineitem (l_orderkey ASC);
-#CREATE INDEX IF NOT EXISTS l_pk ON lineitem (l_partkey ASC);
-#CREATE INDEX IF NOT EXISTS l_sk ON lineitem (l_suppkey ASC);
-#CREATE INDEX IF NOT EXISTS l_sd ON lineitem (l_shipdate ASC);
-#CREATE INDEX IF NOT EXISTS l_cd ON lineitem (l_commitdate ASC);
-#CREATE INDEX IF NOT EXISTS l_rd ON lineitem (l_receiptdate ASC);
-#CREATE INDEX IF NOT EXISTS l_pk_sk ON lineitem (l_partkey, l_suppkey);
-#CREATE INDEX IF NOT EXISTS l_sk_pk ON lineitem (l_suppkey, l_partkey);
-#CREATE INDEX IF NOT EXISTS ps_pk ON partsupp (ps_partkey ASC);
-#CREATE INDEX IF NOT EXISTS ps_sk ON partsupp (ps_suppkey ASC);
-#CREATE INDEX IF NOT EXISTS o_ck ON orders (o_custkey ASC);
-#CREATE INDEX IF NOT EXISTS o_od ON orders (o_orderdate ASC);
-#CREATE INDEX IF NOT EXISTS c_nk ON customer (c_nationkey ASC);
-#CREATE INDEX IF NOT EXISTS s_nk ON supplier (s_nationkey ASC);
-#CREATE INDEX IF NOT EXISTS n_rk ON nation (n_regionkey ASC);
-#ANALYZE;
-#EOF
-#    echo "    TPC-H indexes created and ANALYZE complete."
-#}
-
-# ============================================================
 # Function: Start postgres with NUMA pinning
 # ============================================================
 start_postgres() {
@@ -182,14 +163,14 @@ start_postgres
 # Run IVFFlat frontier
 echo "[1c] Running IVFFlat frontier..."
 cd ${SCRIPT_DIR}/frontier_analysis
-./run_frontier.sh ${MEMORY} --warm --index ivfflat --ivfflat-lists 8192 --snapshot
+./run_frontier.sh ${MEMORY} --warm --index ivfflat --ivfflat-lists 8192 --snapshot ${EXTRA_FLAG}
 
 echo ""
 echo "PHASE 1 COMPLETE: IVFFlat frontier done at $(date)"
 
-########################################################################
-# PHASE 2: HNSW (reuse OLAP saturation from phase 1)
-########################################################################
+# ########################################################################
+# # PHASE 2: HNSW (reuse OLAP saturation from phase 1)
+# ########################################################################
 echo ""
 echo "========================================================================"
 echo "PHASE 2/3: HNSW"
@@ -205,18 +186,18 @@ start_postgres
 # Run HNSW frontier
 echo "[2b] Running HNSW frontier..."
 cd ${SCRIPT_DIR}/frontier_analysis
-./run_frontier.sh ${MEMORY} --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot
+./run_frontier.sh ${MEMORY} --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot ${EXTRA_FLAG}
 
 echo ""
 echo "PHASE 2 COMPLETE: HNSW frontier done at $(date)"
 
-########################################################################
+# ########################################################################
 # PHASE 3: Parallel IVFFlat
 ########################################################################
-echo ""
-echo "========================================================================"
-echo "PHASE 3/3: Parallel IVFFlat"
-echo "========================================================================"
+# echo ""
+# echo "========================================================================"
+# echo "PHASE 3/3: Parallel IVFFlat"
+# echo "========================================================================"
 
 # # Compile parallel pgvector
 echo "[3a] Compiling parallel pgvector..."
@@ -235,12 +216,12 @@ start_postgres
 # Run parallel IVFFlat frontier
 echo "[3c] Running Parallel IVFFlat frontier..."
 cd ${SCRIPT_DIR}/frontier_analysis
-./run_frontier.sh ${MEMORY} --warm --index parallel_ivfflat --ivfflat-lists 8192 --snapshot
+./run_frontier.sh ${MEMORY} --warm --index parallel_ivfflat --ivfflat-lists 8192 --snapshot ${EXTRA_FLAG}
 
 echo ""
 echo "PHASE 3 COMPLETE: Parallel IVFFlat frontier done at $(date)"
 
-########################################################################
+# ########################################################################
 # ALL DONE
 ########################################################################
 echo ""

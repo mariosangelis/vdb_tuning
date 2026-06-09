@@ -59,6 +59,7 @@ python3 -u ${FRONTIER_DIR}/find_saturation_points.py --memory ${MEMORY} ${EXTRA_
 
 echo "" | tee -a $LOGFILE
 echo "[Step 2/2] build_throughput_frontier.py --memory ${MEMORY} ${EXTRA_FLAGS}" | tee -a $LOGFILE
+echo "DEBUG: Full command: echo "EXECUTING: python3 -u /build_throughput_frontier.py --memory  "; python3 -u /build_throughput_frontier.py --memory  "
 python3 -u ${FRONTIER_DIR}/build_throughput_frontier.py --memory ${MEMORY} ${EXTRA_FLAGS} 2>&1 | tee -a $LOGFILE
 
 echo "" | tee -a $LOGFILE
