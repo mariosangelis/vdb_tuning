@@ -1,0 +1,26 @@
+{
+  "0.7": {
+    "probes": 50,
+    "actual_recall": 0.7337
+  },
+  "0.8": {
+    "probes": 80,
+    "actual_recall": 0.8195
+  },
+  "0.9": {
+    "probes": 150,
+    "actual_recall": 0.9081
+  },
+  "0.95": {
+    "probes": 250,
+    "actual_recall": 0.9555
+  },
+  "0.96": {
+    "probes": 300,
+    "actual_recall": 0.9681
+  },
+  "0.98": {
+    "probes": 400,
+    "actual_recall": 0.9813
+  }
+}

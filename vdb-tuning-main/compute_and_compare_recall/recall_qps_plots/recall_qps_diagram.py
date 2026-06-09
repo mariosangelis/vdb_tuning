@@ -473,6 +473,183 @@ def compute_timing(workload, table_name, distance_op, k, param_name, param_value
     conn.close()
 
     return query_times
+
+
+def find_optimal_params_for_recall_targets(workload, exact_results, table_name, distance_op, k, index_type, num_workers=4):
+    """
+    Find minimum probes/ef_search that achieves each recall target.
+    Always runs in warm mode for consistency.
+    Returns dict of {target_recall: {param_value, actual_recall}}
+    """
+    if index_type in ("ivfflat", "parallel_ivfflat"):
+        param_name = "ivfflat.probes"
+        param_list = IVFFLAT_PROBES_LIST if index_type == "ivfflat" else [p for p in IVFFLAT_PROBES_LIST if p >= num_workers]
+        param_label = "probes"
+    else:
+        param_name = "hnsw.ef_search"
+        param_list = HNSW_EF_SEARCH_LIST
+        param_label = "ef_search"
+
+    # Prewarm for consistent results
+    prewarm_index(table_name)
+
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SET enable_seqscan = off")
+    cur.execute("SET max_parallel_workers_per_gather = 200")
+
+    optimal_params = {}
+    last_optimal_idx = 0  # Start from beginning for first target
+
+    print(f"\nFinding optimal {param_label} for recall targets (warm)...")
+
+    for target_recall in RECALL_TARGETS:
+        print(f"\n  Target recall: {target_recall}")
+
+        # Start from the last successful parameter index
+        for idx in range(last_optimal_idx, len(param_list)):
+            pval = param_list[idx]
+            cur.execute(f"SET {param_name} = {pval}")
+
+            # Compute recall
+            total_recall = 0.0
+            for i in range(len(workload)):
+                vec_str = workload[i]
+                cur.execute(f"SELECT id FROM {table_name} ORDER BY embedding {distance_op} '{vec_str}'::vector LIMIT {k}")
+                result_ids = set(row[0] for row in cur.fetchall())
+                exact_ids = set(exact_results[i][:k])
+                total_recall += len(result_ids & exact_ids) / len(exact_ids)
+
+            avg_recall = total_recall / len(workload)
+            print(f"    {param_label}={pval}: recall={avg_recall:.4f}")
+
+            if avg_recall >= target_recall:
+                optimal_params[str(target_recall)] = {
+                    param_label: pval,
+                    "actual_recall": round(avg_recall, 4)
+                }
+                print(f"    ✓ Found: {param_label}={pval} achieves recall={avg_recall:.4f}")
+                last_optimal_idx = idx  # Remember where we found it
+                break
+
+    cur.close()
+    conn.close()
+
+    return optimal_params
+
+
+def load_or_find_optimal_params(dataset, index_type, table_name, distance_op, k, workload, exact_results, num_workers=4):
+    """
+    Load optimal parameters from cache or find them if not cached.
+    For parallel_ivfflat, always use the ivfflat cache.
+    """
+    # Cache file path
+    cache_dir = Path(SCRIPT_DIR) / "optimal_params_cache"
+    cache_dir.mkdir(exist_ok=True)
+
+    # For parallel_ivfflat, use ivfflat's cache file
+    if index_type == "parallel_ivfflat":
+        cache_index_type = "ivfflat"
+        print(f"\nUsing ivfflat's optimal parameters for parallel_ivfflat")
+    else:
+        cache_index_type = index_type
+
+    cache_file = cache_dir / f"optimal_{cache_index_type}_{dataset}_k{k}.json"
+
+    if cache_file.exists():
+        print(f"\nLoading cached optimal parameters from {cache_file.name}")
+        with open(cache_file, 'r') as f:
+            optimal_params = json.load(f)
+
+        # Print loaded parameters
+        param_label = "probes" if index_type in ("ivfflat", "parallel_ivfflat") else "ef_search"
+        print(f"  Loaded optimal {param_label} for recall targets:")
+        for target, data in sorted(optimal_params.items(), key=lambda x: float(x[0])):
+            print(f"    Recall {target}: {param_label}={data[param_label]}, actual={data['actual_recall']}")
+    else:
+        print(f"\nOptimal parameters not cached, finding them now...")
+        # For parallel_ivfflat, we still compute using ivfflat logic
+        if index_type == "parallel_ivfflat":
+            compute_index_type = "ivfflat"
+        else:
+            compute_index_type = index_type
+
+        optimal_params = find_optimal_params_for_recall_targets(
+            workload, exact_results, table_name, distance_op, k, compute_index_type, num_workers
+        )
+
+        # Save to cache
+        with open(cache_file, 'w') as f:
+            json.dump(optimal_params, f, indent=2)
+        print(f"  Saved optimal parameters to {cache_file.name}")
+
+    return optimal_params
+
+
+def sweep_recall_qps_optimized(workload, exact_results, table_name, distance_op, k, index_type, mode,
+                                optimal_params, num_workers=4, num_iterations=1):
+    """
+    Measure QPS only for the optimal parameters (no sweeping).
+    """
+    if index_type in ("ivfflat", "parallel_ivfflat"):
+        param_name = "ivfflat.probes"
+        param_label = "probes"
+    else:
+        param_name = "hnsw.ef_search"
+        param_label = "ef_search"
+
+    sweep_results = []
+
+    print(f"\nMeasuring QPS for optimal parameters only ({mode} mode, {num_iterations} iteration(s))...")
+
+    for target_recall, param_data in sorted(optimal_params.items(), key=lambda x: float(x[0])):
+        pval = param_data[param_label]
+        actual_recall = param_data["actual_recall"]
+        all_query_times_ms = []
+
+        # For cold mode, we still do cold restart for each iteration
+        for iteration in range(num_iterations):
+            if mode == "cold":
+                restart_postgres_cold()
+
+            query_times_ms = compute_timing(workload, table_name, distance_op, k, param_name, pval)
+            all_query_times_ms.extend(query_times_ms)
+
+            if num_iterations > 1:
+                iter_avg = sum(query_times_ms) / len(query_times_ms) if query_times_ms else 0
+                print(f"      iter {iteration+1}/{num_iterations}: avg={iter_avg:.2f}ms")
+
+        # Compute aggregated stats
+        avg_latency = sum(all_query_times_ms) / len(all_query_times_ms) if all_query_times_ms else 0
+        total_time_s = sum(all_query_times_ms) / 1000
+        qps = len(all_query_times_ms) / total_time_s if total_time_s > 0 else 0
+
+        sorted_times = sorted(all_query_times_ms)
+        median_ms = sorted_times[len(sorted_times) // 2] if sorted_times else 0
+        p95_ms = sorted_times[int(len(sorted_times) * 0.95)] if sorted_times else 0
+        p99_ms = sorted_times[int(len(sorted_times) * 0.99)] if sorted_times else 0
+
+        result = {
+            param_label: pval,
+            "recall": actual_recall,
+            "target_recall": float(target_recall),
+            "qps": round(qps, 2),
+            "avg_latency_ms": round(avg_latency, 2),
+            "median_latency_ms": round(median_ms, 2),
+            "p95_latency_ms": round(p95_ms, 2),
+            "p99_latency_ms": round(p99_ms, 2),
+            "num_iterations": num_iterations,
+            "query_times_ms": all_query_times_ms
+        }
+
+        sweep_results.append(result)
+
+        print(f"    Target={target_recall}, {param_label}={pval}: recall={actual_recall:.4f}, "
+              f"QPS={qps:.1f}, avg={avg_latency:.2f}ms, median={median_ms:.2f}ms")
+
+    return sweep_results
+
+
 def sweep_recall_qps(workload, exact_results, table_name, distance_op, k, index_type, mode, num_workers=4, num_iterations=1):
     """
     Sweep probes/ef_search values and measure recall + QPS at each point.
@@ -592,7 +769,7 @@ def find_recall_qps_points(sweep_results, index_type):
     return points
 def run_for_index(dataset, index_type, mode, dataset_cfg, workload, exact_results, num_workers=None, skip_snapshot=False, num_iterations=1):
     """Run the full recall-vs-QPS measurement for one index type.
-    
+
     If num_workers is specified (for parallel_ivfflat), sets NUM_WORKERS before compiling.
     """
     worker_label = f" (workers={num_workers})" if num_workers else ""
@@ -646,10 +823,16 @@ def run_for_index(dataset, index_type, mode, dataset_cfg, workload, exact_result
     else:
         restart_postgres_cold()
 
-    # Step 5: Sweep probes/ef_search
-    print(f"\n  Sweeping parameters (measuring recall + QPS, iterations={num_iterations})...")
-    sweep_results = sweep_recall_qps(
-        workload, exact_results, table_name, distance_op, k, index_type, mode, num_workers=(num_workers or 4), num_iterations=num_iterations
+    # Step 5: Load or find optimal parameters, then measure
+    # Load or find optimal parameters (always warm)
+    optimal_params = load_or_find_optimal_params(
+        dataset, index_type, table_name, distance_op, k, workload, exact_results, num_workers=(num_workers or 4)
+    )
+
+    # Measure QPS only for optimal parameters
+    sweep_results = sweep_recall_qps_optimized(
+        workload, exact_results, table_name, distance_op, k, index_type, mode,
+        optimal_params, num_workers=(num_workers or 4), num_iterations=num_iterations
     )
 
     # Step 6: Extract recall-vs-QPS points
