@@ -2,9 +2,9 @@
 """
 Plot compiler optimization results (with vs without) for IVFFlat and HNSW.
 
-Generates two PDF files:
-  - compiler_optimization_ivfflat_{dataset}.pdf  (cold and warm side by side)
-  - compiler_optimization_hnsw_{dataset}.pdf     (cold and warm side by side)
+Generates two PNG files:
+  - compiler_optimization_ivfflat_{dataset}.png  (cold and warm side by side)
+  - compiler_optimization_hnsw_{dataset}.png     (cold and warm side by side)
 
 Usage:
     python3 plot_optimization_results.py --dataset gist
@@ -101,7 +101,8 @@ def plot_index(index_type, dataset, data_dir, output_path):
 
     plt.suptitle(f'{idx_upper} Compiler Optimization — {dataset.upper()}', fontsize=14, fontweight='bold', y=1.02)
     plt.tight_layout()
-    fig.savefig(output_path, format='pdf', bbox_inches='tight')
+    # Changed from PDF to PNG with higher DPI for better quality
+    fig.savefig(output_path, format='png', dpi=150, bbox_inches='tight')
     print(f"  Saved: {output_path}")
     plt.close()
     return True
@@ -118,12 +119,12 @@ def main():
 
     print(f"Generating compiler optimization plots for {dataset}...")
 
-    # Plot IVFFlat
-    ivf_output = data_dir / f"compiler_optimization_ivfflat_{dataset}.pdf"
+    # Plot IVFFlat - changed to .png
+    ivf_output = data_dir / f"compiler_optimization_ivfflat_{dataset}.png"
     plot_index("ivfflat", dataset, data_dir, ivf_output)
 
-    # Plot HNSW
-    hnsw_output = data_dir / f"compiler_optimization_hnsw_{dataset}.pdf"
+    # Plot HNSW - changed to .png
+    hnsw_output = data_dir / f"compiler_optimization_hnsw_{dataset}.png"
     plot_index("hnsw", dataset, data_dir, hnsw_output)
 
     # Print summary table
