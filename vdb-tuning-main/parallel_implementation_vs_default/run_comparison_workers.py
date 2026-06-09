@@ -7,8 +7,8 @@ For K=100, runs the workload at multiple recall targets and measures execution t
   2. Parallel pgvector with NUM_WORKERS = 4, 8, 12
      (~/vdb_tuning/postgres/postgres/pgvector_modified_final)
 
-Probe values for each recall target are loaded from the dataset-specific
-recall_qps results file (results_recall_qps/recall_qps_{dataset}_ivfflat_cold.json).
+Probe values for each recall target are loaded from the optimal parameters cache
+(optimal_params_cache/optimal_ivfflat_{dataset}_k100.json).
 
 Supports --mode cold (restart + drop caches between each probe) and
 --mode warm (prewarm index+table, no restart between probes).
@@ -90,14 +90,6 @@ DB_CONFIG = {
 }
 
 K = 100
-
-# PostgreSQL paths (from config.yaml)
-PG_INSTALL = get_path("pg_install")
-PG_CTL_PATH = shutil.which("pg_ctl") or f"{PG_INSTALL}/bin/pg_ctl"
-_pgdata_result = subprocess.run(
-    "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
-)
-PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
 
 
 def get_snapshot_path(dataset, index_type, params):
@@ -365,9 +357,7 @@ def run_implementation(name, pgvector_dir, workload, recall_configs, dataset, li
             if mode == "cold":
                 # Cold: restart and clear caches before each iteration
                 restart_postgres(quiet=True)
-            elif mode == "warm" and iteration > 0:
-                # Warm: re-prewarm before subsequent iterations to ensure consistent state
-                prewarm_table_and_index(table_name)
+            # In warm mode, no restart or re-prewarm between iterations
 
             query_times = run_workload(workload, probes, table_name, distance_op)
             query_times_ms_iter = [round(t * 1000, 3) for t in query_times]
@@ -400,6 +390,31 @@ def run_implementation(name, pgvector_dir, workload, recall_configs, dataset, li
         print(f"  {target:<10} {probes:<10} {total_time:<15.4f} {avg_time_ms:<15.2f}")
 
     return results
+
+
+def load_optimal_params(dataset, k=100):
+    """Load optimal parameters from the recall_qps cache."""
+    cache_dir = RECALL_DIR / "recall_qps_plots" / "optimal_params_cache"
+    cache_file = cache_dir / f"optimal_ivfflat_{dataset}_k{k}.json"
+
+    if not cache_file.exists():
+        print(f"ERROR: Optimal parameters cache not found: {cache_file}")
+        print("Run recall_qps_diagram.py first to generate the cache.")
+        sys.exit(1)
+
+    with open(cache_file, 'r') as f:
+        optimal_params = json.load(f)
+
+    # Convert to recall_configs format
+    recall_configs = []
+    for target_str, data in sorted(optimal_params.items(), key=lambda x: float(x[0])):
+        recall_configs.append({
+            "target_recall": float(target_str),
+            "actual_recall": data["actual_recall"],
+            "probes": data["probes"]
+        })
+
+    return recall_configs
 
 
 def main():
@@ -437,21 +452,17 @@ def main():
         sys.exit(1)
     lists = tune_data["best_configuration"]["lists"]
 
-    # Load recall targets and probe values from recall_qps results (try matching mode first, fallback to other)
-    recall_qps_file = RECALL_DIR / "recall_qps_plots" / "results_recall_qps" / f"recall_qps_{dataset}_ivfflat_{mode}.json"
-    if not recall_qps_file.exists():
-        # Fallback: try the other mode
-        fallback_mode = "cold" if mode == "warm" else "warm"
-        recall_qps_file = RECALL_DIR / "recall_qps_plots" / "results_recall_qps" / f"recall_qps_{dataset}_ivfflat_{fallback_mode}.json"
-    if not recall_qps_file.exists():
-        print(f"ERROR: No recall_qps_{dataset}_ivfflat_{{warm,cold}}.json found.")
-        print("Run recall_qps_diagram.py first.")
-        sys.exit(1)
+    # PostgreSQL paths (from config.yaml)
+    global PG_INSTALL, PG_CTL_PATH, PG_DATA_DIR
+    PG_INSTALL = get_path("pg_install")
+    PG_CTL_PATH = shutil.which("pg_ctl") or f"{PG_INSTALL}/bin/pg_ctl"
+    _pgdata_result = subprocess.run(
+        "su - postgres -c 'echo $PGDATA'", shell=True, capture_output=True, text=True
+    )
+    PG_DATA_DIR = _pgdata_result.stdout.strip() or get_path("pg_data")
 
-    with open(recall_qps_file, 'r') as f:
-        recall_qps_data = json.load(f)
-
-    recall_configs = recall_qps_data["ivfflat"]["recall_qps_points"]
+    # Load optimal parameters from cache
+    recall_configs = load_optimal_params(dataset, k=K)
 
     print("Parallel IVFFlat vs Default IVFFlat Comparison (Multiple Worker Counts)")
     print(f"Dataset: {dataset}")
@@ -462,7 +473,7 @@ def main():
     num_iterations = args.num_iterations
     print(f"Worker counts to test: {WORKER_COUNTS}")
     print(f"Iterations per probe: {num_iterations}")
-    print(f"Probe source: {recall_qps_file.name}")
+    print(f"Probe source: optimal_params_cache/optimal_ivfflat_{dataset}_k{K}.json")
     print(f"Recall targets: {[r['target_recall'] for r in recall_configs]}")
     print(f"Probes:         {[r['probes'] for r in recall_configs]}")
     if args.skip_default:
@@ -492,6 +503,7 @@ def main():
     output["workload_size"] = len(workload)
     output["num_iterations"] = num_iterations
     output["worker_counts_tested"] = WORKER_COUNTS
+    output["probe_source"] = "optimal_params_cache"
 
     # Run default implementation (only once)
     if not args.skip_default and "default" not in output:
