@@ -245,6 +245,8 @@ def load_tune_config():
     index_type = (INDEX_TYPE_OVERRIDE or "ivfflat").upper()
     if index_type == "IVFFLAT":
         base_name = "tune_ivfflat_results"
+    elif index_type == "PARALLEL_IVFFLAT":
+        base_name = "tune_ivfflat_results"  # Use same tuning as regular IVFFlat
     elif index_type == "HNSW":
         base_name = "tune_hnsw_results"
     else:
@@ -465,6 +467,7 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
         conn.autocommit = True
         cur = conn.cursor()
 
+        cur.execute(f"SET statement_timeout = {MEASUREMENT_SEC * 1000}")  # Hard limit: kill queries after timeout
         #cur.execute("SET enable_seqscan = off;")
         # if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
         #     cur.execute("SET max_parallel_workers_per_gather = 200;")
@@ -482,10 +485,13 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
             start = time.time()
             cur.execute(TOPK_QUERY % (vec_str, K))
             cur.fetchall()
-            elapsed = time.time() - start
+            end = time.time()
+            elapsed = end - start
 
-            local_count += 1
-            local_latencies.append(elapsed)
+            # Only count if completed before stop event
+            if not stop_event.is_set():
+                local_count += 1
+                local_latencies.append(elapsed)
 
         cur.close()
         conn.close()
@@ -529,6 +535,7 @@ def olap_worker(thread_id, stop_event, count_lock, results):
         conn.autocommit = True
         cur = conn.cursor()
 
+        cur.execute(f"SET statement_timeout = {MEASUREMENT_SEC * 1000}")  # Hard limit: kill queries after timeout
         cur.execute("SET enable_seqscan = on;")
 
         while not stop_event.is_set():
@@ -554,7 +561,8 @@ def olap_worker(thread_id, stop_event, count_lock, results):
                         cur.execute(sql)
                         cur.fetchall()
                         cur.execute("DROP VIEW IF EXISTS revenue0")
-                        local_query_count += 1
+                        if not stop_event.is_set():
+                            local_query_count += 1
                     except Exception:
                         try:
                             cur.execute("DROP VIEW IF EXISTS revenue0")
@@ -564,7 +572,8 @@ def olap_worker(thread_id, stop_event, count_lock, results):
                     try:
                         cur.execute(sql)
                         cur.fetchall()
-                        local_query_count += 1
+                        if not stop_event.is_set():
+                            local_query_count += 1
                     except Exception:
                         pass
 
@@ -612,16 +621,24 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
         t.start()
         threads.append(t)
 
+    measurement_start = time.time()
     time.sleep(measurement_sec)
 
     stop_event.set()
     for t in threads:
         t.join()
 
+
+    # Track actual measurement duration
+    actual_duration = time.time() - measurement_start
+    print(f"  Actual duration: {actual_duration:.1f}s (target: {measurement_sec}s)")
+    
+    # Use actual duration for throughput if queries overran
+    effective_duration = max(measurement_sec, actual_duration)
     # Compute metrics
-    ann_throughput = measure_results['ann_count'] / measurement_sec
-    olap_throughput = measure_results['olap_count'] / measurement_sec
-    olap_query_throughput = measure_results['olap_query_count'] / measurement_sec
+    ann_throughput = measure_results['ann_count'] / effective_duration
+    olap_throughput = measure_results['olap_count'] / effective_duration
+    olap_query_throughput = measure_results['olap_query_count'] / effective_duration
 
     ann_latencies = measure_results['ann_latencies']
     olap_latencies = measure_results['olap_latencies']

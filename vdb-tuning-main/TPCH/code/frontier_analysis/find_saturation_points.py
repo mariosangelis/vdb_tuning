@@ -465,10 +465,10 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
         # if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
         #     cur.execute("SET max_parallel_workers_per_gather = 200;")
         if TUNE_CFG and INDEX_TYPE_OVERRIDE in ("ivfflat", "parallel_ivfflat"):
-            #print("probes are  ", TUNE_CFG['probes'])
+            print("probes are  ", TUNE_CFG['probes'])
             cur.execute(f"SET ivfflat.probes = {TUNE_CFG['probes']};")
         elif TUNE_CFG and INDEX_TYPE_OVERRIDE == "hnsw":
-            #print("ef_search is  ", TUNE_CFG['ef_search'])
+            print("ef_search is  ", TUNE_CFG['ef_search'])
             cur.execute(f"SET hnsw.ef_search = {TUNE_CFG.get('ef_search', 100)};")
 
         while not stop_event.is_set():
@@ -480,8 +480,10 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
             cur.fetchall()
             elapsed = time.time() - start
 
-            local_count += 1
-            local_latencies.append(elapsed)
+            # Only count if completed before stop event
+            if not stop_event.is_set():
+                local_count += 1
+                local_latencies.append(elapsed)
 
         cur.close()
         conn.close()
@@ -529,7 +531,7 @@ def olap_worker(thread_id, stop_event, count_lock, results):
         # Enable seqscan for OLAP
         cur.execute("SET enable_seqscan = on;")
         cur.execute("SET work_mem = '100MB';")  # Enough for hash joins with indexes
-        cur.execute("SET statement_timeout = '300s';")  # No single query should run > 5min
+        cur.execute(f"SET statement_timeout = {MEASUREMENT_SEC * 1000}")  # No single query should run > 5min
 
         while not stop_event.is_set():
             # Run one full batch of all 22 TPC-H queries in random order
@@ -618,6 +620,8 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
         threads.append(t)
 
     print(f"  Running for {measurement_sec}s...")
+    measurement_start = time.time()
+
     time.sleep(measurement_sec)
 
     # Stop all threads
