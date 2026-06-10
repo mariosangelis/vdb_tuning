@@ -1,0 +1,17 @@
+{
+  "olap_saturation": {
+    "X_OLAP": 0.6333,
+    "saturation_workers": 16,
+    "measurements": [
+      {"num_olap_workers": 5, "olap_throughput_qps": 0.3733},
+      {"num_olap_workers": 8, "olap_throughput_qps": 0.4100},
+      {"num_olap_workers": 10, "olap_throughput_qps": 0.5167},
+      {"num_olap_workers": 12, "olap_throughput_qps": 0.5567},
+      {"num_olap_workers": 14, "olap_throughput_qps": 0.6033},
+      {"num_olap_workers": 16, "olap_throughput_qps": 0.6333}
+    ]
+  },
+  "timestamp": "2026-06-07T18:49:00",
+  "memory_config": {"shared_buffers_gb": 10, "cgroup_gb": 15},
+  "mode": "warm"
+}
