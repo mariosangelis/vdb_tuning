@@ -16,7 +16,7 @@ METRICS_PATH = "/tmp/ivfflat_metrics.json"
 
 # Load configuration
 def load_config():
-    config_path = "/users/mangelis/vdb_tuning/vdb-tuning-main/TPCH/code/experiment_config.json"
+    config_path = "TPCH/code/experiment_config.json"
     try:
         with open(config_path, 'r') as f:
             config = json.load(f)
@@ -44,19 +44,40 @@ def load_config():
 
     return config, numa_nodes, postgres_cores
 
-def restart_postgres_with_pinning(numa_nodes, cpu_cores=None):
+def restart_postgres_with_pinning(numa_nodes, cpu_cores):
     """Restart PostgreSQL with CPU and NUMA pinning"""
-    print(f"Restarting PostgreSQL with NUMA nodes: {numa_nodes} (no explicit CPU pinning)")
+    print(f"Restarting PostgreSQL with NUMA nodes: {numa_nodes}, CPU cores: {cpu_cores}")
 
-    # Build the restart command with NUMA pinning only
-    cmd = (
+    # First stop PostgreSQL if running
+    stop_cmd = (
         f"su - postgres -s /bin/bash -c '"
         f"export PGDATA=/mnt/nvme/pgdata && "
         f"export PATH=/usr/local/pgsql/bin:$PATH && "
-        f"numactl --cpunodebind={numa_nodes} --membind={numa_nodes} "
-        f"pg_ctl -D $PGDATA -l /tmp/logfile restart'"
+        f"pg_ctl -D $PGDATA stop -m fast'"
     )
-    subprocess.run(cmd, shell=True, check=True)
+    subprocess.run(stop_cmd, shell=True, check=False)  # Ignore if not running
+    time.sleep(2)
+
+    # Start with specific CPU pinning
+    # For single core, we need to ensure all processes stay on that core
+    start_cmd = (
+        f"su - postgres -s /bin/bash -c '"
+        f"export PGDATA=/mnt/nvme/pgdata && "
+        f"export PATH=/usr/local/pgsql/bin:$PATH && "
+        f"taskset -c {cpu_cores} numactl --cpunodebind={numa_nodes} --membind={numa_nodes} "
+        f"postgres -D $PGDATA' > /tmp/postgres_single_core.log 2>&1 &"
+    )
+
+    # Use postgres command directly instead of pg_ctl to ensure taskset applies
+    subprocess.run(start_cmd, shell=True, check=True)
+    time.sleep(3)  # Wait for startup
+
+    # Set CPU affinity for all PostgreSQL processes
+    if cpu_cores == "0" or not "-" in cpu_cores:
+        # Single core - force all postgres processes to it
+        print(f"Forcing all PostgreSQL processes to CPU {cpu_cores}...")
+        force_cmd = f"for pid in $(pgrep postgres); do taskset -pc {cpu_cores} $pid 2>/dev/null; done"
+        subprocess.run(force_cmd, shell=True)
 
 def drop_caches():
     """Drop system caches"""
@@ -158,7 +179,7 @@ def main():
     parser.add_argument('--cold', action='store_true', help='Cold mode: drop caches and restart')
     parser.add_argument('--iterations', type=int, default=1, help='Number of iterations to run')
     parser.add_argument('--output-prefix', type=str, default='workload_results', help='Prefix for output files')
-    parser.add_argument('--numa', type=str, help='Override NUMA nodes (e.g., "0" or "0-1")')
+    parser.add_argument('--cores', type=str, help='Override CPU cores (e.g., "0" or "0-3")')
     args = parser.parse_args()
 
     # Default to cold mode if neither specified
@@ -169,8 +190,8 @@ def main():
     config, numa_nodes, cpu_cores = load_config()
 
     # Override cores if specified
-    if args.numa:
-        cpu_cores = args.numa
+    if args.cores:
+        cpu_cores = args.cores
         # Recalculate NUMA nodes
         if '-' in cpu_cores:
             start, end = map(int, cpu_cores.split('-'))
