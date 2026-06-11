@@ -32,6 +32,33 @@ from pathlib import Path
 from datetime import datetime
 
 # ============== AUTO-DETECT PATHS ==============
+# ============== DETERMINISTIC QUERY ASSIGNMENT ==============
+import itertools
+
+class DeterministicQueryAssigner:
+    """Pre-generates deterministic sequence of query indices."""
+    def __init__(self, seed, workload_size, sequence_length=1000000):
+        import random as _rand
+        rng = _rand.Random(seed)
+        self.query_sequence = [rng.randint(0, workload_size - 1) for _ in range(sequence_length)]
+        self.counter = itertools.count()
+        self.workload_size = workload_size
+        self.seed = seed
+
+    def get_next_query_index(self):
+        position = next(self.counter)
+        idx = self.query_sequence[position % len(self.query_sequence)]
+        # if position < 5:
+        #     print(f"  [DeterministicAssigner seed={self.seed}] position={position} -> query_idx={idx}")
+        return idx
+
+    def reset(self):
+        self.counter = itertools.count()
+
+ann_query_assigner = None
+olap_query_assigner = None
+
+
 SCRIPT_DIR = Path(__file__).resolve().parent                    # frontier_analysis/
 TPCH_DIR = SCRIPT_DIR.parent.parent                             # TPCH/
 PROJECT_DIR = TPCH_DIR.parent                                    # vdb-tuning-main/
@@ -102,8 +129,8 @@ K = IDX_CFG["k"]
 ANN_WORKERS_TO_TEST = [20, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90]
 #ANN_WORKERS_TO_TEST = [30, 50, 55, 60, 65, 70, 75, 80, 85, 90]
 ANN_WORKERS_PARALLEL_IVFFLAT = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-OLAP_WORKERS_TO_TEST = [5, 8, 10, 12, 14, 16,18,20]
-SATURATION_THRESHOLD = 0.005  # Stop if throughput improves less than 0.05%
+OLAP_WORKERS_TO_TEST = [5, 8, 10, 12, 14, 16,18,20,22,24]
+SATURATION_THRESHOLD = 0.0005  # Stop if throughput improves less than 0.05%
 
 # Timing
 MEASUREMENT_SEC = 300    # Measurement window (5 minutes) - cold start, no warmup
@@ -444,7 +471,7 @@ def vec_to_str(vec):
 
 def ann_worker(thread_id, workload, stop_event, count_lock, results):
     """Closed-loop ANN worker: continuously executes TopK queries."""
-    local_random = random.Random(thread_id + 42)
+    # Using global deterministic query assigner
     core_id = TOPK_CORES[thread_id % len(TOPK_CORES)]
 
     try:
@@ -465,14 +492,14 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
         # if INDEX_TYPE_OVERRIDE == "parallel_ivfflat":
         #     cur.execute("SET max_parallel_workers_per_gather = 200;")
         if TUNE_CFG and INDEX_TYPE_OVERRIDE in ("ivfflat", "parallel_ivfflat"):
-            print("probes are  ", TUNE_CFG['probes'])
+            #print("probes are  ", TUNE_CFG['probes'])
             cur.execute(f"SET ivfflat.probes = {TUNE_CFG['probes']};")
         elif TUNE_CFG and INDEX_TYPE_OVERRIDE == "hnsw":
-            print("ef_search is  ", TUNE_CFG['ef_search'])
+            #print("ef_search is  ", TUNE_CFG['ef_search'])
             cur.execute(f"SET hnsw.ef_search = {TUNE_CFG.get('ef_search', 100)};")
 
         while not stop_event.is_set():
-            idx = local_random.randint(0, len(workload) - 1)
+            idx = ann_query_assigner.get_next_query_index()
             vec_str = vec_to_str(workload[idx])
 
             start = time.time()
@@ -499,9 +526,8 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
 
 def olap_worker(thread_id, stop_event, count_lock, results):
     """
-    Closed-loop OLAP worker: continuously runs full TPC-H batches (all 22 queries).
-    Each completed batch counts as 1 OLAP "transaction".
-    Queries within each batch are executed in random order (like the paper).
+    Closed-loop OLAP worker: continuously executes TPC-H queries one at a time.
+    Uses olap_query_assigner for deterministic query order (same as ANN worker pattern).
     """
     core_id = OLAP_CORES[thread_id % len(OLAP_CORES)]
 
@@ -510,11 +536,8 @@ def olap_worker(thread_id, stop_event, count_lock, results):
     except (OSError, AttributeError):
         pass
 
-    local_random = random.Random(thread_id + 100)
-    local_batch_count = 0
     local_query_count = 0
-    local_batch_latencies = []
-    local_query_count = 0
+    local_latencies = []
 
     # Build executable query list (handle Q15 specially)
     executable_queries = []
@@ -530,52 +553,44 @@ def olap_worker(thread_id, stop_event, count_lock, results):
 
         # Enable seqscan for OLAP
         cur.execute("SET enable_seqscan = on;")
-        cur.execute("SET work_mem = '100MB';")  # Enough for hash joins with indexes
-        cur.execute(f"SET statement_timeout = {MEASUREMENT_SEC * 1000}")  # No single query should run > 5min
+        cur.execute("SET work_mem = '100MB';")
+        cur.execute(f"SET statement_timeout = {MEASUREMENT_SEC * 1000}")
 
         while not stop_event.is_set():
-            # Run one full batch of all 22 TPC-H queries in random order
-            batch_start = time.time()
-            batch_order = list(range(len(executable_queries)))
-            local_random.shuffle(batch_order)
+            qi = olap_query_assigner.get_next_query_index()
+            qname, sql = executable_queries[qi]
 
-            batch_completed = True
-            for qi in batch_order:
-                if stop_event.is_set():
-                    batch_completed = False
-                    break
+            start = time.time()
 
-                qname, sql = executable_queries[qi]
-
-                # Handle Q15: create view, run query, drop view
-                if qname == "Q15":
+            # Handle Q15: create view, run query, drop view
+            if qname == "Q15":
+                try:
+                    cur.execute("CREATE OR REPLACE VIEW revenue0 (supplier_no, total_revenue) AS "
+                                "SELECT l_suppkey, SUM(l_extendedprice * (1 - l_discount)) "
+                                "FROM lineitem WHERE l_shipdate >= DATE '1996-01-01' "
+                                "AND l_shipdate < DATE '1996-01-01' + INTERVAL '3' MONTH "
+                                "GROUP BY l_suppkey")
+                    cur.execute(sql)
+                    cur.fetchall()
+                    cur.execute("DROP VIEW IF EXISTS revenue0")
+                except Exception:
                     try:
-                        cur.execute("CREATE OR REPLACE VIEW revenue0 (supplier_no, total_revenue) AS "
-                                    "SELECT l_suppkey, SUM(l_extendedprice * (1 - l_discount)) "
-                                    "FROM lineitem WHERE l_shipdate >= DATE '1996-01-01' "
-                                    "AND l_shipdate < DATE '1996-01-01' + INTERVAL '3' MONTH "
-                                    "GROUP BY l_suppkey")
-                        cur.execute(sql)
-                        cur.fetchall()
                         cur.execute("DROP VIEW IF EXISTS revenue0")
-                        local_query_count += 1
-                    except Exception:
-                        try:
-                            cur.execute("DROP VIEW IF EXISTS revenue0")
-                        except:
-                            pass
-                else:
-                    try:
-                        cur.execute(sql)
-                        cur.fetchall()
-                        local_query_count += 1
-                    except Exception:
+                    except:
                         pass
+                    continue
+            else:
+                try:
+                    cur.execute(sql)
+                    cur.fetchall()
+                except Exception:
+                    continue
 
-            if batch_completed:
-                batch_elapsed = time.time() - batch_start
-                local_batch_count += 1
-                local_batch_latencies.append(batch_elapsed)
+            elapsed = time.time() - start
+
+            if not stop_event.is_set():
+                local_query_count += 1
+                local_latencies.append(elapsed)
 
         cur.close()
         conn.close()
@@ -583,9 +598,8 @@ def olap_worker(thread_id, stop_event, count_lock, results):
         print(f"  OLAP worker {thread_id} error: {e}")
 
     with count_lock:
-        results['olap_count'] += local_batch_count
-        results['olap_latencies'].extend(local_batch_latencies)
         results['olap_query_count'] += local_query_count
+        results['olap_latencies'].extend(local_latencies)
 
 
 # ============== MEASUREMENT FUNCTION ==============
@@ -606,7 +620,32 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
 
     stop_event = threading.Event()
     count_lock = threading.Lock()
-    measure_results = {'ann_count': 0, 'ann_latencies': [], 'olap_count': 0, 'olap_latencies': [], 'olap_query_count': 0}
+    measure_results = {'ann_count': 0, 'ann_latencies': [], 'olap_latencies': [], 'olap_query_count': 0}
+
+    # Initialize deterministic query assigners
+    global ann_query_assigner, olap_query_assigner
+
+    ann_query_assigner = DeterministicQueryAssigner(
+        seed=42,
+        workload_size=len(workload),
+        sequence_length=1000000
+    )
+
+    executable_queries = []
+    for qname, sql in TPCH_QUERIES:
+        if qname == "Q15_create" or sql is None:
+            continue
+        executable_queries.append((qname, sql))
+
+    olap_query_assigner = DeterministicQueryAssigner(
+        seed=100,
+        workload_size=len(executable_queries),
+        sequence_length=1000000
+    )
+
+    ann_query_assigner.reset()
+    olap_query_assigner.reset()
+
     threads = []
 
     for i in range(num_ann_workers):
@@ -631,14 +670,13 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
 
     # --- Compute metrics ---
     ann_throughput = measure_results['ann_count'] / measurement_sec
-    olap_throughput = measure_results['olap_count'] / measurement_sec  # batches/sec (tps)
-    olap_query_throughput = measure_results['olap_query_count'] / measurement_sec  # individual queries/sec
+    olap_throughput = measure_results['olap_query_count'] / measurement_sec  # queries/sec
 
     ann_latencies = measure_results['ann_latencies']
-    olap_latencies = measure_results['olap_latencies']  # batch latencies (seconds)
+    olap_latencies = measure_results['olap_latencies']  # per-query latencies (seconds)
 
     ann_avg_latency = (sum(ann_latencies) / len(ann_latencies) * 1000) if ann_latencies else 0
-    olap_avg_batch_time = (sum(olap_latencies) / len(olap_latencies)) if olap_latencies else 0
+    olap_avg_latency = (sum(olap_latencies) / len(olap_latencies) * 1000) if olap_latencies else 0
 
     # Percentiles
     def percentile(data, p):
@@ -652,19 +690,19 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
         "ann_workers": num_ann_workers,
         "olap_workers": num_olap_workers,
         "ann_throughput_qps": round(ann_throughput, 2),
-        "olap_throughput_tps": round(olap_throughput, 4),  # TPC-H batches per second
-        "olap_throughput_qps": round(olap_query_throughput, 4),  # individual queries per second
+        "olap_throughput_qps": round(olap_throughput, 4),
         "ann_total_queries": measure_results['ann_count'],
         "olap_total_queries": measure_results['olap_query_count'],
-        "olap_total_batches": measure_results['olap_count'],
         "ann_avg_latency_ms": round(ann_avg_latency, 2),
         "ann_p50_latency_ms": round(percentile(ann_latencies, 50) * 1000, 2),
         "ann_p99_latency_ms": round(percentile(ann_latencies, 99) * 1000, 2),
-        "olap_avg_batch_time_sec": round(olap_avg_batch_time, 3),
+        "olap_avg_latency_ms": round(olap_avg_latency, 2),
+        "olap_p50_latency_ms": round(percentile(olap_latencies, 50) * 1000, 2),
+        "olap_p99_latency_ms": round(percentile(olap_latencies, 99) * 1000, 2),
         "measurement_duration_sec": measurement_sec,
     }
 
-    print(f"  Results: ANN={ann_throughput:.2f} qps, OLAP={olap_query_throughput:.2f} qps ({olap_throughput:.4f} batches/s)")
+    print(f"  Results: ANN={ann_throughput:.2f} qps, OLAP={olap_throughput:.4f} qps")
     return result
 
 
@@ -736,10 +774,10 @@ def find_ann_saturation(workload):
                     break
             max_throughput = qps
             saturation_workers = num_workers
-        else:
-            # Throughput decreased — already past saturation
-            print(f"     (throughput decreased, saturated)")
-            break
+        # else:
+        #     # Throughput decreased — already past saturation
+        #     print(f"     (throughput decreased, saturated)")
+        #     break
 
     print(f"\n  *** ANN Saturation: X^ANN = {max_throughput:.2f} qps "
           f"(at {saturation_workers} workers) ***\n")
@@ -770,7 +808,7 @@ def find_olap_saturation(workload):
         )
         results.append(result)
 
-        qps = result.get("olap_throughput_qps", result["olap_throughput_tps"] * 22)
+        qps = result["olap_throughput_qps"]
 
         print(f"  >> {num_workers} workers: {qps:.4f} qps")
 
@@ -785,10 +823,10 @@ def find_olap_saturation(workload):
                     break
             max_throughput = qps
             saturation_workers = num_workers
-        else:
-            # Throughput decreased — already past saturation
-            print(f"     (throughput decreased, saturated)")
-            break
+        # else:
+        #     # Throughput decreased — already past saturation
+        #     print(f"     (throughput decreased, saturated)")
+        #     break
 
     print(f"\n  *** OLAP Saturation: X^OLAP = {max_throughput:.4f} qps "
           f"(at {saturation_workers} workers) ***\n")

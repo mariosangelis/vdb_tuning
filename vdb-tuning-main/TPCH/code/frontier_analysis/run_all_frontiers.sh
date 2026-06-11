@@ -90,9 +90,6 @@ load_snapshot() {
     local SNAPSHOT_PATH="$1"
     local LABEL="$2"
 
-    echo "  Loading snapshot: ${LABEL}"
-    echo "    Source: ${SNAPSHOT_PATH}"
-
     # Stop postgres if running
     su - postgres -c "export PATH=${PG_INSTALL}/bin:\$PATH && pg_ctl -D ${PGDATA_DIR} stop -m fast" 2>/dev/null || true
     sleep 2
@@ -141,10 +138,10 @@ start_postgres() {
 ########################################################################
 # PHASE 1: IVFFlat
 ########################################################################
-echo ""
-echo "========================================================================"
-echo "PHASE 1/3: IVFFlat"
-echo "========================================================================"
+# echo ""
+# echo "========================================================================"
+# echo "PHASE 1/3: IVFFlat"
+# echo "========================================================================"
 
 # Compile default pgvector
 echo "[1a] Compiling default pgvector..."
