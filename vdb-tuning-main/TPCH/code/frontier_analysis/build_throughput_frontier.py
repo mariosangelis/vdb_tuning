@@ -136,7 +136,7 @@ MEASUREMENT_SEC = 300  # 5 minutes per point, cold start
 # Grid: 4 evenly-spaced points from 1 to saturation max
 # [1, tau_max/3, 2*tau_max/3, tau_max] for each axis
 # Fractions: [0.0 maps to 1 worker, 0.33, 0.67, 1.0 maps to max workers]
-GRID_FRACTIONS = [0.0, 1/3, 2/3, 1.0]
+GRID_FRACTIONS = [0, 1/16, 2/16, 3/16, 4/16, 5/16, 6/16, 7/16, 8/16, 9/16, 10/16, 11/16, 12/16, 13/16, 14/16, 15/16 , 1]
 
 # TopK query template
 TOPK_QUERY = "SELECT id FROM gist_data ORDER BY embedding <-> '%s'::vector LIMIT %d"

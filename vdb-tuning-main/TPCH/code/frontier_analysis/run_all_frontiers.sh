@@ -138,12 +138,12 @@ start_postgres() {
 ########################################################################
 # PHASE 1: IVFFlat
 ########################################################################
-# echo ""
-# echo "========================================================================"
-# echo "PHASE 1/3: IVFFlat"
-# echo "========================================================================"
+echo ""
+echo "========================================================================"
+echo "PHASE 1/3: IVFFlat"
+echo "========================================================================"
 
-# Compile default pgvector
+#Compile default pgvector
 echo "[1a] Compiling default pgvector..."
 cd ${PGVECTOR_DEFAULT}
 make clean > /dev/null 2>&1 || true
@@ -185,16 +185,16 @@ echo "[2b] Running HNSW frontier..."
 cd ${SCRIPT_DIR}/frontier_analysis
 ./run_frontier.sh ${MEMORY} --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot ${EXTRA_FLAG}
 
-echo ""
-echo "PHASE 2 COMPLETE: HNSW frontier done at $(date)"
-
-# ########################################################################
-# PHASE 3: Parallel IVFFlat
-########################################################################
 # echo ""
-# echo "========================================================================"
-# echo "PHASE 3/3: Parallel IVFFlat"
-# echo "========================================================================"
+# echo "PHASE 2 COMPLETE: HNSW frontier done at $(date)"
+
+########################################################################
+PHASE 3: Parallel IVFFlat
+#######################################################################
+echo ""
+echo "========================================================================"
+echo "PHASE 3/3: Parallel IVFFlat"
+echo "========================================================================"
 
 # # Compile parallel pgvector
 echo "[3a] Compiling parallel pgvector..."
