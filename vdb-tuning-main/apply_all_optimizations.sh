@@ -49,18 +49,24 @@ echo 0 | sudo tee /sys/module/intel_idle/parameters/max_cstate >/dev/null 2>&1
 echo "   ✓ C-States disabled"
 
 # 7. Set Swappiness to 0
-echo -e "\n7. Setting swappiness to 0..."
-echo 0 | sudo tee /proc/sys/vm/swappiness >/dev/null
-echo "   ✓ Swappiness set to 0"
+#echo -e "\n7. Setting swappiness to 0..."
+#echo 0 | sudo tee /proc/sys/vm/swappiness >/dev/null
+#echo "   ✓ Swappiness set to 0"
 
 # 8. Move IRQs away from benchmark CPUs (optional)
-echo -e "\n8. Moving IRQs away from benchmark CPUs..."
-for irq in /proc/irq/*/smp_affinity_list; do
-    if [ -w "$irq" ]; then
-        echo "32-63" | sudo tee "$irq" >/dev/null 2>&1
-    fi
-done
-echo "   ✓ IRQ affinity adjusted"
+#echo -e "\n8. Moving IRQs away from benchmark CPUs..."
+#for irq in /proc/irq/*/smp_affinity_list; do
+#    if [ -w "$irq" ]; then
+#        echo "32-63" | sudo tee "$irq" >/dev/null 2>&1
+#    fi
+#done
+#echo "   ✓ IRQ affinity adjusted"
+
+
+# disable
+echo off | sudo tee /sys/devices/system/cpu/smt/control
+
+mkdir -p /sys/fs/cgroup/postgres_test
 
 # Verification
 echo -e "\n=== VERIFICATION ==="
