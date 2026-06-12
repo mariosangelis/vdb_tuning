@@ -1,0 +1,26 @@
+{
+  "0.7": {
+    "ef_search": 70,
+    "actual_recall": 0.7026
+  },
+  "0.8": {
+    "ef_search": 90,
+    "actual_recall": 0.8531
+  },
+  "0.9": {
+    "ef_search": 120,
+    "actual_recall": 0.9094
+  },
+  "0.95": {
+    "ef_search": 200,
+    "actual_recall": 0.9542
+  },
+  "0.96": {
+    "ef_search": 250,
+    "actual_recall": 0.967
+  },
+  "0.98": {
+    "ef_search": 400,
+    "actual_recall": 0.9845
+  }
+}
