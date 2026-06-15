@@ -1,12 +1,12 @@
 paths:
-  pg_src: /users/mangelis/vdb_tuning/postgres/postgres
-  pgvector_default:  /users/mangelis/vdb_tuning/postgres/postgres/pgvector
-  pgvector_parallel: /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final
+  pg_src: /users/vmageira/vdb_tuning/postgres/postgres
+  pgvector_default:  /users/vmageira/vdb_tuning/postgres/postgres/pgvector
+  pgvector_parallel: /users/vmageira/vdb_tuning/postgres/postgres/pgvector_modified_final
   pg_install: /usr/local/pgsql
   pg_data: /mnt/nvme/pgdata
-  pg_conf_src: /users/mangelis/vdb_tuning/postgres_configurations/postgresql.conf
+  pg_conf_src: /users/vmageira/vdb_tuning/postgres_configurations/postgresql.conf
   snapshot_dir: /mnt/nvme/saved_indexes
-  dbgen_dir: /users/mangelis/tpch-dbgen
+  dbgen_dir: /users/vmageira/tpch-dbgen
 
 database:
   name: mydb

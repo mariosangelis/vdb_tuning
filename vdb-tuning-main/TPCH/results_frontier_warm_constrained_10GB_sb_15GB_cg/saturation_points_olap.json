@@ -1,17 +1,172 @@
 {
-  "olap_saturation": {
-    "X_OLAP": 0.6333,
-    "saturation_workers": 16,
-    "measurements": [
-      {"num_olap_workers": 5, "olap_throughput_qps": 0.3733},
-      {"num_olap_workers": 8, "olap_throughput_qps": 0.4100},
-      {"num_olap_workers": 10, "olap_throughput_qps": 0.5167},
-      {"num_olap_workers": 12, "olap_throughput_qps": 0.5567},
-      {"num_olap_workers": 14, "olap_throughput_qps": 0.6033},
-      {"num_olap_workers": 16, "olap_throughput_qps": 0.6333}
-    ]
+  "timestamp": "2026-06-12T22:34:25.866070",
+  "config": {
+    "index_type": "ivfflat",
+    "parallel_index": false,
+    "io_depth": 1000,
+    "k": 100,
+    "measurement_sec": 300,
+    "postgres_cores": "0-31",
+    "numa_nodes": "0-7",
+    "memory_config": {
+      "shared_buffers_gb": 10,
+      "cgroup_gb": 15
+    }
   },
-  "timestamp": "2026-06-07T18:49:00",
-  "memory_config": {"shared_buffers_gb": 10, "cgroup_gb": 15},
-  "mode": "warm"
+  "olap_saturation": {
+    "X_OLAP": 0.4867,
+    "saturation_workers": 14,
+    "measurements": [
+      {
+        "ann_workers": 0,
+        "olap_workers": 5,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.3333,
+        "ann_total_queries": 0,
+        "olap_total_queries": 100,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 13884.18,
+        "olap_p50_latency_ms": 7880.33,
+        "olap_p99_latency_ms": 65876.28,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 8,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.3933,
+        "ann_total_queries": 0,
+        "olap_total_queries": 118,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 18163.13,
+        "olap_p50_latency_ms": 10528.55,
+        "olap_p99_latency_ms": 98761.93,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 10,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.41,
+        "ann_total_queries": 0,
+        "olap_total_queries": 123,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 20842.2,
+        "olap_p50_latency_ms": 10920.21,
+        "olap_p99_latency_ms": 137383.31,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 12,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.4633,
+        "ann_total_queries": 0,
+        "olap_total_queries": 139,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 23108.63,
+        "olap_p50_latency_ms": 11350.7,
+        "olap_p99_latency_ms": 151670.77,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 14,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.4867,
+        "ann_total_queries": 0,
+        "olap_total_queries": 146,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 25806.95,
+        "olap_p50_latency_ms": 12606.27,
+        "olap_p99_latency_ms": 160494.84,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 16,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.45,
+        "ann_total_queries": 0,
+        "olap_total_queries": 135,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 29626.65,
+        "olap_p50_latency_ms": 17336.26,
+        "olap_p99_latency_ms": 196125.77,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 18,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.4767,
+        "ann_total_queries": 0,
+        "olap_total_queries": 143,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 30563.38,
+        "olap_p50_latency_ms": 16213.29,
+        "olap_p99_latency_ms": 211803.95,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 20,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.4267,
+        "ann_total_queries": 0,
+        "olap_total_queries": 128,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 34054.33,
+        "olap_p50_latency_ms": 20929.27,
+        "olap_p99_latency_ms": 177615.25,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 22,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.4167,
+        "ann_total_queries": 0,
+        "olap_total_queries": 125,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 35448.33,
+        "olap_p50_latency_ms": 23127.79,
+        "olap_p99_latency_ms": 187914.84,
+        "measurement_duration_sec": 300
+      },
+      {
+        "ann_workers": 0,
+        "olap_workers": 24,
+        "ann_throughput_qps": 0.0,
+        "olap_throughput_qps": 0.36,
+        "ann_total_queries": 0,
+        "olap_total_queries": 108,
+        "ann_avg_latency_ms": 0,
+        "ann_p50_latency_ms": 0,
+        "ann_p99_latency_ms": 0,
+        "olap_avg_latency_ms": 47875.83,
+        "olap_p50_latency_ms": 29207.59,
+        "olap_p99_latency_ms": 257159.65,
+        "measurement_duration_sec": 300
+      }
+    ]
+  }
 }
