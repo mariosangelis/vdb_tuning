@@ -189,7 +189,7 @@ cd ${SCRIPT_DIR}/frontier_analysis
 # echo "PHASE 2 COMPLETE: HNSW frontier done at $(date)"
 
 ########################################################################
-PHASE 3: Parallel IVFFlat
+# PHASE 3: Parallel IVFFlat
 #######################################################################
 echo ""
 echo "========================================================================"
