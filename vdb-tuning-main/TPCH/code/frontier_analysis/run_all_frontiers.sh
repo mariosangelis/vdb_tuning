@@ -135,58 +135,58 @@ start_postgres() {
     exit 1
 }
 
-# ########################################################################
+########################################################################
 # # PHASE 1: IVFFlat
+########################################################################
+echo ""
+echo "========================================================================"
+echo "PHASE 1/3: IVFFlat"
+echo "========================================================================"
+
+#Compile default pgvector
+echo "[1a] Compiling default pgvector..."
+cd ${PGVECTOR_DEFAULT}
+make clean > /dev/null 2>&1 || true
+make -j$(nproc) > /dev/null 2>&1
+make install > /dev/null 2>&1
+echo "  Done."
+
+# Load IVFFlat snapshot
+echo "[1b] Loading IVFFlat snapshot..."
+load_snapshot "$SNAPSHOT_IVFFLAT" "IVFFlat (lists=8192)"
+start_postgres
+#create_tpch_indexes
+
+# Run IVFFlat frontier
+echo "[1c] Running IVFFlat frontier..."
+cd ${SCRIPT_DIR}/frontier_analysis
+./run_frontier.sh ${MEMORY} --warm --index ivfflat --ivfflat-lists 8192 --snapshot ${EXTRA_FLAG}
+
+echo ""
+echo "PHASE 1 COMPLETE: IVFFlat frontier done at $(date)"
+
 # ########################################################################
-# echo ""
-# echo "========================================================================"
-# echo "PHASE 1/3: IVFFlat"
-# echo "========================================================================"
+# # PHASE 2: HNSW (reuse OLAP saturation from phase 1)
+# ########################################################################
+echo ""
+echo "========================================================================"
+echo "PHASE 2/3: HNSW"
+echo "========================================================================"
 
-# #Compile default pgvector
-# echo "[1a] Compiling default pgvector..."
-# cd ${PGVECTOR_DEFAULT}
-# make clean > /dev/null 2>&1 || true
-# make -j$(nproc) > /dev/null 2>&1
-# make install > /dev/null 2>&1
-# echo "  Done."
+# pgvector default is already compiled (supports HNSW)
+# Load HNSW snapshot
+echo "[2a] Loading HNSW snapshot..."
+load_snapshot "$SNAPSHOT_HNSW" "HNSW (m=32, efc=256)"
+start_postgres
+#create_tpch_indexes
 
-# # Load IVFFlat snapshot
-# echo "[1b] Loading IVFFlat snapshot..."
-# load_snapshot "$SNAPSHOT_IVFFLAT" "IVFFlat (lists=8192)"
-# start_postgres
-# #create_tpch_indexes
-
-# # Run IVFFlat frontier
-# echo "[1c] Running IVFFlat frontier..."
-# cd ${SCRIPT_DIR}/frontier_analysis
-# ./run_frontier.sh ${MEMORY} --warm --index ivfflat --ivfflat-lists 8192 --snapshot ${EXTRA_FLAG}
+# Run HNSW frontier
+echo "[2b] Running HNSW frontier..."
+cd ${SCRIPT_DIR}/frontier_analysis
+./run_frontier.sh ${MEMORY} --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot ${EXTRA_FLAG}
 
 # echo ""
-# echo "PHASE 1 COMPLETE: IVFFlat frontier done at $(date)"
-
-# # ########################################################################
-# # # PHASE 2: HNSW (reuse OLAP saturation from phase 1)
-# # ########################################################################
-# echo ""
-# echo "========================================================================"
-# echo "PHASE 2/3: HNSW"
-# echo "========================================================================"
-
-# # pgvector default is already compiled (supports HNSW)
-# # Load HNSW snapshot
-# echo "[2a] Loading HNSW snapshot..."
-# load_snapshot "$SNAPSHOT_HNSW" "HNSW (m=32, efc=256)"
-# start_postgres
-# #create_tpch_indexes
-
-# # Run HNSW frontier
-# echo "[2b] Running HNSW frontier..."
-# cd ${SCRIPT_DIR}/frontier_analysis
-# ./run_frontier.sh ${MEMORY} --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot ${EXTRA_FLAG}
-
-# # echo ""
-# # echo "PHASE 2 COMPLETE: HNSW frontier done at $(date)"
+# echo "PHASE 2 COMPLETE: HNSW frontier done at $(date)"
 
 ########################################################################
 # PHASE 3: Parallel IVFFlat

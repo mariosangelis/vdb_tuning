@@ -6,6 +6,7 @@ Supports:
   - Absolute frontier plot (ANN QPS vs OLAP QPS)
   - Normalized frontier plot (each index normalized by its own saturation)
   - Zoomed view (limit X-axis range)
+  - Log-scaled X-axis (--logx)
   - Reading from test_single_point.py JSON outputs or grid_graph.json files
 
 Usage:
@@ -13,6 +14,7 @@ Usage:
     python3 plot_frontier_comparison.py --dir /tmp --memory 14:20 --output frontier.png
     python3 plot_frontier_comparison.py --dir /tmp --memory 14:20 --normalize --output frontier_norm.png
     python3 plot_frontier_comparison.py --dir /tmp --memory 14:20 --xlim 100 --output frontier_zoomed.png
+    python3 plot_frontier_comparison.py --dir /tmp --memory 14:20 --logx --output frontier_logx.png
 
     # With nonuma suffix:
     python3 plot_frontier_comparison.py --dir /tmp --memory 14:20 --suffix nonuma --output frontier_fullcores.png
@@ -135,11 +137,14 @@ def load_grid_graph_json(path):
     return points, annotations
 
 
-def plot_frontier(datasets, output_path, title=None, normalize=False, xlim=None, ylim=None, annotate=True):
+def plot_frontier(datasets, output_path, title=None, normalize=False, xlim=None, ylim=None,
+                  annotate=True, logx=False):
     """
     Plot Pareto frontiers for multiple indexes.
 
     datasets: list of (label, index_key, points, annotations)
+    logx:     if True, plot the X-axis on a log scale. ANN=0 points are kept;
+              matplotlib masks non-positive x values on a log axis automatically.
     """
     fig, ax = plt.subplots(1, 1, figsize=(10, 7))
 
@@ -200,21 +205,31 @@ def plot_frontier(datasets, output_path, title=None, normalize=False, xlim=None,
         prop_x = np.linspace(0, 1, 50)
         ax.plot(prop_x, 1 - prop_x, "k--", alpha=0.4, linewidth=1.2, label="Proportional (AUC=0.5)")
 
+    # Log X-axis (set scale before limits; left bound cannot be 0 on a log scale)
+    if logx:
+        ax.set_xscale("log")
+
     # Labels
     if normalize:
-        ax.set_xlabel("Normalized ANN Throughput", fontsize=13)
+        ax.set_xlabel("Normalized ANN Throughput" + (" (log)" if logx else ""), fontsize=13)
         ax.set_ylabel("Normalized OLAP Throughput", fontsize=13)
-        ax.set_xlim(0, 1.05)
+        if logx:
+            ax.set_xlim(right=1.05)
+        else:
+            ax.set_xlim(0, 1.05)
         ax.set_ylim(0, 1.12)
     else:
-        ax.set_xlabel("ANN Throughput (qps)", fontsize=13)
+        ax.set_xlabel("ANN Throughput (qps)" + (" (log)" if logx else ""), fontsize=13)
         ax.set_ylabel("OLAP Throughput (qps)", fontsize=13)
-        ax.set_xlim(left=0, right=xlim * 1.05 if xlim else None)
+        if logx:
+            ax.set_xlim(right=xlim * 1.05 if xlim else None)
+        else:
+            ax.set_xlim(left=0, right=xlim * 1.05 if xlim else None)
         ax.set_ylim(bottom=0)
 
     ax.set_title(title or "Throughput Frontier: ANN vs OLAP", fontsize=13, fontweight='bold')
     ax.legend(fontsize=10, loc="upper right")
-    ax.grid(True, alpha=0.3)
+    ax.grid(True, which="both" if logx else "major", alpha=0.3)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
@@ -236,6 +251,7 @@ def main():
     parser.add_argument("--normalize", action="store_true", help="Normalize by each index saturation")
     parser.add_argument("--xlim", type=float, default=None, help="Limit X-axis (ANN QPS)")
     parser.add_argument("--ylim", type=float, default=None, help="Limit Y-axis (OLAP QPS)")
+    parser.add_argument("--logx", action="store_true", help="Plot X-axis on a log scale")
     parser.add_argument("--no-annotate", action="store_true", help="Skip point annotations")
     args = parser.parse_args()
 
@@ -305,7 +321,7 @@ def main():
                 args.title = f"Normalized Throughput Frontier\n(SB: {sb}GB, CG: {cg}GB, {mode})"
 
     plot_frontier(datasets, args.output, title=args.title, normalize=args.normalize,
-                  xlim=args.xlim, ylim=args.ylim, annotate=not args.no_annotate)
+                  xlim=args.xlim, ylim=args.ylim, annotate=not args.no_annotate, logx=args.logx)
 
 
 if __name__ == "__main__":
