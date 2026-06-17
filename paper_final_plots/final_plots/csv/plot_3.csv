@@ -1,0 +1,61 @@
+dataset,mode,series,recall,qps
+gist,cold,IVFFlat,0.7337,40.89
+gist,cold,IVFFlat,0.8195,30.31
+gist,cold,IVFFlat,0.9081,19.08
+gist,cold,IVFFlat,0.9555,12.74
+gist,cold,IVFFlat,0.9681,10.82
+gist,cold,IVFFlat,0.9813,8.53
+gist,cold,HNSW,0.7026,13.79
+gist,cold,HNSW,0.8531,13.23
+gist,cold,HNSW,0.9094,12.77
+gist,cold,HNSW,0.9542,12.0
+gist,cold,HNSW,0.967,11.62
+gist,cold,HNSW,0.9845,10.89
+gist,cold,Parallel IVFFlat (w=4),0.7337,50.15
+gist,cold,Parallel IVFFlat (w=4),0.8195,41.65
+gist,cold,Parallel IVFFlat (w=4),0.9081,30.4
+gist,cold,Parallel IVFFlat (w=4),0.9555,21.55
+gist,cold,Parallel IVFFlat (w=4),0.9681,18.62
+gist,cold,Parallel IVFFlat (w=4),0.9813,15.97
+gist,cold,Parallel IVFFlat (w=8),0.7337,57.25
+gist,cold,Parallel IVFFlat (w=8),0.8195,49.54
+gist,cold,Parallel IVFFlat (w=8),0.9081,39.25
+gist,cold,Parallel IVFFlat (w=8),0.9555,30.12
+gist,cold,Parallel IVFFlat (w=8),0.9681,27.01
+gist,cold,Parallel IVFFlat (w=8),0.9813,22.72
+gist,cold,Parallel IVFFlat (w=12),0.7337,57.97
+gist,cold,Parallel IVFFlat (w=12),0.8195,52.17
+gist,cold,Parallel IVFFlat (w=12),0.9081,43.14
+gist,cold,Parallel IVFFlat (w=12),0.9555,35.08
+gist,cold,Parallel IVFFlat (w=12),0.9681,31.01
+gist,cold,Parallel IVFFlat (w=12),0.9813,27.1
+gist,warm,IVFFlat,0.7337,70.87
+gist,warm,IVFFlat,0.8195,49.55
+gist,warm,IVFFlat,0.9081,28.57
+gist,warm,IVFFlat,0.9555,18.44
+gist,warm,IVFFlat,0.9681,15.62
+gist,warm,IVFFlat,0.9813,11.86
+gist,warm,HNSW,0.7026,201.87
+gist,warm,HNSW,0.8531,166.45
+gist,warm,HNSW,0.9094,135.85
+gist,warm,HNSW,0.9542,92.46
+gist,warm,HNSW,0.967,76.83
+gist,warm,HNSW,0.9845,52.75
+gist,warm,Parallel IVFFlat (w=4),0.7337,70.61
+gist,warm,Parallel IVFFlat (w=4),0.8195,58.03
+gist,warm,Parallel IVFFlat (w=4),0.9081,41.32
+gist,warm,Parallel IVFFlat (w=4),0.9555,30.22
+gist,warm,Parallel IVFFlat (w=4),0.9681,27.09
+gist,warm,Parallel IVFFlat (w=4),0.9813,22.21
+gist,warm,Parallel IVFFlat (w=8),0.7337,72.79
+gist,warm,Parallel IVFFlat (w=8),0.8195,63.84
+gist,warm,Parallel IVFFlat (w=8),0.9081,49.51
+gist,warm,Parallel IVFFlat (w=8),0.9555,38.02
+gist,warm,Parallel IVFFlat (w=8),0.9681,34.08
+gist,warm,Parallel IVFFlat (w=8),0.9813,27.84
+gist,warm,Parallel IVFFlat (w=12),0.7337,72.31
+gist,warm,Parallel IVFFlat (w=12),0.8195,64.98
+gist,warm,Parallel IVFFlat (w=12),0.9081,53.07
+gist,warm,Parallel IVFFlat (w=12),0.9555,40.56
+gist,warm,Parallel IVFFlat (w=12),0.9681,35.51
+gist,warm,Parallel IVFFlat (w=12),0.9813,29.98
