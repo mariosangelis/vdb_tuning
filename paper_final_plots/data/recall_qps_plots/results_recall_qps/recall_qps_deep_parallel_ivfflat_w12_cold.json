@@ -1,0 +1,158 @@
+{
+  "parallel_ivfflat_w12": {
+    "index_type": "parallel_ivfflat",
+    "dataset": "deep",
+    "mode": "cold",
+    "build_params": {
+      "lists": 32768
+    },
+    "snapshot_used": "/mnt/nvme/saved_indexes/deep_parallel_ivfflat_lists32768_pgdata.tar.gz",
+    "k": 100,
+    "recall_targets": [
+      0.7,
+      0.8,
+      0.9,
+      0.95,
+      0.96,
+      0.98
+    ],
+    "recall_qps_points": [
+      {
+        "target_recall": 0.7,
+        "actual_recall": 0.7215,
+        "probes": 15,
+        "qps": 49.15,
+        "avg_latency_ms": 20.35
+      },
+      {
+        "target_recall": 0.8,
+        "actual_recall": 0.8239,
+        "probes": 30,
+        "qps": 41.6,
+        "avg_latency_ms": 24.04
+      },
+      {
+        "target_recall": 0.9,
+        "actual_recall": 0.9214,
+        "probes": 80,
+        "qps": 32.06,
+        "avg_latency_ms": 31.19
+      },
+      {
+        "target_recall": 0.95,
+        "actual_recall": 0.9579,
+        "probes": 150,
+        "qps": 28.41,
+        "avg_latency_ms": 35.2
+      },
+      {
+        "target_recall": 0.96,
+        "actual_recall": 0.9704,
+        "probes": 200,
+        "qps": 26.97,
+        "avg_latency_ms": 37.07
+      },
+      {
+        "target_recall": 0.98,
+        "actual_recall": 0.9822,
+        "probes": 300,
+        "qps": 25.47,
+        "avg_latency_ms": 39.27
+      }
+    ],
+    "full_sweep": [
+      {
+        "probes": 15,
+        "recall": 0.7215,
+        "qps": 49.15,
+        "avg_latency_ms": 20.35
+      },
+      {
+        "probes": 20,
+        "recall": 0.7678,
+        "qps": 46.32,
+        "avg_latency_ms": 21.59
+      },
+      {
+        "probes": 25,
+        "recall": 0.7974,
+        "qps": 42.64,
+        "avg_latency_ms": 23.45
+      },
+      {
+        "probes": 30,
+        "recall": 0.8239,
+        "qps": 41.6,
+        "avg_latency_ms": 24.04
+      },
+      {
+        "probes": 35,
+        "recall": 0.8419,
+        "qps": 39.62,
+        "avg_latency_ms": 25.24
+      },
+      {
+        "probes": 40,
+        "recall": 0.8585,
+        "qps": 37.91,
+        "avg_latency_ms": 26.38
+      },
+      {
+        "probes": 50,
+        "recall": 0.8818,
+        "qps": 36.44,
+        "avg_latency_ms": 27.45
+      },
+      {
+        "probes": 60,
+        "recall": 0.8975,
+        "qps": 34.74,
+        "avg_latency_ms": 28.79
+      },
+      {
+        "probes": 80,
+        "recall": 0.9214,
+        "qps": 32.06,
+        "avg_latency_ms": 31.19
+      },
+      {
+        "probes": 100,
+        "recall": 0.9353,
+        "qps": 30.44,
+        "avg_latency_ms": 32.85
+      },
+      {
+        "probes": 150,
+        "recall": 0.9579,
+        "qps": 28.41,
+        "avg_latency_ms": 35.2
+      },
+      {
+        "probes": 200,
+        "recall": 0.9704,
+        "qps": 26.97,
+        "avg_latency_ms": 37.07
+      },
+      {
+        "probes": 300,
+        "recall": 0.9822,
+        "qps": 25.47,
+        "avg_latency_ms": 39.27
+      },
+      {
+        "probes": 400,
+        "recall": 0.9888,
+        "qps": 24.42,
+        "avg_latency_ms": 40.96
+      },
+      {
+        "probes": 500,
+        "recall": 0.9916,
+        "qps": 23.79,
+        "avg_latency_ms": 42.03
+      }
+    ],
+    "timestamp": "2026-05-31T16:47:40.343371",
+    "num_workers": 12
+  }
+}
