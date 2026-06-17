@@ -47,6 +47,12 @@ each figure.
 
 ## Promotions
 
+- **2026-06-17 (latest) — 45/65 HNSW grid refreshed from `vdb_tuning@4e71705`.**
+  Re-copied `throughput_frontier_45_65/hnsw/grid_graph.json` from the upstream raw
+  `vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_45GB_sb_65GB_cg/`.
+  The run grew from 55 → **132 measurements** (last timestamp 19:12). Saturation
+  files unchanged. Feeds plots 5 and 7 (45/65 HNSW). Plots regenerated.
+
 - **2026-06-17 (later) — refreshed all frontier data from `vdb_tuning@f722866`.**
   Re-copied the 10/15 (ivfflat, hnsw, parallel_ivfflat) and 45/65 (ivfflat, hnsw)
   grids + saturation files from the latest upstream raw `results_frontier_*` dirs.
