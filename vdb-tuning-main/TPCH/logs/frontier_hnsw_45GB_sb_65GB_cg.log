@@ -1,0 +1,227 @@
+[Step 1/2] find_saturation_points.py --memory 45:65 --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot
+WARM MODE: No restart between measurements. Results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_45GB_sb_65GB_cg
+MEMORY CONSTRAINED MODE: shared_buffers=45GB, cgroup=65GB
+Results directory: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_45GB_sb_65GB_cg
+Setting shared_buffers to 45GB...
+  shared_buffers now: shared_buffers = 45000000kB
+Setting cgroup memory to 65GB...
+  cgroup memory set to 65.0GB
+SNAPSHOT MODE: Skipping ensure_index (index already in PGDATA snapshot)
+INDEX: HNSW (results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_45GB_sb_65GB_cg)
+  Manual params: {'m': 32, 'ef_construction': 256}
+======================================================================
+THROUGHPUT FRONTIER - Step 1: Find Saturation Points
+Index: hnsw, K: 100, Measurement: 300s per data point
+Measurement: 300s per data point (cold start, no warmup)
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+Memory: shared_buffers=45GB, cgroup=65GB
+======================================================================
+
+Snapshot mode: skipping index creation (already in PGDATA).
+  Loaded tune config from: /users/vmageira/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_hnsw_results_gist.json
+  Best config: {'m': 32, 'ef_construction': 256, 'ef_search': 120, 'recall': 0.9094, 'avg_query_time_ms': 7.18, 'index_build_time_s': 0.0, 'index_size': '7678 MB'}
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1125144 pages (8790 MB)
+    [IDX] gist_data_hnsw_idx: 982819 pages (7678 MB)
+    [TBL] orders: 261272 pages (2041 MB)
+    [TBL] partsupp: 175056 pages (1368 MB)
+    [IDX] lineitem_pkey: 164572 pages (1286 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] orders_pkey: 41130 pages (321 MB)
+    [TBL] part: 40992 pages (320 MB)
+    [TBL] customer: 35984 pages (281 MB)
+    [IDX] partsupp_pkey: 22057 pages (172 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6384 pages (50 MB)
+    [IDX] part_pkey: 5486 pages (43 MB)
+    [IDX] customer_pkey: 4115 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 33 relations, 3419121 pages (~26712 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+  Copied OLAP saturation from IVFFlat run: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_45GB_sb_65GB_cg/saturation_points_olap.json
+  -> /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_45GB_sb_65GB_cg/saturation_points_olap.json
+  Will measure ANN saturation for hnsw...
+
+======================================================================
+PHASE 1: Finding ANN Saturation (X^ANN)
+Running ANN alone with increasing workers...
+======================================================================
+
+  Measuring: 20 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1241.74 qps, OLAP=0.0000 qps
+  >> 20 workers: 1241.74 qps
+
+  Measuring: 30 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1403.86 qps, OLAP=0.0000 qps
+  >> 30 workers: 1403.86 qps
+
+  Measuring: 35 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1434.70 qps, OLAP=0.0000 qps
+  >> 35 workers: 1434.70 qps
+
+  Measuring: 40 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1455.23 qps, OLAP=0.0000 qps
+  >> 40 workers: 1455.23 qps
+
+  Measuring: 45 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1473.46 qps, OLAP=0.0000 qps
+  >> 45 workers: 1473.46 qps
+
+  Measuring: 50 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1469.33 qps, OLAP=0.0000 qps
+  >> 50 workers: 1469.33 qps
+
+  Measuring: 55 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1470.92 qps, OLAP=0.0000 qps
+  >> 55 workers: 1470.92 qps
+
+  Measuring: 60 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1469.32 qps, OLAP=0.0000 qps
+  >> 60 workers: 1469.32 qps
+
+  Measuring: 65 ANN workers, 0 OLAP workers
+  Duration: 300s (cold start, no warmup)
+  Running for 300s...
+  Results: ANN=1473.78 qps, OLAP=0.0000 qps
+  >> 65 workers: 1473.78 qps
+     (improvement 0.0% < 1% threshold, saturated)
+
+  *** ANN Saturation: X^ANN = 1473.78 qps (at 65 workers) ***
+
+
+======================================================================
+SUMMARY
+======================================================================
+  X^ANN  = 1473.78 qps (saturates at 65 workers)
+======================================================================
+
+ANN results saved to: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_45GB_sb_65GB_cg/saturation_points_ann.json
+Combined results saved to: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_45GB_sb_65GB_cg/saturation_points.json
+
+[Step 2/2] build_throughput_frontier.py --memory 45:65 --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot
+DEBUG: sys.argv = ['/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/code/frontier_analysis/build_throughput_frontier.py', '--memory', '45:65', '--warm', '--index', 'hnsw', '--hnsw-m', '32', '--hnsw-efc', '256', '--snapshot']
+WARM MODE: No restart between measurements. Results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_45GB_sb_65GB_cg
+SNAPSHOT MODE: Skipping ensure_index (index already in PGDATA snapshot)
+INDEX: HNSW (results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_45GB_sb_65GB_cg)
+  Manual params: {'m': 32, 'ef_construction': 256}
+======================================================================
+THROUGHPUT FRONTIER - Step 2: Build Grid Graph & Extract Frontier
+Index: hnsw, K: 100, Measurement: 300s per data point
+Measurement: 300s per data point (warm)
+Grid fractions: [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375, 1]
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+======================================================================
+Saturation points loaded:
+  X^ANN  = 1473.78 qps (tau_max = 65 workers)
+  X^OLAP = 2.4267 tps (alpha_max = 16 workers)
+
+Snapshot mode: skipping index creation (already in PGDATA).
+  Loaded tune config from: /users/vmageira/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_hnsw_results_gist.json
+  Best config: {'m': 32, 'ef_construction': 256, 'ef_search': 120, 'recall': 0.9094, 'avg_query_time_ms': 7.18, 'index_build_time_s': 0.0, 'index_size': '7678 MB'}
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1125144 pages (8790 MB)
+    [IDX] gist_data_hnsw_idx: 982819 pages (7678 MB)
+    [TBL] orders: 261272 pages (2041 MB)
+    [TBL] partsupp: 175056 pages (1368 MB)
+    [IDX] lineitem_pkey: 164572 pages (1286 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] orders_pkey: 41130 pages (321 MB)
+    [TBL] part: 40992 pages (320 MB)
+    [TBL] customer: 35984 pages (281 MB)
+    [IDX] partsupp_pkey: 22057 pages (172 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6384 pages (50 MB)
+    [IDX] part_pkey: 5486 pages (43 MB)
+    [IDX] customer_pkey: 4115 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 33 relations, 3419121 pages (~26712 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+
+Grid graph plan:
+  ANN levels (fixed-ANN lines): [1, 4, 8, 12, 16, 20, 24, 28, 32, 37, 41, 45, 49, 53, 57, 61, 65]
+  OLAP levels (fixed-OLAP lines): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+  Total new measurements needed: 544
+  Estimated time: 2720 minutes (45.3 hours)
+
+======================================================================
+FIXED-ANN LINE: ANN = 1 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+======================================================================
+
+  [1/544] Measuring (1 ANN, 1 OLAP)...
+
+  Measuring: 1 ANN workers, 1 OLAP workers (300s, warm)
+  Actual duration: 305.3s (target: 300s)
+  Results: ANN=115.64 qps, OLAP=0.2293 qps
+
+  [2/544] Measuring (1 ANN, 2 OLAP)...
+
+  Measuring: 1 ANN workers, 2 OLAP workers (300s, warm)
+  Actual duration: 300.6s (target: 300s)
+  Results: ANN=119.87 qps, OLAP=0.5156 qps
+
+  [3/544] Measuring (1 ANN, 3 OLAP)...
+
+  Measuring: 1 ANN workers, 3 OLAP workers (300s, warm)
