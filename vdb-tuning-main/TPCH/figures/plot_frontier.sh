@@ -2,15 +2,15 @@
 ######## # DEFAULT UN-CONSTRAINED - 45:60
 ######## ######## ######## ######## ######## ######## ######## ######## ######## ######## 
 # HNSW + IVF
-# python3 plot_frontier_comparison.py --grid  \
-#       "HNSW":/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_45GB_sb_65GB_cg/grid_graph.json \
-#       "IVFFlat":/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_45GB_sb_65GB_cg/grid_graph.json \
-#       --output frontier-HNSW-IVFFlat-16-June-26-unconstrained.png
+python3 plot_frontier_comparison.py --grid  \
+      "HNSW":/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_45GB_sb_65GB_cg/grid_graph.json \
+      "IVFFlat":/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_45GB_sb_65GB_cg/grid_graph.json \
+      --output frontier-HNSW-IVFFlat-16-June-26-unconstrained.png
 
 # # # IVF
-python3 plot_frontier_comparison.py --grid \
-      "IVFFlat":/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_45GB_sb_65GB_cg/grid_graph.json \
-      --output frontier-IVFFlat-16-June-26-unconstrained.png
+# python3 plot_frontier_comparison.py --grid \
+#       "IVFFlat":/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_45GB_sb_65GB_cg/grid_graph.json \
+#       --output frontier-IVFFlat-16-June-26-unconstrained.png
       
 # # HNSW
 # python3 plot_frontier_comparison.py --grid \
