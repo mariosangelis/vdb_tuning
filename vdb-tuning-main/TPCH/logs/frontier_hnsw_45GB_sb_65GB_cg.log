@@ -558,3 +558,5 @@ FIXED-ANN LINE: ANN = 12 workers
   [56/544] Measuring (12 ANN, 8 OLAP)...
 
   Measuring: 12 ANN workers, 8 OLAP workers (300s, warm)
+
+DONE! Index: hnsw, Memory: 45GB/65GB
