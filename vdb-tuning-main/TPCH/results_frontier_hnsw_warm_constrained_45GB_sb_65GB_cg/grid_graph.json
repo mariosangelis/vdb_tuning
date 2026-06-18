@@ -4025,7 +4025,24 @@
       "measurement_duration_sec": 300,
       "line_type": "fixed_ann",
       "fixed_value": 57
+    },
+    {
+      "ann_workers": 57,
+      "olap_workers": 13,
+      "ann_throughput_qps": 1052.82,
+      "olap_throughput_qps": 0.7322,
+      "ann_total_queries": 339332,
+      "olap_total_queries": 236,
+      "ann_avg_latency_ms": 49.72,
+      "ann_p50_latency_ms": 49.37,
+      "ann_p99_latency_ms": 86.36,
+      "olap_avg_latency_ms": 14943.06,
+      "olap_p50_latency_ms": 11546.11,
+      "olap_p99_latency_ms": 130022.59,
+      "measurement_duration_sec": 300,
+      "line_type": "fixed_ann",
+      "fixed_value": 57
     }
   ],
-  "timestamp_last": "2026-06-18T04:26:38.047364"
+  "timestamp_last": "2026-06-18T04:32:01.516283"
 }
