@@ -5,8 +5,1647 @@ Snapshots:
   IVFFlat:  /mnt/nvme/saved_indexes/gist_ivfflat_lists8192_pgdata.tar.gz
   HNSW:     /mnt/nvme/saved_indexes/gist_hnsw_efc256_m32_pgdata.tar.gz
   Parallel: /mnt/nvme/saved_indexes/gist_parallel_ivfflat_lists8192_pgdata.tar.gz
-Started at: Mon Jun 15 02:39:09 PM UTC 2026
+Started at: Thu Jun 18 09:25:07 PM UTC 2026
 ========================================================================
+
+========================================================================
+PHASE 1/3: IVFFlat
+========================================================================
+[1a] Compiling default pgvector...
+  Done.
+[1b] Loading IVFFlat snapshot...
+waiting for server to shut down......... done
+server stopped
+    Clearing old PGDATA contents...
+    Extracting snapshot (this may take a few minutes)...
+    Snapshot loaded successfully.
+    Starting PostgreSQL (NUMA nodes: 0-7)...
+waiting for server to start.... done
+server started
+    PostgreSQL is ready.
+[1c] Running IVFFlat frontier...
+========================================
+Running frontier: ivfflat, shared_buffers=10GB, cgroup=15GB
+Flags: --warm --index ivfflat --ivfflat-lists 8192 --snapshot
+Log file: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/code/../logs/frontier_ivfflat_10GB_sb_15GB_cg.log
+========================================
+[Step 1/2] find_saturation_points.py --memory 10:15 --warm --index ivfflat --ivfflat-lists 8192 --snapshot
+WARM MODE: No restart between measurements. Results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg
+MEMORY CONSTRAINED MODE: shared_buffers=10GB, cgroup=15GB
+Results directory: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg
+Setting shared_buffers to 10GB...
+  shared_buffers now: shared_buffers = 10000000kB
+Setting cgroup memory to 15GB...
+  cgroup memory set to 15.0GB
+SNAPSHOT MODE: Skipping ensure_index (index already in PGDATA snapshot)
+THROUGHPUT FRONTIER - Step 1: Find Saturation Points
+Index: ivfflat, K: 100, Measurement: 300s per data point
+Measurement: 300s per data point (cold start, no warmup)
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+Memory: shared_buffers=10GB, cgroup=15GB
+======================================================================
+
+Snapshot mode: skipping index creation (already in PGDATA).
+  Loaded tune config from: /users/vmageira/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_ivfflat_results_gist.json
+  Best config: {'lists': 8192, 'probes': 150, 'recall': 0.9095, 'avg_query_time_ms': 38.25, 'index_build_time_s': 2140.72}
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1125144 pages (8790 MB)
+    [IDX] gist_data_ivfflat_idx: 506293 pages (3955 MB)
+    [TBL] orders: 261272 pages (2041 MB)
+    [TBL] partsupp: 175056 pages (1368 MB)
+    [IDX] lineitem_pkey: 164572 pages (1286 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] orders_pkey: 41130 pages (321 MB)
+    [TBL] part: 40992 pages (320 MB)
+    [TBL] customer: 35984 pages (281 MB)
+    [IDX] partsupp_pkey: 22057 pages (172 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6384 pages (50 MB)
+    [IDX] part_pkey: 5486 pages (43 MB)
+    [IDX] customer_pkey: 4115 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 33 relations, 2942595 pages (~22989 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+
+  OLAP saturation already exists: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg/saturation_points_olap.json (skipping)
+  X^OLAP = 0.4867 qps
+  ANN saturation already exists: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg/saturation_points_ann.json (skipping)
+  X^ANN  = 205.97 qps
+  Both saturation files exist. Nothing to measure.
+
+[Step 2/2] build_throughput_frontier.py --memory 10:15 --warm --index ivfflat --ivfflat-lists 8192 --snapshot
+DEBUG: Full command: echo EXECUTING: python3 -u /build_throughput_frontier.py --memory ; python3 -u /build_throughput_frontier.py --memory  
+DEBUG: sys.argv = ['/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/code/frontier_analysis/build_throughput_frontier.py', '--memory', '10:15', '--warm', '--index', 'ivfflat', '--ivfflat-lists', '8192', '--snapshot']
+WARM MODE: No restart between measurements. Results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg
+SNAPSHOT MODE: Skipping ensure_index (index already in PGDATA snapshot)
+THROUGHPUT FRONTIER - Step 2: Build Grid Graph & Extract Frontier
+Index: ivfflat, K: 100, Measurement: 300s per data point
+Measurement: 300s per data point (warm)
+Grid fractions: [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375, 1]
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+======================================================================
+Saturation points loaded:
+  X^ANN  = 205.97 qps (tau_max = 50 workers)
+  X^OLAP = 0.4867 tps (alpha_max = 14 workers)
+
+Snapshot mode: skipping index creation (already in PGDATA).
+  Loaded tune config from: /users/vmageira/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_ivfflat_results_gist.json
+  Best config: {'lists': 8192, 'probes': 150, 'recall': 0.9095, 'avg_query_time_ms': 38.25, 'index_build_time_s': 2140.72}
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1125144 pages (8790 MB)
+    [IDX] gist_data_ivfflat_idx: 506293 pages (3955 MB)
+    [TBL] orders: 261272 pages (2041 MB)
+    [TBL] partsupp: 175056 pages (1368 MB)
+    [IDX] lineitem_pkey: 164572 pages (1286 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] orders_pkey: 41130 pages (321 MB)
+    [TBL] part: 40992 pages (320 MB)
+    [TBL] customer: 35984 pages (281 MB)
+    [IDX] partsupp_pkey: 22057 pages (172 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6384 pages (50 MB)
+    [IDX] part_pkey: 5486 pages (43 MB)
+    [IDX] customer_pkey: 4115 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 33 relations, 2942595 pages (~22989 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+Resuming: 238 existing measurements found.
+
+Grid graph plan:
+  ANN levels (fixed-ANN lines): [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+  OLAP levels (fixed-OLAP lines): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  Total new measurements needed: 0
+  Estimated time: 0 minutes (0.0 hours)
+
+======================================================================
+FIXED-ANN LINE: ANN = 1 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (1, 1) — already measured
+  Skipping (1, 2) — already measured
+  Skipping (1, 3) — already measured
+  Skipping (1, 4) — already measured
+  Skipping (1, 5) — already measured
+  Skipping (1, 6) — already measured
+  Skipping (1, 7) — already measured
+  Skipping (1, 8) — already measured
+  Skipping (1, 9) — already measured
+  Skipping (1, 10) — already measured
+  Skipping (1, 11) — already measured
+  Skipping (1, 12) — already measured
+  Skipping (1, 13) — already measured
+  Skipping (1, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 3 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (3, 1) — already measured
+  Skipping (3, 2) — already measured
+  Skipping (3, 3) — already measured
+  Skipping (3, 4) — already measured
+  Skipping (3, 5) — already measured
+  Skipping (3, 6) — already measured
+  Skipping (3, 7) — already measured
+  Skipping (3, 8) — already measured
+  Skipping (3, 9) — already measured
+  Skipping (3, 10) — already measured
+  Skipping (3, 11) — already measured
+  Skipping (3, 12) — already measured
+  Skipping (3, 13) — already measured
+  Skipping (3, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 6 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (6, 1) — already measured
+  Skipping (6, 2) — already measured
+  Skipping (6, 3) — already measured
+  Skipping (6, 4) — already measured
+  Skipping (6, 5) — already measured
+  Skipping (6, 6) — already measured
+  Skipping (6, 7) — already measured
+  Skipping (6, 8) — already measured
+  Skipping (6, 9) — already measured
+  Skipping (6, 10) — already measured
+  Skipping (6, 11) — already measured
+  Skipping (6, 12) — already measured
+  Skipping (6, 13) — already measured
+  Skipping (6, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 9 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (9, 1) — already measured
+  Skipping (9, 2) — already measured
+  Skipping (9, 3) — already measured
+  Skipping (9, 4) — already measured
+  Skipping (9, 5) — already measured
+  Skipping (9, 6) — already measured
+  Skipping (9, 7) — already measured
+  Skipping (9, 8) — already measured
+  Skipping (9, 9) — already measured
+  Skipping (9, 10) — already measured
+  Skipping (9, 11) — already measured
+  Skipping (9, 12) — already measured
+  Skipping (9, 13) — already measured
+  Skipping (9, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 12 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (12, 1) — already measured
+  Skipping (12, 2) — already measured
+  Skipping (12, 3) — already measured
+  Skipping (12, 4) — already measured
+  Skipping (12, 5) — already measured
+  Skipping (12, 6) — already measured
+  Skipping (12, 7) — already measured
+  Skipping (12, 8) — already measured
+  Skipping (12, 9) — already measured
+  Skipping (12, 10) — already measured
+  Skipping (12, 11) — already measured
+  Skipping (12, 12) — already measured
+  Skipping (12, 13) — already measured
+  Skipping (12, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 16 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (16, 1) — already measured
+  Skipping (16, 2) — already measured
+  Skipping (16, 3) — already measured
+  Skipping (16, 4) — already measured
+  Skipping (16, 5) — already measured
+  Skipping (16, 6) — already measured
+  Skipping (16, 7) — already measured
+  Skipping (16, 8) — already measured
+  Skipping (16, 9) — already measured
+  Skipping (16, 10) — already measured
+  Skipping (16, 11) — already measured
+  Skipping (16, 12) — already measured
+  Skipping (16, 13) — already measured
+  Skipping (16, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 19 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (19, 1) — already measured
+  Skipping (19, 2) — already measured
+  Skipping (19, 3) — already measured
+  Skipping (19, 4) — already measured
+  Skipping (19, 5) — already measured
+  Skipping (19, 6) — already measured
+  Skipping (19, 7) — already measured
+  Skipping (19, 8) — already measured
+  Skipping (19, 9) — already measured
+  Skipping (19, 10) — already measured
+  Skipping (19, 11) — already measured
+  Skipping (19, 12) — already measured
+  Skipping (19, 13) — already measured
+  Skipping (19, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 22 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (22, 1) — already measured
+  Skipping (22, 2) — already measured
+  Skipping (22, 3) — already measured
+  Skipping (22, 4) — already measured
+  Skipping (22, 5) — already measured
+  Skipping (22, 6) — already measured
+  Skipping (22, 7) — already measured
+  Skipping (22, 8) — already measured
+  Skipping (22, 9) — already measured
+  Skipping (22, 10) — already measured
+  Skipping (22, 11) — already measured
+  Skipping (22, 12) — already measured
+  Skipping (22, 13) — already measured
+  Skipping (22, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 25 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (25, 1) — already measured
+  Skipping (25, 2) — already measured
+  Skipping (25, 3) — already measured
+  Skipping (25, 4) — already measured
+  Skipping (25, 5) — already measured
+  Skipping (25, 6) — already measured
+  Skipping (25, 7) — already measured
+  Skipping (25, 8) — already measured
+  Skipping (25, 9) — already measured
+  Skipping (25, 10) — already measured
+  Skipping (25, 11) — already measured
+  Skipping (25, 12) — already measured
+  Skipping (25, 13) — already measured
+  Skipping (25, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 28 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (28, 1) — already measured
+  Skipping (28, 2) — already measured
+  Skipping (28, 3) — already measured
+  Skipping (28, 4) — already measured
+  Skipping (28, 5) — already measured
+  Skipping (28, 6) — already measured
+  Skipping (28, 7) — already measured
+  Skipping (28, 8) — already measured
+  Skipping (28, 9) — already measured
+  Skipping (28, 10) — already measured
+  Skipping (28, 11) — already measured
+  Skipping (28, 12) — already measured
+  Skipping (28, 13) — already measured
+  Skipping (28, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 31 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (31, 1) — already measured
+  Skipping (31, 2) — already measured
+  Skipping (31, 3) — already measured
+  Skipping (31, 4) — already measured
+  Skipping (31, 5) — already measured
+  Skipping (31, 6) — already measured
+  Skipping (31, 7) — already measured
+  Skipping (31, 8) — already measured
+  Skipping (31, 9) — already measured
+  Skipping (31, 10) — already measured
+  Skipping (31, 11) — already measured
+  Skipping (31, 12) — already measured
+  Skipping (31, 13) — already measured
+  Skipping (31, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 34 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (34, 1) — already measured
+  Skipping (34, 2) — already measured
+  Skipping (34, 3) — already measured
+  Skipping (34, 4) — already measured
+  Skipping (34, 5) — already measured
+  Skipping (34, 6) — already measured
+  Skipping (34, 7) — already measured
+  Skipping (34, 8) — already measured
+  Skipping (34, 9) — already measured
+  Skipping (34, 10) — already measured
+  Skipping (34, 11) — already measured
+  Skipping (34, 12) — already measured
+  Skipping (34, 13) — already measured
+  Skipping (34, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 38 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (38, 1) — already measured
+  Skipping (38, 2) — already measured
+  Skipping (38, 3) — already measured
+  Skipping (38, 4) — already measured
+  Skipping (38, 5) — already measured
+  Skipping (38, 6) — already measured
+  Skipping (38, 7) — already measured
+  Skipping (38, 8) — already measured
+  Skipping (38, 9) — already measured
+  Skipping (38, 10) — already measured
+  Skipping (38, 11) — already measured
+  Skipping (38, 12) — already measured
+  Skipping (38, 13) — already measured
+  Skipping (38, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 41 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (41, 1) — already measured
+  Skipping (41, 2) — already measured
+  Skipping (41, 3) — already measured
+  Skipping (41, 4) — already measured
+  Skipping (41, 5) — already measured
+  Skipping (41, 6) — already measured
+  Skipping (41, 7) — already measured
+  Skipping (41, 8) — already measured
+  Skipping (41, 9) — already measured
+  Skipping (41, 10) — already measured
+  Skipping (41, 11) — already measured
+  Skipping (41, 12) — already measured
+  Skipping (41, 13) — already measured
+  Skipping (41, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 44 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (44, 1) — already measured
+  Skipping (44, 2) — already measured
+  Skipping (44, 3) — already measured
+  Skipping (44, 4) — already measured
+  Skipping (44, 5) — already measured
+  Skipping (44, 6) — already measured
+  Skipping (44, 7) — already measured
+  Skipping (44, 8) — already measured
+  Skipping (44, 9) — already measured
+  Skipping (44, 10) — already measured
+  Skipping (44, 11) — already measured
+  Skipping (44, 12) — already measured
+  Skipping (44, 13) — already measured
+  Skipping (44, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 47 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (47, 1) — already measured
+  Skipping (47, 2) — already measured
+  Skipping (47, 3) — already measured
+  Skipping (47, 4) — already measured
+  Skipping (47, 5) — already measured
+  Skipping (47, 6) — already measured
+  Skipping (47, 7) — already measured
+  Skipping (47, 8) — already measured
+  Skipping (47, 9) — already measured
+  Skipping (47, 10) — already measured
+  Skipping (47, 11) — already measured
+  Skipping (47, 12) — already measured
+  Skipping (47, 13) — already measured
+  Skipping (47, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 50 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (50, 1) — already measured
+  Skipping (50, 2) — already measured
+  Skipping (50, 3) — already measured
+  Skipping (50, 4) — already measured
+  Skipping (50, 5) — already measured
+  Skipping (50, 6) — already measured
+  Skipping (50, 7) — already measured
+  Skipping (50, 8) — already measured
+  Skipping (50, 9) — already measured
+  Skipping (50, 10) — already measured
+  Skipping (50, 11) — already measured
+  Skipping (50, 12) — already measured
+  Skipping (50, 13) — already measured
+  Skipping (50, 14) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 1 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 1) — already measured
+  Skipping (3, 1) — already measured
+  Skipping (6, 1) — already measured
+  Skipping (9, 1) — already measured
+  Skipping (12, 1) — already measured
+  Skipping (16, 1) — already measured
+  Skipping (19, 1) — already measured
+  Skipping (22, 1) — already measured
+  Skipping (25, 1) — already measured
+  Skipping (28, 1) — already measured
+  Skipping (31, 1) — already measured
+  Skipping (34, 1) — already measured
+  Skipping (38, 1) — already measured
+  Skipping (41, 1) — already measured
+  Skipping (44, 1) — already measured
+  Skipping (47, 1) — already measured
+  Skipping (50, 1) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 2 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 2) — already measured
+  Skipping (3, 2) — already measured
+  Skipping (6, 2) — already measured
+  Skipping (9, 2) — already measured
+  Skipping (12, 2) — already measured
+  Skipping (16, 2) — already measured
+  Skipping (19, 2) — already measured
+  Skipping (22, 2) — already measured
+  Skipping (25, 2) — already measured
+  Skipping (28, 2) — already measured
+  Skipping (31, 2) — already measured
+  Skipping (34, 2) — already measured
+  Skipping (38, 2) — already measured
+  Skipping (41, 2) — already measured
+  Skipping (44, 2) — already measured
+  Skipping (47, 2) — already measured
+  Skipping (50, 2) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 3 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 3) — already measured
+  Skipping (3, 3) — already measured
+  Skipping (6, 3) — already measured
+  Skipping (9, 3) — already measured
+  Skipping (12, 3) — already measured
+  Skipping (16, 3) — already measured
+  Skipping (19, 3) — already measured
+  Skipping (22, 3) — already measured
+  Skipping (25, 3) — already measured
+  Skipping (28, 3) — already measured
+  Skipping (31, 3) — already measured
+  Skipping (34, 3) — already measured
+  Skipping (38, 3) — already measured
+  Skipping (41, 3) — already measured
+  Skipping (44, 3) — already measured
+  Skipping (47, 3) — already measured
+  Skipping (50, 3) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 4 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 4) — already measured
+  Skipping (3, 4) — already measured
+  Skipping (6, 4) — already measured
+  Skipping (9, 4) — already measured
+  Skipping (12, 4) — already measured
+  Skipping (16, 4) — already measured
+  Skipping (19, 4) — already measured
+  Skipping (22, 4) — already measured
+  Skipping (25, 4) — already measured
+  Skipping (28, 4) — already measured
+  Skipping (31, 4) — already measured
+  Skipping (34, 4) — already measured
+  Skipping (38, 4) — already measured
+  Skipping (41, 4) — already measured
+  Skipping (44, 4) — already measured
+  Skipping (47, 4) — already measured
+  Skipping (50, 4) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 5 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 5) — already measured
+  Skipping (3, 5) — already measured
+  Skipping (6, 5) — already measured
+  Skipping (9, 5) — already measured
+  Skipping (12, 5) — already measured
+  Skipping (16, 5) — already measured
+  Skipping (19, 5) — already measured
+  Skipping (22, 5) — already measured
+  Skipping (25, 5) — already measured
+  Skipping (28, 5) — already measured
+  Skipping (31, 5) — already measured
+  Skipping (34, 5) — already measured
+  Skipping (38, 5) — already measured
+  Skipping (41, 5) — already measured
+  Skipping (44, 5) — already measured
+  Skipping (47, 5) — already measured
+  Skipping (50, 5) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 6 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 6) — already measured
+  Skipping (3, 6) — already measured
+  Skipping (6, 6) — already measured
+  Skipping (9, 6) — already measured
+  Skipping (12, 6) — already measured
+  Skipping (16, 6) — already measured
+  Skipping (19, 6) — already measured
+  Skipping (22, 6) — already measured
+  Skipping (25, 6) — already measured
+  Skipping (28, 6) — already measured
+  Skipping (31, 6) — already measured
+  Skipping (34, 6) — already measured
+  Skipping (38, 6) — already measured
+  Skipping (41, 6) — already measured
+  Skipping (44, 6) — already measured
+  Skipping (47, 6) — already measured
+  Skipping (50, 6) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 7 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 7) — already measured
+  Skipping (3, 7) — already measured
+  Skipping (6, 7) — already measured
+  Skipping (9, 7) — already measured
+  Skipping (12, 7) — already measured
+  Skipping (16, 7) — already measured
+  Skipping (19, 7) — already measured
+  Skipping (22, 7) — already measured
+  Skipping (25, 7) — already measured
+  Skipping (28, 7) — already measured
+  Skipping (31, 7) — already measured
+  Skipping (34, 7) — already measured
+  Skipping (38, 7) — already measured
+  Skipping (41, 7) — already measured
+  Skipping (44, 7) — already measured
+  Skipping (47, 7) — already measured
+  Skipping (50, 7) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 8 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 8) — already measured
+  Skipping (3, 8) — already measured
+  Skipping (6, 8) — already measured
+  Skipping (9, 8) — already measured
+  Skipping (12, 8) — already measured
+  Skipping (16, 8) — already measured
+  Skipping (19, 8) — already measured
+  Skipping (22, 8) — already measured
+  Skipping (25, 8) — already measured
+  Skipping (28, 8) — already measured
+  Skipping (31, 8) — already measured
+  Skipping (34, 8) — already measured
+  Skipping (38, 8) — already measured
+  Skipping (41, 8) — already measured
+  Skipping (44, 8) — already measured
+  Skipping (47, 8) — already measured
+  Skipping (50, 8) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 9 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 9) — already measured
+  Skipping (3, 9) — already measured
+  Skipping (6, 9) — already measured
+  Skipping (9, 9) — already measured
+  Skipping (12, 9) — already measured
+  Skipping (16, 9) — already measured
+  Skipping (19, 9) — already measured
+  Skipping (22, 9) — already measured
+  Skipping (25, 9) — already measured
+  Skipping (28, 9) — already measured
+  Skipping (31, 9) — already measured
+  Skipping (34, 9) — already measured
+  Skipping (38, 9) — already measured
+  Skipping (41, 9) — already measured
+  Skipping (44, 9) — already measured
+  Skipping (47, 9) — already measured
+  Skipping (50, 9) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 10 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 10) — already measured
+  Skipping (3, 10) — already measured
+  Skipping (6, 10) — already measured
+  Skipping (9, 10) — already measured
+  Skipping (12, 10) — already measured
+  Skipping (16, 10) — already measured
+  Skipping (19, 10) — already measured
+  Skipping (22, 10) — already measured
+  Skipping (25, 10) — already measured
+  Skipping (28, 10) — already measured
+  Skipping (31, 10) — already measured
+  Skipping (34, 10) — already measured
+  Skipping (38, 10) — already measured
+  Skipping (41, 10) — already measured
+  Skipping (44, 10) — already measured
+  Skipping (47, 10) — already measured
+  Skipping (50, 10) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 11 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 11) — already measured
+  Skipping (3, 11) — already measured
+  Skipping (6, 11) — already measured
+  Skipping (9, 11) — already measured
+  Skipping (12, 11) — already measured
+  Skipping (16, 11) — already measured
+  Skipping (19, 11) — already measured
+  Skipping (22, 11) — already measured
+  Skipping (25, 11) — already measured
+  Skipping (28, 11) — already measured
+  Skipping (31, 11) — already measured
+  Skipping (34, 11) — already measured
+  Skipping (38, 11) — already measured
+  Skipping (41, 11) — already measured
+  Skipping (44, 11) — already measured
+  Skipping (47, 11) — already measured
+  Skipping (50, 11) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 12 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 12) — already measured
+  Skipping (3, 12) — already measured
+  Skipping (6, 12) — already measured
+  Skipping (9, 12) — already measured
+  Skipping (12, 12) — already measured
+  Skipping (16, 12) — already measured
+  Skipping (19, 12) — already measured
+  Skipping (22, 12) — already measured
+  Skipping (25, 12) — already measured
+  Skipping (28, 12) — already measured
+  Skipping (31, 12) — already measured
+  Skipping (34, 12) — already measured
+  Skipping (38, 12) — already measured
+  Skipping (41, 12) — already measured
+  Skipping (44, 12) — already measured
+  Skipping (47, 12) — already measured
+  Skipping (50, 12) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 13 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 13) — already measured
+  Skipping (3, 13) — already measured
+  Skipping (6, 13) — already measured
+  Skipping (9, 13) — already measured
+  Skipping (12, 13) — already measured
+  Skipping (16, 13) — already measured
+  Skipping (19, 13) — already measured
+  Skipping (22, 13) — already measured
+  Skipping (25, 13) — already measured
+  Skipping (28, 13) — already measured
+  Skipping (31, 13) — already measured
+  Skipping (34, 13) — already measured
+  Skipping (38, 13) — already measured
+  Skipping (41, 13) — already measured
+  Skipping (44, 13) — already measured
+  Skipping (47, 13) — already measured
+  Skipping (50, 13) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 14 workers
+  Sweeping ANN: [1, 3, 6, 9, 12, 16, 19, 22, 25, 28, 31, 34, 38, 41, 44, 47, 50]
+======================================================================
+  Skipping (1, 14) — already measured
+  Skipping (3, 14) — already measured
+  Skipping (6, 14) — already measured
+  Skipping (9, 14) — already measured
+  Skipping (12, 14) — already measured
+  Skipping (16, 14) — already measured
+  Skipping (19, 14) — already measured
+  Skipping (22, 14) — already measured
+  Skipping (25, 14) — already measured
+  Skipping (28, 14) — already measured
+  Skipping (31, 14) — already measured
+  Skipping (34, 14) — already measured
+  Skipping (38, 14) — already measured
+  Skipping (41, 14) — already measured
+  Skipping (44, 14) — already measured
+  Skipping (47, 14) — already measured
+  Skipping (50, 14) — already measured
+
+
+All grid measurements complete. Total: 238 data points.
+DEBUG: Checking extra_points_from_args = []
+
+======================================================================
+EXTRACTING THROUGHPUT FRONTIER
+======================================================================
+
+======================================================================
+THROUGHPUT FRONTIER SUMMARY
+======================================================================
+  X^ANN  = 205.97 qps (tau_max = 50 workers)
+  X^OLAP = 0.4867 tps (alpha_max = 14 workers)
+  
+  Bounding box area:      100.2456
+  Proportional line area: 50.1228
+  Frontier AUC:           41.4543
+  AUC ratio:              0.4135
+  Above proportional:     False
+  Frontier points:        48
+  Total measurements:     238
+======================================================================
+  => LINEAR tradeoff: Frontier near proportional line.
+     Increasing one workload proportionally decreases the other.
+
+Results saved to:
+  Grid graph: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg/grid_graph.json
+  Frontier:   /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg/throughput_frontier.json
+
+DONE! Index: ivfflat, Memory: 10GB/15GB
+
+PHASE 1 COMPLETE: IVFFlat frontier done at Thu Jun 18 09:28:45 PM UTC 2026
+
+========================================================================
+PHASE 2/3: HNSW
+========================================================================
+[2a] Loading HNSW snapshot...
+waiting for server to shut down...... done
+server stopped
+    Clearing old PGDATA contents...
+    Extracting snapshot (this may take a few minutes)...
+    Snapshot loaded successfully.
+    Starting PostgreSQL (NUMA nodes: 0-7)...
+waiting for server to start.... done
+server started
+    PostgreSQL is ready.
+[2b] Running HNSW frontier...
+========================================
+Running frontier: hnsw, shared_buffers=10GB, cgroup=15GB
+Flags: --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot
+Log file: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/code/../logs/frontier_hnsw_10GB_sb_15GB_cg.log
+========================================
+[Step 1/2] find_saturation_points.py --memory 10:15 --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot
+WARM MODE: No restart between measurements. Results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg
+MEMORY CONSTRAINED MODE: shared_buffers=10GB, cgroup=15GB
+Results directory: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg
+Setting shared_buffers to 10GB...
+  shared_buffers now: shared_buffers = 10000000kB
+Setting cgroup memory to 15GB...
+  cgroup memory set to 15.0GB
+SNAPSHOT MODE: Skipping ensure_index (index already in PGDATA snapshot)
+INDEX: HNSW (results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_10GB_sb_15GB_cg)
+  Manual params: {'m': 32, 'ef_construction': 256}
+======================================================================
+THROUGHPUT FRONTIER - Step 1: Find Saturation Points
+Index: hnsw, K: 100, Measurement: 300s per data point
+Measurement: 300s per data point (cold start, no warmup)
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+Memory: shared_buffers=10GB, cgroup=15GB
+======================================================================
+
+Snapshot mode: skipping index creation (already in PGDATA).
+  Loaded tune config from: /users/vmageira/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_hnsw_results_gist.json
+  Best config: {'m': 32, 'ef_construction': 256, 'ef_search': 120, 'recall': 0.9094, 'avg_query_time_ms': 7.18, 'index_build_time_s': 0.0, 'index_size': '7678 MB'}
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1125144 pages (8790 MB)
+    [IDX] gist_data_hnsw_idx: 982819 pages (7678 MB)
+    [TBL] orders: 261272 pages (2041 MB)
+    [TBL] partsupp: 175056 pages (1368 MB)
+    [IDX] lineitem_pkey: 164572 pages (1286 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] orders_pkey: 41130 pages (321 MB)
+    [TBL] part: 40992 pages (320 MB)
+    [TBL] customer: 35984 pages (281 MB)
+    [IDX] partsupp_pkey: 22057 pages (172 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6384 pages (50 MB)
+    [IDX] part_pkey: 5486 pages (43 MB)
+    [IDX] customer_pkey: 4115 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 33 relations, 3419121 pages (~26712 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+  Copied OLAP saturation from IVFFlat run: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg/saturation_points_olap.json
+  -> /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_10GB_sb_15GB_cg/saturation_points_olap.json
+  ANN saturation already exists: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_10GB_sb_15GB_cg/saturation_points_ann.json (skipping)
+  X^ANN  = 1411.28 qps
+  Both saturation files exist. Nothing to measure.
+
+[Step 2/2] build_throughput_frontier.py --memory 10:15 --warm --index hnsw --hnsw-m 32 --hnsw-efc 256 --snapshot
+DEBUG: Full command: echo EXECUTING: python3 -u /build_throughput_frontier.py --memory ; python3 -u /build_throughput_frontier.py --memory  
+DEBUG: sys.argv = ['/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/code/frontier_analysis/build_throughput_frontier.py', '--memory', '10:15', '--warm', '--index', 'hnsw', '--hnsw-m', '32', '--hnsw-efc', '256', '--snapshot']
+WARM MODE: No restart between measurements. Results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg
+SNAPSHOT MODE: Skipping ensure_index (index already in PGDATA snapshot)
+INDEX: HNSW (results: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_10GB_sb_15GB_cg)
+  Manual params: {'m': 32, 'ef_construction': 256}
+======================================================================
+THROUGHPUT FRONTIER - Step 2: Build Grid Graph & Extract Frontier
+Index: hnsw, K: 100, Measurement: 300s per data point
+Measurement: 300s per data point (warm)
+Grid fractions: [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375, 1]
+Postgres cores: 0-31, NUMA: 0-7
+Client cores (TopK): [32, 33, 34, 35]...
+Client cores (OLAP): [32, 33, 34, 35]...
+======================================================================
+Saturation points loaded:
+  X^ANN  = 1411.28 qps (tau_max = 40 workers)
+  X^OLAP = 0.4867 tps (alpha_max = 14 workers)
+
+Snapshot mode: skipping index creation (already in PGDATA).
+  Loaded tune config from: /users/vmageira/vdb_tuning/vdb-tuning-main/compute_and_compare_recall/results_from_tune_scripts/tune_hnsw_results_gist.json
+  Best config: {'m': 32, 'ef_construction': 256, 'ef_search': 120, 'recall': 0.9094, 'avg_query_time_ms': 7.18, 'index_build_time_s': 0.0, 'index_size': '7678 MB'}
+
+WARM MODE: Performing initial restart and prewarm...
+  Prewarming ALL relations into shared buffers...
+    [TBL] lineitem: 1125144 pages (8790 MB)
+    [IDX] gist_data_hnsw_idx: 982819 pages (7678 MB)
+    [TBL] orders: 261272 pages (2041 MB)
+    [TBL] partsupp: 175056 pages (1368 MB)
+    [IDX] lineitem_pkey: 164572 pages (1286 MB)
+    [IDX] l_ok: 95024 pages (742 MB)
+    [IDX] l_sk_pk: 74303 pages (580 MB)
+    [IDX] l_pk_sk: 74302 pages (580 MB)
+    [IDX] l_pk: 54977 pages (430 MB)
+    [IDX] l_sk: 52013 pages (406 MB)
+    [IDX] l_rd: 50886 pages (398 MB)
+    [IDX] l_sd: 50886 pages (398 MB)
+    [IDX] l_cd: 50881 pages (398 MB)
+    [IDX] orders_pkey: 41130 pages (321 MB)
+    [TBL] part: 40992 pages (320 MB)
+    [TBL] customer: 35984 pages (281 MB)
+    [IDX] partsupp_pkey: 22057 pages (172 MB)
+    [IDX] o_ck: 15391 pages (120 MB)
+    [IDX] o_od: 12823 pages (100 MB)
+    [IDX] ps_pk: 12022 pages (94 MB)
+    [IDX] ps_sk: 6693 pages (52 MB)
+    [TBL] gist_data: 6384 pages (50 MB)
+    [IDX] part_pkey: 5486 pages (43 MB)
+    [IDX] customer_pkey: 4115 pages (32 MB)
+    [TBL] supplier: 2264 pages (18 MB)
+    [IDX] c_nk: 1273 pages (10 MB)
+    [IDX] supplier_pkey: 276 pages (2 MB)
+    [IDX] s_nk: 88 pages (1 MB)
+    [IDX] nation_pkey: 2 pages (0 MB)
+    [IDX] n_rk: 2 pages (0 MB)
+    [IDX] region_pkey: 2 pages (0 MB)
+    [TBL] nation: 1 pages (0 MB)
+    [TBL] region: 1 pages (0 MB)
+  Prewarm complete: 33 relations, 3419121 pages (~26712 MB)
+Database is now in steady state. No more restarts.
+Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+Resuming: 238 existing measurements found.
+
+Grid graph plan:
+  ANN levels (fixed-ANN lines): [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+  OLAP levels (fixed-OLAP lines): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  Total new measurements needed: 0
+  Estimated time: 0 minutes (0.0 hours)
+
+======================================================================
+FIXED-ANN LINE: ANN = 1 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (1, 1) — already measured
+  Skipping (1, 2) — already measured
+  Skipping (1, 3) — already measured
+  Skipping (1, 4) — already measured
+  Skipping (1, 5) — already measured
+  Skipping (1, 6) — already measured
+  Skipping (1, 7) — already measured
+  Skipping (1, 8) — already measured
+  Skipping (1, 9) — already measured
+  Skipping (1, 10) — already measured
+  Skipping (1, 11) — already measured
+  Skipping (1, 12) — already measured
+  Skipping (1, 13) — already measured
+  Skipping (1, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 2 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (2, 1) — already measured
+  Skipping (2, 2) — already measured
+  Skipping (2, 3) — already measured
+  Skipping (2, 4) — already measured
+  Skipping (2, 5) — already measured
+  Skipping (2, 6) — already measured
+  Skipping (2, 7) — already measured
+  Skipping (2, 8) — already measured
+  Skipping (2, 9) — already measured
+  Skipping (2, 10) — already measured
+  Skipping (2, 11) — already measured
+  Skipping (2, 12) — already measured
+  Skipping (2, 13) — already measured
+  Skipping (2, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 5 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (5, 1) — already measured
+  Skipping (5, 2) — already measured
+  Skipping (5, 3) — already measured
+  Skipping (5, 4) — already measured
+  Skipping (5, 5) — already measured
+  Skipping (5, 6) — already measured
+  Skipping (5, 7) — already measured
+  Skipping (5, 8) — already measured
+  Skipping (5, 9) — already measured
+  Skipping (5, 10) — already measured
+  Skipping (5, 11) — already measured
+  Skipping (5, 12) — already measured
+  Skipping (5, 13) — already measured
+  Skipping (5, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 8 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (8, 1) — already measured
+  Skipping (8, 2) — already measured
+  Skipping (8, 3) — already measured
+  Skipping (8, 4) — already measured
+  Skipping (8, 5) — already measured
+  Skipping (8, 6) — already measured
+  Skipping (8, 7) — already measured
+  Skipping (8, 8) — already measured
+  Skipping (8, 9) — already measured
+  Skipping (8, 10) — already measured
+  Skipping (8, 11) — already measured
+  Skipping (8, 12) — already measured
+  Skipping (8, 13) — already measured
+  Skipping (8, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 10 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (10, 1) — already measured
+  Skipping (10, 2) — already measured
+  Skipping (10, 3) — already measured
+  Skipping (10, 4) — already measured
+  Skipping (10, 5) — already measured
+  Skipping (10, 6) — already measured
+  Skipping (10, 7) — already measured
+  Skipping (10, 8) — already measured
+  Skipping (10, 9) — already measured
+  Skipping (10, 10) — already measured
+  Skipping (10, 11) — already measured
+  Skipping (10, 12) — already measured
+  Skipping (10, 13) — already measured
+  Skipping (10, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 12 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (12, 1) — already measured
+  Skipping (12, 2) — already measured
+  Skipping (12, 3) — already measured
+  Skipping (12, 4) — already measured
+  Skipping (12, 5) — already measured
+  Skipping (12, 6) — already measured
+  Skipping (12, 7) — already measured
+  Skipping (12, 8) — already measured
+  Skipping (12, 9) — already measured
+  Skipping (12, 10) — already measured
+  Skipping (12, 11) — already measured
+  Skipping (12, 12) — already measured
+  Skipping (12, 13) — already measured
+  Skipping (12, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 15 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (15, 1) — already measured
+  Skipping (15, 2) — already measured
+  Skipping (15, 3) — already measured
+  Skipping (15, 4) — already measured
+  Skipping (15, 5) — already measured
+  Skipping (15, 6) — already measured
+  Skipping (15, 7) — already measured
+  Skipping (15, 8) — already measured
+  Skipping (15, 9) — already measured
+  Skipping (15, 10) — already measured
+  Skipping (15, 11) — already measured
+  Skipping (15, 12) — already measured
+  Skipping (15, 13) — already measured
+  Skipping (15, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 18 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (18, 1) — already measured
+  Skipping (18, 2) — already measured
+  Skipping (18, 3) — already measured
+  Skipping (18, 4) — already measured
+  Skipping (18, 5) — already measured
+  Skipping (18, 6) — already measured
+  Skipping (18, 7) — already measured
+  Skipping (18, 8) — already measured
+  Skipping (18, 9) — already measured
+  Skipping (18, 10) — already measured
+  Skipping (18, 11) — already measured
+  Skipping (18, 12) — already measured
+  Skipping (18, 13) — already measured
+  Skipping (18, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 20 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (20, 1) — already measured
+  Skipping (20, 2) — already measured
+  Skipping (20, 3) — already measured
+  Skipping (20, 4) — already measured
+  Skipping (20, 5) — already measured
+  Skipping (20, 6) — already measured
+  Skipping (20, 7) — already measured
+  Skipping (20, 8) — already measured
+  Skipping (20, 9) — already measured
+  Skipping (20, 10) — already measured
+  Skipping (20, 11) — already measured
+  Skipping (20, 12) — already measured
+  Skipping (20, 13) — already measured
+  Skipping (20, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 22 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (22, 1) — already measured
+  Skipping (22, 2) — already measured
+  Skipping (22, 3) — already measured
+  Skipping (22, 4) — already measured
+  Skipping (22, 5) — already measured
+  Skipping (22, 6) — already measured
+  Skipping (22, 7) — already measured
+  Skipping (22, 8) — already measured
+  Skipping (22, 9) — already measured
+  Skipping (22, 10) — already measured
+  Skipping (22, 11) — already measured
+  Skipping (22, 12) — already measured
+  Skipping (22, 13) — already measured
+  Skipping (22, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 25 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (25, 1) — already measured
+  Skipping (25, 2) — already measured
+  Skipping (25, 3) — already measured
+  Skipping (25, 4) — already measured
+  Skipping (25, 5) — already measured
+  Skipping (25, 6) — already measured
+  Skipping (25, 7) — already measured
+  Skipping (25, 8) — already measured
+  Skipping (25, 9) — already measured
+  Skipping (25, 10) — already measured
+  Skipping (25, 11) — already measured
+  Skipping (25, 12) — already measured
+  Skipping (25, 13) — already measured
+  Skipping (25, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 28 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (28, 1) — already measured
+  Skipping (28, 2) — already measured
+  Skipping (28, 3) — already measured
+  Skipping (28, 4) — already measured
+  Skipping (28, 5) — already measured
+  Skipping (28, 6) — already measured
+  Skipping (28, 7) — already measured
+  Skipping (28, 8) — already measured
+  Skipping (28, 9) — already measured
+  Skipping (28, 10) — already measured
+  Skipping (28, 11) — already measured
+  Skipping (28, 12) — already measured
+  Skipping (28, 13) — already measured
+  Skipping (28, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 30 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (30, 1) — already measured
+  Skipping (30, 2) — already measured
+  Skipping (30, 3) — already measured
+  Skipping (30, 4) — already measured
+  Skipping (30, 5) — already measured
+  Skipping (30, 6) — already measured
+  Skipping (30, 7) — already measured
+  Skipping (30, 8) — already measured
+  Skipping (30, 9) — already measured
+  Skipping (30, 10) — already measured
+  Skipping (30, 11) — already measured
+  Skipping (30, 12) — already measured
+  Skipping (30, 13) — already measured
+  Skipping (30, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 32 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (32, 1) — already measured
+  Skipping (32, 2) — already measured
+  Skipping (32, 3) — already measured
+  Skipping (32, 4) — already measured
+  Skipping (32, 5) — already measured
+  Skipping (32, 6) — already measured
+  Skipping (32, 7) — already measured
+  Skipping (32, 8) — already measured
+  Skipping (32, 9) — already measured
+  Skipping (32, 10) — already measured
+  Skipping (32, 11) — already measured
+  Skipping (32, 12) — already measured
+  Skipping (32, 13) — already measured
+  Skipping (32, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 35 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (35, 1) — already measured
+  Skipping (35, 2) — already measured
+  Skipping (35, 3) — already measured
+  Skipping (35, 4) — already measured
+  Skipping (35, 5) — already measured
+  Skipping (35, 6) — already measured
+  Skipping (35, 7) — already measured
+  Skipping (35, 8) — already measured
+  Skipping (35, 9) — already measured
+  Skipping (35, 10) — already measured
+  Skipping (35, 11) — already measured
+  Skipping (35, 12) — already measured
+  Skipping (35, 13) — already measured
+  Skipping (35, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 38 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (38, 1) — already measured
+  Skipping (38, 2) — already measured
+  Skipping (38, 3) — already measured
+  Skipping (38, 4) — already measured
+  Skipping (38, 5) — already measured
+  Skipping (38, 6) — already measured
+  Skipping (38, 7) — already measured
+  Skipping (38, 8) — already measured
+  Skipping (38, 9) — already measured
+  Skipping (38, 10) — already measured
+  Skipping (38, 11) — already measured
+  Skipping (38, 12) — already measured
+  Skipping (38, 13) — already measured
+  Skipping (38, 14) — already measured
+
+======================================================================
+FIXED-ANN LINE: ANN = 40 workers
+  Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+======================================================================
+  Skipping (40, 1) — already measured
+  Skipping (40, 2) — already measured
+  Skipping (40, 3) — already measured
+  Skipping (40, 4) — already measured
+  Skipping (40, 5) — already measured
+  Skipping (40, 6) — already measured
+  Skipping (40, 7) — already measured
+  Skipping (40, 8) — already measured
+  Skipping (40, 9) — already measured
+  Skipping (40, 10) — already measured
+  Skipping (40, 11) — already measured
+  Skipping (40, 12) — already measured
+  Skipping (40, 13) — already measured
+  Skipping (40, 14) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 1 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 1) — already measured
+  Skipping (2, 1) — already measured
+  Skipping (5, 1) — already measured
+  Skipping (8, 1) — already measured
+  Skipping (10, 1) — already measured
+  Skipping (12, 1) — already measured
+  Skipping (15, 1) — already measured
+  Skipping (18, 1) — already measured
+  Skipping (20, 1) — already measured
+  Skipping (22, 1) — already measured
+  Skipping (25, 1) — already measured
+  Skipping (28, 1) — already measured
+  Skipping (30, 1) — already measured
+  Skipping (32, 1) — already measured
+  Skipping (35, 1) — already measured
+  Skipping (38, 1) — already measured
+  Skipping (40, 1) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 2 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 2) — already measured
+  Skipping (2, 2) — already measured
+  Skipping (5, 2) — already measured
+  Skipping (8, 2) — already measured
+  Skipping (10, 2) — already measured
+  Skipping (12, 2) — already measured
+  Skipping (15, 2) — already measured
+  Skipping (18, 2) — already measured
+  Skipping (20, 2) — already measured
+  Skipping (22, 2) — already measured
+  Skipping (25, 2) — already measured
+  Skipping (28, 2) — already measured
+  Skipping (30, 2) — already measured
+  Skipping (32, 2) — already measured
+  Skipping (35, 2) — already measured
+  Skipping (38, 2) — already measured
+  Skipping (40, 2) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 3 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 3) — already measured
+  Skipping (2, 3) — already measured
+  Skipping (5, 3) — already measured
+  Skipping (8, 3) — already measured
+  Skipping (10, 3) — already measured
+  Skipping (12, 3) — already measured
+  Skipping (15, 3) — already measured
+  Skipping (18, 3) — already measured
+  Skipping (20, 3) — already measured
+  Skipping (22, 3) — already measured
+  Skipping (25, 3) — already measured
+  Skipping (28, 3) — already measured
+  Skipping (30, 3) — already measured
+  Skipping (32, 3) — already measured
+  Skipping (35, 3) — already measured
+  Skipping (38, 3) — already measured
+  Skipping (40, 3) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 4 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 4) — already measured
+  Skipping (2, 4) — already measured
+  Skipping (5, 4) — already measured
+  Skipping (8, 4) — already measured
+  Skipping (10, 4) — already measured
+  Skipping (12, 4) — already measured
+  Skipping (15, 4) — already measured
+  Skipping (18, 4) — already measured
+  Skipping (20, 4) — already measured
+  Skipping (22, 4) — already measured
+  Skipping (25, 4) — already measured
+  Skipping (28, 4) — already measured
+  Skipping (30, 4) — already measured
+  Skipping (32, 4) — already measured
+  Skipping (35, 4) — already measured
+  Skipping (38, 4) — already measured
+  Skipping (40, 4) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 5 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 5) — already measured
+  Skipping (2, 5) — already measured
+  Skipping (5, 5) — already measured
+  Skipping (8, 5) — already measured
+  Skipping (10, 5) — already measured
+  Skipping (12, 5) — already measured
+  Skipping (15, 5) — already measured
+  Skipping (18, 5) — already measured
+  Skipping (20, 5) — already measured
+  Skipping (22, 5) — already measured
+  Skipping (25, 5) — already measured
+  Skipping (28, 5) — already measured
+  Skipping (30, 5) — already measured
+  Skipping (32, 5) — already measured
+  Skipping (35, 5) — already measured
+  Skipping (38, 5) — already measured
+  Skipping (40, 5) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 6 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 6) — already measured
+  Skipping (2, 6) — already measured
+  Skipping (5, 6) — already measured
+  Skipping (8, 6) — already measured
+  Skipping (10, 6) — already measured
+  Skipping (12, 6) — already measured
+  Skipping (15, 6) — already measured
+  Skipping (18, 6) — already measured
+  Skipping (20, 6) — already measured
+  Skipping (22, 6) — already measured
+  Skipping (25, 6) — already measured
+  Skipping (28, 6) — already measured
+  Skipping (30, 6) — already measured
+  Skipping (32, 6) — already measured
+  Skipping (35, 6) — already measured
+  Skipping (38, 6) — already measured
+  Skipping (40, 6) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 7 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 7) — already measured
+  Skipping (2, 7) — already measured
+  Skipping (5, 7) — already measured
+  Skipping (8, 7) — already measured
+  Skipping (10, 7) — already measured
+  Skipping (12, 7) — already measured
+  Skipping (15, 7) — already measured
+  Skipping (18, 7) — already measured
+  Skipping (20, 7) — already measured
+  Skipping (22, 7) — already measured
+  Skipping (25, 7) — already measured
+  Skipping (28, 7) — already measured
+  Skipping (30, 7) — already measured
+  Skipping (32, 7) — already measured
+  Skipping (35, 7) — already measured
+  Skipping (38, 7) — already measured
+  Skipping (40, 7) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 8 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 8) — already measured
+  Skipping (2, 8) — already measured
+  Skipping (5, 8) — already measured
+  Skipping (8, 8) — already measured
+  Skipping (10, 8) — already measured
+  Skipping (12, 8) — already measured
+  Skipping (15, 8) — already measured
+  Skipping (18, 8) — already measured
+  Skipping (20, 8) — already measured
+  Skipping (22, 8) — already measured
+  Skipping (25, 8) — already measured
+  Skipping (28, 8) — already measured
+  Skipping (30, 8) — already measured
+  Skipping (32, 8) — already measured
+  Skipping (35, 8) — already measured
+  Skipping (38, 8) — already measured
+  Skipping (40, 8) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 9 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 9) — already measured
+  Skipping (2, 9) — already measured
+  Skipping (5, 9) — already measured
+  Skipping (8, 9) — already measured
+  Skipping (10, 9) — already measured
+  Skipping (12, 9) — already measured
+  Skipping (15, 9) — already measured
+  Skipping (18, 9) — already measured
+  Skipping (20, 9) — already measured
+  Skipping (22, 9) — already measured
+  Skipping (25, 9) — already measured
+  Skipping (28, 9) — already measured
+  Skipping (30, 9) — already measured
+  Skipping (32, 9) — already measured
+  Skipping (35, 9) — already measured
+  Skipping (38, 9) — already measured
+  Skipping (40, 9) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 10 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 10) — already measured
+  Skipping (2, 10) — already measured
+  Skipping (5, 10) — already measured
+  Skipping (8, 10) — already measured
+  Skipping (10, 10) — already measured
+  Skipping (12, 10) — already measured
+  Skipping (15, 10) — already measured
+  Skipping (18, 10) — already measured
+  Skipping (20, 10) — already measured
+  Skipping (22, 10) — already measured
+  Skipping (25, 10) — already measured
+  Skipping (28, 10) — already measured
+  Skipping (30, 10) — already measured
+  Skipping (32, 10) — already measured
+  Skipping (35, 10) — already measured
+  Skipping (38, 10) — already measured
+  Skipping (40, 10) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 11 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 11) — already measured
+  Skipping (2, 11) — already measured
+  Skipping (5, 11) — already measured
+  Skipping (8, 11) — already measured
+  Skipping (10, 11) — already measured
+  Skipping (12, 11) — already measured
+  Skipping (15, 11) — already measured
+  Skipping (18, 11) — already measured
+  Skipping (20, 11) — already measured
+  Skipping (22, 11) — already measured
+  Skipping (25, 11) — already measured
+  Skipping (28, 11) — already measured
+  Skipping (30, 11) — already measured
+  Skipping (32, 11) — already measured
+  Skipping (35, 11) — already measured
+  Skipping (38, 11) — already measured
+  Skipping (40, 11) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 12 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 12) — already measured
+  Skipping (2, 12) — already measured
+  Skipping (5, 12) — already measured
+  Skipping (8, 12) — already measured
+  Skipping (10, 12) — already measured
+  Skipping (12, 12) — already measured
+  Skipping (15, 12) — already measured
+  Skipping (18, 12) — already measured
+  Skipping (20, 12) — already measured
+  Skipping (22, 12) — already measured
+  Skipping (25, 12) — already measured
+  Skipping (28, 12) — already measured
+  Skipping (30, 12) — already measured
+  Skipping (32, 12) — already measured
+  Skipping (35, 12) — already measured
+  Skipping (38, 12) — already measured
+  Skipping (40, 12) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 13 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 13) — already measured
+  Skipping (2, 13) — already measured
+  Skipping (5, 13) — already measured
+  Skipping (8, 13) — already measured
+  Skipping (10, 13) — already measured
+  Skipping (12, 13) — already measured
+  Skipping (15, 13) — already measured
+  Skipping (18, 13) — already measured
+  Skipping (20, 13) — already measured
+  Skipping (22, 13) — already measured
+  Skipping (25, 13) — already measured
+  Skipping (28, 13) — already measured
+  Skipping (30, 13) — already measured
+  Skipping (32, 13) — already measured
+  Skipping (35, 13) — already measured
+  Skipping (38, 13) — already measured
+  Skipping (40, 13) — already measured
+
+======================================================================
+FIXED-OLAP LINE: OLAP = 14 workers
+  Sweeping ANN: [1, 2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 32, 35, 38, 40]
+======================================================================
+  Skipping (1, 14) — already measured
+  Skipping (2, 14) — already measured
+  Skipping (5, 14) — already measured
+  Skipping (8, 14) — already measured
+  Skipping (10, 14) — already measured
+  Skipping (12, 14) — already measured
+  Skipping (15, 14) — already measured
+  Skipping (18, 14) — already measured
+  Skipping (20, 14) — already measured
+  Skipping (22, 14) — already measured
+  Skipping (25, 14) — already measured
+  Skipping (28, 14) — already measured
+  Skipping (30, 14) — already measured
+  Skipping (32, 14) — already measured
+  Skipping (35, 14) — already measured
+  Skipping (38, 14) — already measured
+  Skipping (40, 14) — already measured
+
+
+All grid measurements complete. Total: 238 data points.
+DEBUG: Checking extra_points_from_args = []
+
+======================================================================
+EXTRACTING THROUGHPUT FRONTIER
+======================================================================
+
+======================================================================
+THROUGHPUT FRONTIER SUMMARY
+======================================================================
+  X^ANN  = 1411.28 qps (tau_max = 40 workers)
+  X^OLAP = 0.4867 tps (alpha_max = 14 workers)
+  
+  Bounding box area:      686.8700
+  Proportional line area: 343.4350
+  Frontier AUC:           170.7876
+  AUC ratio:              0.2486
+  Above proportional:     False
+  Frontier points:        36
+  Total measurements:     238
+======================================================================
+  => POOR isolation: Frontier below proportional line.
+     Significant negative interference between workloads.
+
+Results saved to:
+  Grid graph: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_10GB_sb_15GB_cg/grid_graph.json
+  Frontier:   /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_hnsw_warm_constrained_10GB_sb_15GB_cg/throughput_frontier.json
+
+DONE! Index: hnsw, Memory: 10GB/15GB
 
 ========================================================================
 PHASE 3/3: Parallel IVFFlat
@@ -14,6 +1653,8 @@ PHASE 3/3: Parallel IVFFlat
 [3a] Compiling parallel pgvector...
   Done.
 [3b] Loading Parallel IVFFlat snapshot...
+waiting for server to shut down...... done
+server stopped
     Clearing old PGDATA contents...
     Extracting snapshot (this may take a few minutes)...
     Snapshot loaded successfully.
@@ -92,79 +1733,9 @@ Database is now in steady state. No more restarts.
 Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
   Copied OLAP saturation from IVFFlat run: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg/saturation_points_olap.json
   -> /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/saturation_points_olap.json
-  Will measure ANN saturation for parallel_ivfflat...
-
-======================================================================
-PHASE 1: Finding ANN Saturation (X^ANN)
-Running ANN alone with increasing workers...
-======================================================================
-
-  Measuring: 1 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=43.97 qps, OLAP=0.0000 qps
-  >> 1 workers: 43.97 qps
-
-  Measuring: 2 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=78.04 qps, OLAP=0.0000 qps
-  >> 2 workers: 78.04 qps
-
-  Measuring: 3 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=99.74 qps, OLAP=0.0000 qps
-  >> 3 workers: 99.74 qps
-
-  Measuring: 4 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=112.41 qps, OLAP=0.0000 qps
-  >> 4 workers: 112.41 qps
-
-  Measuring: 5 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=119.77 qps, OLAP=0.0000 qps
-  >> 5 workers: 119.77 qps
-
-  Measuring: 6 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=123.68 qps, OLAP=0.0000 qps
-  >> 6 workers: 123.68 qps
-
-  Measuring: 7 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=126.13 qps, OLAP=0.0000 qps
-  >> 7 workers: 126.13 qps
-
-  Measuring: 8 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=127.44 qps, OLAP=0.0000 qps
-  >> 8 workers: 127.44 qps
-
-  Measuring: 9 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=128.62 qps, OLAP=0.0000 qps
-  >> 9 workers: 128.62 qps
-     (improvement 0.9% < 1% threshold, saturated)
-
-  *** ANN Saturation: X^ANN = 128.62 qps (at 9 workers) ***
-
-
-======================================================================
-SUMMARY
-======================================================================
-  X^ANN  = 128.62 qps (saturates at 9 workers)
-======================================================================
-
-ANN results saved to: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/saturation_points_ann.json
-Combined results saved to: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/saturation_points.json
+  ANN saturation already exists: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/saturation_points_ann.json (skipping)
+  X^ANN  = 128.62 qps
+  Both saturation files exist. Nothing to measure.
 
 [Step 2/2] build_throughput_frontier.py --memory 10:15 --warm --index parallel_ivfflat --ivfflat-lists 8192 --snapshot
 DEBUG: Full command: echo EXECUTING: python3 -u /build_throughput_frontier.py --memory ; python3 -u /build_throughput_frontier.py --memory  
@@ -228,813 +1799,184 @@ WARM MODE: Performing initial restart and prewarm...
   Prewarm complete: 33 relations, 2950732 pages (~23053 MB)
 Database is now in steady state. No more restarts.
 Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+Resuming: 126 existing measurements found.
 
 Grid graph plan:
   ANN levels (fixed-ANN lines): [1, 2, 3, 4, 5, 6, 7, 8, 9]
   OLAP levels (fixed-OLAP lines): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-  Total new measurements needed: 252
-  Estimated time: 1260 minutes (21.0 hours)
+  Total new measurements needed: 0
+  Estimated time: 0 minutes (0.0 hours)
 
 ======================================================================
 FIXED-ANN LINE: ANN = 1 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [1/252] Measuring (1 ANN, 1 OLAP)...
-
-  Measuring: 1 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 317.7s (target: 300s)
-  Results: ANN=40.00 qps, OLAP=0.0661 qps
-
-  [2/252] Measuring (1 ANN, 2 OLAP)...
-
-  Measuring: 1 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 327.0s (target: 300s)
-  Results: ANN=35.37 qps, OLAP=0.0917 qps
-
-  [3/252] Measuring (1 ANN, 3 OLAP)...
-
-  Measuring: 1 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 310.3s (target: 300s)
-  Results: ANN=34.58 qps, OLAP=0.1096 qps
-
-  [4/252] Measuring (1 ANN, 4 OLAP)...
-
-  Measuring: 1 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 331.1s (target: 300s)
-  Results: ANN=27.65 qps, OLAP=0.1268 qps
-
-  [5/252] Measuring (1 ANN, 5 OLAP)...
-
-  Measuring: 1 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 333.3s (target: 300s)
-  Results: ANN=19.11 qps, OLAP=0.1410 qps
-
-  [6/252] Measuring (1 ANN, 6 OLAP)...
-
-  Measuring: 1 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 331.2s (target: 300s)
-  Results: ANN=17.38 qps, OLAP=0.1570 qps
-
-  [7/252] Measuring (1 ANN, 7 OLAP)...
-
-  Measuring: 1 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 348.0s (target: 300s)
-  Results: ANN=15.29 qps, OLAP=0.1494 qps
-
-  [8/252] Measuring (1 ANN, 8 OLAP)...
-
-  Measuring: 1 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 343.6s (target: 300s)
-  Results: ANN=14.28 qps, OLAP=0.1834 qps
-
-  [9/252] Measuring (1 ANN, 9 OLAP)...
-
-  Measuring: 1 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 346.9s (target: 300s)
-  Results: ANN=13.16 qps, OLAP=0.2018 qps
-
-  [10/252] Measuring (1 ANN, 10 OLAP)...
-
-  Measuring: 1 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 346.5s (target: 300s)
-  Results: ANN=11.74 qps, OLAP=0.2165 qps
-
-  [11/252] Measuring (1 ANN, 11 OLAP)...
-
-  Measuring: 1 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 340.4s (target: 300s)
-  Results: ANN=10.88 qps, OLAP=0.2350 qps
-
-  [12/252] Measuring (1 ANN, 12 OLAP)...
-
-  Measuring: 1 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 341.9s (target: 300s)
-  Results: ANN=9.99 qps, OLAP=0.2545 qps
-
-  [13/252] Measuring (1 ANN, 13 OLAP)...
-
-  Measuring: 1 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 341.2s (target: 300s)
-  Results: ANN=9.51 qps, OLAP=0.2667 qps
-
-  [14/252] Measuring (1 ANN, 14 OLAP)...
-
-  Measuring: 1 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 344.9s (target: 300s)
-  Results: ANN=8.51 qps, OLAP=0.2580 qps
+  Skipping (1, 1) — already measured
+  Skipping (1, 2) — already measured
+  Skipping (1, 3) — already measured
+  Skipping (1, 4) — already measured
+  Skipping (1, 5) — already measured
+  Skipping (1, 6) — already measured
+  Skipping (1, 7) — already measured
+  Skipping (1, 8) — already measured
+  Skipping (1, 9) — already measured
+  Skipping (1, 10) — already measured
+  Skipping (1, 11) — already measured
+  Skipping (1, 12) — already measured
+  Skipping (1, 13) — already measured
+  Skipping (1, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 2 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [15/252] Measuring (2 ANN, 1 OLAP)...
-
-  Measuring: 2 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 326.1s (target: 300s)
-  Results: ANN=49.30 qps, OLAP=0.0644 qps
-
-  [16/252] Measuring (2 ANN, 2 OLAP)...
-
-  Measuring: 2 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 331.1s (target: 300s)
-  Results: ANN=48.46 qps, OLAP=0.0936 qps
-
-  [17/252] Measuring (2 ANN, 3 OLAP)...
-
-  Measuring: 2 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 308.8s (target: 300s)
-  Results: ANN=50.23 qps, OLAP=0.1101 qps
-
-  [18/252] Measuring (2 ANN, 4 OLAP)...
-
-  Measuring: 2 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 331.3s (target: 300s)
-  Results: ANN=45.33 qps, OLAP=0.1328 qps
-
-  [19/252] Measuring (2 ANN, 5 OLAP)...
-
-  Measuring: 2 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 347.2s (target: 300s)
-  Results: ANN=39.71 qps, OLAP=0.1469 qps
-
-  [20/252] Measuring (2 ANN, 6 OLAP)...
-
-  Measuring: 2 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 332.4s (target: 300s)
-  Results: ANN=38.93 qps, OLAP=0.1715 qps
-
-  [21/252] Measuring (2 ANN, 7 OLAP)...
-
-  Measuring: 2 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 325.2s (target: 300s)
-  Results: ANN=38.42 qps, OLAP=0.2122 qps
-
-  [22/252] Measuring (2 ANN, 8 OLAP)...
-
-  Measuring: 2 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 337.7s (target: 300s)
-  Results: ANN=35.88 qps, OLAP=0.2162 qps
-
-  [23/252] Measuring (2 ANN, 9 OLAP)...
-
-  Measuring: 2 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 337.9s (target: 300s)
-  Results: ANN=34.01 qps, OLAP=0.2427 qps
-
-  [24/252] Measuring (2 ANN, 10 OLAP)...
-
-  Measuring: 2 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 344.3s (target: 300s)
-  Results: ANN=31.08 qps, OLAP=0.2527 qps
-
-  [25/252] Measuring (2 ANN, 11 OLAP)...
-
-  Measuring: 2 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 340.9s (target: 300s)
-  Results: ANN=30.68 qps, OLAP=0.2611 qps
-
-  [26/252] Measuring (2 ANN, 12 OLAP)...
-
-  Measuring: 2 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 337.4s (target: 300s)
-  Results: ANN=28.71 qps, OLAP=0.2667 qps
-
-  [27/252] Measuring (2 ANN, 13 OLAP)...
-
-  Measuring: 2 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 334.8s (target: 300s)
-  Results: ANN=26.87 qps, OLAP=0.2778 qps
-
-  [28/252] Measuring (2 ANN, 14 OLAP)...
-
-  Measuring: 2 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 334.6s (target: 300s)
-  Results: ANN=25.52 qps, OLAP=0.2869 qps
+  Skipping (2, 1) — already measured
+  Skipping (2, 2) — already measured
+  Skipping (2, 3) — already measured
+  Skipping (2, 4) — already measured
+  Skipping (2, 5) — already measured
+  Skipping (2, 6) — already measured
+  Skipping (2, 7) — already measured
+  Skipping (2, 8) — already measured
+  Skipping (2, 9) — already measured
+  Skipping (2, 10) — already measured
+  Skipping (2, 11) — already measured
+  Skipping (2, 12) — already measured
+  Skipping (2, 13) — already measured
+  Skipping (2, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 3 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [29/252] Measuring (3 ANN, 1 OLAP)...
-
-  Measuring: 3 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 309.5s (target: 300s)
-  Results: ANN=66.45 qps, OLAP=0.0614 qps
-
-  [30/252] Measuring (3 ANN, 2 OLAP)...
-
-  Measuring: 3 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 326.4s (target: 300s)
-  Results: ANN=60.46 qps, OLAP=0.0827 qps
-
-  [31/252] Measuring (3 ANN, 3 OLAP)...
-
-  Measuring: 3 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 329.6s (target: 300s)
-  Results: ANN=59.60 qps, OLAP=0.0941 qps
-
-  [32/252] Measuring (3 ANN, 4 OLAP)...
-
-  Measuring: 3 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 316.3s (target: 300s)
-  Results: ANN=61.52 qps, OLAP=0.1138 qps
-
-  [33/252] Measuring (3 ANN, 5 OLAP)...
-
-  Measuring: 3 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 328.2s (target: 300s)
-  Results: ANN=57.11 qps, OLAP=0.1401 qps
-
-  [34/252] Measuring (3 ANN, 6 OLAP)...
-
-  Measuring: 3 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 338.8s (target: 300s)
-  Results: ANN=51.97 qps, OLAP=0.1535 qps
-
-  [35/252] Measuring (3 ANN, 7 OLAP)...
-
-  Measuring: 3 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 337.5s (target: 300s)
-  Results: ANN=50.22 qps, OLAP=0.1866 qps
-
-  [36/252] Measuring (3 ANN, 8 OLAP)...
-
-  Measuring: 3 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 327.4s (target: 300s)
-  Results: ANN=47.36 qps, OLAP=0.2077 qps
-
-  [37/252] Measuring (3 ANN, 9 OLAP)...
-
-  Measuring: 3 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 345.3s (target: 300s)
-  Results: ANN=43.41 qps, OLAP=0.2085 qps
-
-  [38/252] Measuring (3 ANN, 10 OLAP)...
-
-  Measuring: 3 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 355.2s (target: 300s)
-  Results: ANN=40.86 qps, OLAP=0.2365 qps
-
-  [39/252] Measuring (3 ANN, 11 OLAP)...
-
-  Measuring: 3 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 344.6s (target: 300s)
-  Results: ANN=41.93 qps, OLAP=0.2496 qps
-
-  [40/252] Measuring (3 ANN, 12 OLAP)...
-
-  Measuring: 3 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 345.8s (target: 300s)
-  Results: ANN=39.63 qps, OLAP=0.2516 qps
-
-  [41/252] Measuring (3 ANN, 13 OLAP)...
-
-  Measuring: 3 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 346.4s (target: 300s)
-  Results: ANN=36.26 qps, OLAP=0.2598 qps
-
-  [42/252] Measuring (3 ANN, 14 OLAP)...
-
-  Measuring: 3 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 342.4s (target: 300s)
-  Results: ANN=34.90 qps, OLAP=0.2745 qps
+  Skipping (3, 1) — already measured
+  Skipping (3, 2) — already measured
+  Skipping (3, 3) — already measured
+  Skipping (3, 4) — already measured
+  Skipping (3, 5) — already measured
+  Skipping (3, 6) — already measured
+  Skipping (3, 7) — already measured
+  Skipping (3, 8) — already measured
+  Skipping (3, 9) — already measured
+  Skipping (3, 10) — already measured
+  Skipping (3, 11) — already measured
+  Skipping (3, 12) — already measured
+  Skipping (3, 13) — already measured
+  Skipping (3, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 4 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [43/252] Measuring (4 ANN, 1 OLAP)...
-
-  Measuring: 4 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 328.4s (target: 300s)
-  Results: ANN=72.20 qps, OLAP=0.0518 qps
-
-  [44/252] Measuring (4 ANN, 2 OLAP)...
-
-  Measuring: 4 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 325.4s (target: 300s)
-  Results: ANN=74.91 qps, OLAP=0.0707 qps
-
-  [45/252] Measuring (4 ANN, 3 OLAP)...
-
-  Measuring: 4 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 328.2s (target: 300s)
-  Results: ANN=71.98 qps, OLAP=0.0884 qps
-
-  [46/252] Measuring (4 ANN, 4 OLAP)...
-
-  Measuring: 4 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 327.8s (target: 300s)
-  Results: ANN=69.39 qps, OLAP=0.1007 qps
-
-  [47/252] Measuring (4 ANN, 5 OLAP)...
-
-  Measuring: 4 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 368.5s (target: 300s)
-  Results: ANN=58.22 qps, OLAP=0.1058 qps
-
-  [48/252] Measuring (4 ANN, 6 OLAP)...
-
-  Measuring: 4 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 346.8s (target: 300s)
-  Results: ANN=60.71 qps, OLAP=0.1327 qps
-
-  [49/252] Measuring (4 ANN, 7 OLAP)...
-
-  Measuring: 4 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 336.4s (target: 300s)
-  Results: ANN=58.39 qps, OLAP=0.1516 qps
-
-  [50/252] Measuring (4 ANN, 8 OLAP)...
-
-  Measuring: 4 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 337.8s (target: 300s)
-  Results: ANN=53.79 qps, OLAP=0.1688 qps
-
-  [51/252] Measuring (4 ANN, 9 OLAP)...
-
-  Measuring: 4 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 327.9s (target: 300s)
-  Results: ANN=53.05 qps, OLAP=0.2043 qps
-
-  [52/252] Measuring (4 ANN, 10 OLAP)...
-
-  Measuring: 4 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 349.0s (target: 300s)
-  Results: ANN=47.03 qps, OLAP=0.1977 qps
-
-  [53/252] Measuring (4 ANN, 11 OLAP)...
-
-  Measuring: 4 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 341.7s (target: 300s)
-  Results: ANN=47.64 qps, OLAP=0.2400 qps
-
-  [54/252] Measuring (4 ANN, 12 OLAP)...
-
-  Measuring: 4 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 350.2s (target: 300s)
-  Results: ANN=43.26 qps, OLAP=0.2427 qps
-
-  [55/252] Measuring (4 ANN, 13 OLAP)...
-
-  Measuring: 4 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 351.8s (target: 300s)
-  Results: ANN=42.66 qps, OLAP=0.2387 qps
-
-  [56/252] Measuring (4 ANN, 14 OLAP)...
-
-  Measuring: 4 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 356.5s (target: 300s)
-  Results: ANN=40.02 qps, OLAP=0.2468 qps
+  Skipping (4, 1) — already measured
+  Skipping (4, 2) — already measured
+  Skipping (4, 3) — already measured
+  Skipping (4, 4) — already measured
+  Skipping (4, 5) — already measured
+  Skipping (4, 6) — already measured
+  Skipping (4, 7) — already measured
+  Skipping (4, 8) — already measured
+  Skipping (4, 9) — already measured
+  Skipping (4, 10) — already measured
+  Skipping (4, 11) — already measured
+  Skipping (4, 12) — already measured
+  Skipping (4, 13) — already measured
+  Skipping (4, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 5 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [57/252] Measuring (5 ANN, 1 OLAP)...
-
-  Measuring: 5 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 327.5s (target: 300s)
-  Results: ANN=75.32 qps, OLAP=0.0489 qps
-
-  [58/252] Measuring (5 ANN, 2 OLAP)...
-
-  Measuring: 5 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 316.8s (target: 300s)
-  Results: ANN=79.60 qps, OLAP=0.0694 qps
-
-  [59/252] Measuring (5 ANN, 3 OLAP)...
-
-  Measuring: 5 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 316.1s (target: 300s)
-  Results: ANN=76.08 qps, OLAP=0.0759 qps
-
-  [60/252] Measuring (5 ANN, 4 OLAP)...
-
-  Measuring: 5 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 326.5s (target: 300s)
-  Results: ANN=71.55 qps, OLAP=0.0857 qps
-
-  [61/252] Measuring (5 ANN, 5 OLAP)...
-
-  Measuring: 5 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 329.2s (target: 300s)
-  Results: ANN=68.41 qps, OLAP=0.1002 qps
-
-  [62/252] Measuring (5 ANN, 6 OLAP)...
-
-  Measuring: 5 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 347.2s (target: 300s)
-  Results: ANN=62.85 qps, OLAP=0.1210 qps
-
-  [63/252] Measuring (5 ANN, 7 OLAP)...
-
-  Measuring: 5 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 357.4s (target: 300s)
-  Results: ANN=57.57 qps, OLAP=0.1259 qps
-
-  [64/252] Measuring (5 ANN, 8 OLAP)...
-
-  Measuring: 5 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 356.5s (target: 300s)
-  Results: ANN=58.07 qps, OLAP=0.1346 qps
-
-  [65/252] Measuring (5 ANN, 9 OLAP)...
-
-  Measuring: 5 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 339.6s (target: 300s)
-  Results: ANN=57.84 qps, OLAP=0.1560 qps
-
-  [66/252] Measuring (5 ANN, 10 OLAP)...
-
-  Measuring: 5 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 337.1s (target: 300s)
-  Results: ANN=50.81 qps, OLAP=0.1780 qps
-
-  [67/252] Measuring (5 ANN, 11 OLAP)...
-
-  Measuring: 5 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 344.4s (target: 300s)
-  Results: ANN=49.96 qps, OLAP=0.1713 qps
-
-  [68/252] Measuring (5 ANN, 12 OLAP)...
-
-  Measuring: 5 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 341.9s (target: 300s)
-  Results: ANN=50.37 qps, OLAP=0.1843 qps
-
-  [69/252] Measuring (5 ANN, 13 OLAP)...
-
-  Measuring: 5 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 342.1s (target: 300s)
-  Results: ANN=47.66 qps, OLAP=0.2134 qps
-
-  [70/252] Measuring (5 ANN, 14 OLAP)...
-
-  Measuring: 5 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 348.4s (target: 300s)
-  Results: ANN=42.44 qps, OLAP=0.2296 qps
+  Skipping (5, 1) — already measured
+  Skipping (5, 2) — already measured
+  Skipping (5, 3) — already measured
+  Skipping (5, 4) — already measured
+  Skipping (5, 5) — already measured
+  Skipping (5, 6) — already measured
+  Skipping (5, 7) — already measured
+  Skipping (5, 8) — already measured
+  Skipping (5, 9) — already measured
+  Skipping (5, 10) — already measured
+  Skipping (5, 11) — already measured
+  Skipping (5, 12) — already measured
+  Skipping (5, 13) — already measured
+  Skipping (5, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 6 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [71/252] Measuring (6 ANN, 1 OLAP)...
-
-  Measuring: 6 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 316.0s (target: 300s)
-  Results: ANN=85.27 qps, OLAP=0.0411 qps
-
-  [72/252] Measuring (6 ANN, 2 OLAP)...
-
-  Measuring: 6 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 317.6s (target: 300s)
-  Results: ANN=82.69 qps, OLAP=0.0567 qps
-
-  [73/252] Measuring (6 ANN, 3 OLAP)...
-
-  Measuring: 6 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 322.1s (target: 300s)
-  Results: ANN=80.42 qps, OLAP=0.0745 qps
-
-  [74/252] Measuring (6 ANN, 4 OLAP)...
-
-  Measuring: 6 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 318.9s (target: 300s)
-  Results: ANN=72.33 qps, OLAP=0.0847 qps
-
-  [75/252] Measuring (6 ANN, 5 OLAP)...
-
-  Measuring: 6 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 335.1s (target: 300s)
-  Results: ANN=66.93 qps, OLAP=0.0895 qps
-
-  [76/252] Measuring (6 ANN, 6 OLAP)...
-
-  Measuring: 6 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 330.7s (target: 300s)
-  Results: ANN=67.21 qps, OLAP=0.1028 qps
-
-  [77/252] Measuring (6 ANN, 7 OLAP)...
-
-  Measuring: 6 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 343.4s (target: 300s)
-  Results: ANN=67.19 qps, OLAP=0.1194 qps
-
-  [78/252] Measuring (6 ANN, 8 OLAP)...
-
-  Measuring: 6 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 354.4s (target: 300s)
-  Results: ANN=59.14 qps, OLAP=0.1270 qps
-
-  [79/252] Measuring (6 ANN, 9 OLAP)...
-
-  Measuring: 6 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 355.8s (target: 300s)
-  Results: ANN=57.05 qps, OLAP=0.1349 qps
-
-  [80/252] Measuring (6 ANN, 10 OLAP)...
-
-  Measuring: 6 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 360.1s (target: 300s)
-  Results: ANN=57.69 qps, OLAP=0.1333 qps
-
-  [81/252] Measuring (6 ANN, 11 OLAP)...
-
-  Measuring: 6 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 351.2s (target: 300s)
-  Results: ANN=53.84 qps, OLAP=0.1452 qps
-
-  [82/252] Measuring (6 ANN, 12 OLAP)...
-
-  Measuring: 6 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 351.7s (target: 300s)
-  Results: ANN=48.56 qps, OLAP=0.1734 qps
-
-  [83/252] Measuring (6 ANN, 13 OLAP)...
-
-  Measuring: 6 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 346.7s (target: 300s)
-  Results: ANN=51.14 qps, OLAP=0.1788 qps
-
-  [84/252] Measuring (6 ANN, 14 OLAP)...
-
-  Measuring: 6 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 361.2s (target: 300s)
-  Results: ANN=50.46 qps, OLAP=0.1689 qps
+  Skipping (6, 1) — already measured
+  Skipping (6, 2) — already measured
+  Skipping (6, 3) — already measured
+  Skipping (6, 4) — already measured
+  Skipping (6, 5) — already measured
+  Skipping (6, 6) — already measured
+  Skipping (6, 7) — already measured
+  Skipping (6, 8) — already measured
+  Skipping (6, 9) — already measured
+  Skipping (6, 10) — already measured
+  Skipping (6, 11) — already measured
+  Skipping (6, 12) — already measured
+  Skipping (6, 13) — already measured
+  Skipping (6, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 7 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [85/252] Measuring (7 ANN, 1 OLAP)...
-
-  Measuring: 7 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 337.2s (target: 300s)
-  Results: ANN=75.53 qps, OLAP=0.0386 qps
-
-  [86/252] Measuring (7 ANN, 2 OLAP)...
-
-  Measuring: 7 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 322.5s (target: 300s)
-  Results: ANN=80.80 qps, OLAP=0.0465 qps
-
-  [87/252] Measuring (7 ANN, 3 OLAP)...
-
-  Measuring: 7 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 322.5s (target: 300s)
-  Results: ANN=76.16 qps, OLAP=0.0620 qps
-
-  [88/252] Measuring (7 ANN, 4 OLAP)...
-
-  Measuring: 7 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 319.0s (target: 300s)
-  Results: ANN=80.98 qps, OLAP=0.0752 qps
-
-  [89/252] Measuring (7 ANN, 5 OLAP)...
-
-  Measuring: 7 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 316.5s (target: 300s)
-  Results: ANN=74.33 qps, OLAP=0.0821 qps
-
-  [90/252] Measuring (7 ANN, 6 OLAP)...
-
-  Measuring: 7 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 337.7s (target: 300s)
-  Results: ANN=65.38 qps, OLAP=0.0859 qps
-
-  [91/252] Measuring (7 ANN, 7 OLAP)...
-
-  Measuring: 7 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 370.0s (target: 300s)
-  Results: ANN=61.23 qps, OLAP=0.0919 qps
-
-  [92/252] Measuring (7 ANN, 8 OLAP)...
-
-  Measuring: 7 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 371.6s (target: 300s)
-  Results: ANN=59.62 qps, OLAP=0.0969 qps
-
-  [93/252] Measuring (7 ANN, 9 OLAP)...
-
-  Measuring: 7 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 354.6s (target: 300s)
-  Results: ANN=64.25 qps, OLAP=0.1156 qps
-
-  [94/252] Measuring (7 ANN, 10 OLAP)...
-
-  Measuring: 7 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 359.8s (target: 300s)
-  Results: ANN=57.64 qps, OLAP=0.1223 qps
-
-  [95/252] Measuring (7 ANN, 11 OLAP)...
-
-  Measuring: 7 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 354.8s (target: 300s)
-  Results: ANN=61.56 qps, OLAP=0.1409 qps
-
-  [96/252] Measuring (7 ANN, 12 OLAP)...
-
-  Measuring: 7 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 369.2s (target: 300s)
-  Results: ANN=53.73 qps, OLAP=0.1192 qps
-
-  [97/252] Measuring (7 ANN, 13 OLAP)...
-
-  Measuring: 7 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 358.5s (target: 300s)
-  Results: ANN=53.39 qps, OLAP=0.1423 qps
-
-  [98/252] Measuring (7 ANN, 14 OLAP)...
-
-  Measuring: 7 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 362.8s (target: 300s)
-  Results: ANN=49.14 qps, OLAP=0.1709 qps
+  Skipping (7, 1) — already measured
+  Skipping (7, 2) — already measured
+  Skipping (7, 3) — already measured
+  Skipping (7, 4) — already measured
+  Skipping (7, 5) — already measured
+  Skipping (7, 6) — already measured
+  Skipping (7, 7) — already measured
+  Skipping (7, 8) — already measured
+  Skipping (7, 9) — already measured
+  Skipping (7, 10) — already measured
+  Skipping (7, 11) — already measured
+  Skipping (7, 12) — already measured
+  Skipping (7, 13) — already measured
+  Skipping (7, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 8 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [99/252] Measuring (8 ANN, 1 OLAP)...
-
-  Measuring: 8 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 304.7s (target: 300s)
-  Results: ANN=85.47 qps, OLAP=0.0361 qps
-
-  [100/252] Measuring (8 ANN, 2 OLAP)...
-
-  Measuring: 8 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 327.4s (target: 300s)
-  Results: ANN=77.92 qps, OLAP=0.0428 qps
-
-  [101/252] Measuring (8 ANN, 3 OLAP)...
-
-  Measuring: 8 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 316.5s (target: 300s)
-  Results: ANN=87.81 qps, OLAP=0.0537 qps
-
-  [102/252] Measuring (8 ANN, 4 OLAP)...
-
-  Measuring: 8 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 317.9s (target: 300s)
-  Results: ANN=84.38 qps, OLAP=0.0661 qps
-
-  [103/252] Measuring (8 ANN, 5 OLAP)...
-
-  Measuring: 8 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 320.4s (target: 300s)
-  Results: ANN=72.18 qps, OLAP=0.0749 qps
-
-  [104/252] Measuring (8 ANN, 6 OLAP)...
-
-  Measuring: 8 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 338.0s (target: 300s)
-  Results: ANN=68.58 qps, OLAP=0.0769 qps
-
-  [105/252] Measuring (8 ANN, 7 OLAP)...
-
-  Measuring: 8 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 335.3s (target: 300s)
-  Results: ANN=70.07 qps, OLAP=0.0895 qps
-
-  [106/252] Measuring (8 ANN, 8 OLAP)...
-
-  Measuring: 8 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 338.6s (target: 300s)
-  Results: ANN=67.88 qps, OLAP=0.0915 qps
-
-  [107/252] Measuring (8 ANN, 9 OLAP)...
-
-  Measuring: 8 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 370.0s (target: 300s)
-  Results: ANN=63.25 qps, OLAP=0.0919 qps
-
-  [108/252] Measuring (8 ANN, 10 OLAP)...
-
-  Measuring: 8 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 365.2s (target: 300s)
-  Results: ANN=60.32 qps, OLAP=0.0958 qps
-
-  [109/252] Measuring (8 ANN, 11 OLAP)...
-
-  Measuring: 8 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 352.4s (target: 300s)
-  Results: ANN=65.43 qps, OLAP=0.1022 qps
-
-  [110/252] Measuring (8 ANN, 12 OLAP)...
-
-  Measuring: 8 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 364.4s (target: 300s)
-  Results: ANN=56.35 qps, OLAP=0.1235 qps
-
-  [111/252] Measuring (8 ANN, 13 OLAP)...
-
-  Measuring: 8 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 365.6s (target: 300s)
-  Results: ANN=52.63 qps, OLAP=0.1313 qps
-
-  [112/252] Measuring (8 ANN, 14 OLAP)...
-
-  Measuring: 8 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 366.2s (target: 300s)
-  Results: ANN=53.98 qps, OLAP=0.1202 qps
+  Skipping (8, 1) — already measured
+  Skipping (8, 2) — already measured
+  Skipping (8, 3) — already measured
+  Skipping (8, 4) — already measured
+  Skipping (8, 5) — already measured
+  Skipping (8, 6) — already measured
+  Skipping (8, 7) — already measured
+  Skipping (8, 8) — already measured
+  Skipping (8, 9) — already measured
+  Skipping (8, 10) — already measured
+  Skipping (8, 11) — already measured
+  Skipping (8, 12) — already measured
+  Skipping (8, 13) — already measured
+  Skipping (8, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 9 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [113/252] Measuring (9 ANN, 1 OLAP)...
-
-  Measuring: 9 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 315.6s (target: 300s)
-  Results: ANN=86.07 qps, OLAP=0.0285 qps
-
-  [114/252] Measuring (9 ANN, 2 OLAP)...
-
-  Measuring: 9 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 334.1s (target: 300s)
-  Results: ANN=79.17 qps, OLAP=0.0449 qps
-
-  [115/252] Measuring (9 ANN, 3 OLAP)...
-
-  Measuring: 9 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 325.0s (target: 300s)
-  Results: ANN=81.27 qps, OLAP=0.0431 qps
-
-  [116/252] Measuring (9 ANN, 4 OLAP)...
-
-  Measuring: 9 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 322.6s (target: 300s)
-  Results: ANN=78.93 qps, OLAP=0.0558 qps
-
-  [117/252] Measuring (9 ANN, 5 OLAP)...
-
-  Measuring: 9 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 321.2s (target: 300s)
-  Results: ANN=78.39 qps, OLAP=0.0623 qps
-
-  [118/252] Measuring (9 ANN, 6 OLAP)...
-
-  Measuring: 9 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 326.6s (target: 300s)
-  Results: ANN=73.42 qps, OLAP=0.0704 qps
-
-  [119/252] Measuring (9 ANN, 7 OLAP)...
-
-  Measuring: 9 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 338.4s (target: 300s)
-  Results: ANN=74.35 qps, OLAP=0.0827 qps
-
-  [120/252] Measuring (9 ANN, 8 OLAP)...
-
-  Measuring: 9 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 340.5s (target: 300s)
-  Results: ANN=69.71 qps, OLAP=0.0793 qps
-
-  [121/252] Measuring (9 ANN, 9 OLAP)...
-
-  Measuring: 9 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 368.2s (target: 300s)
-  Results: ANN=64.58 qps, OLAP=0.0869 qps
-
-  [122/252] Measuring (9 ANN, 10 OLAP)...
-
-  Measuring: 9 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 366.7s (target: 300s)
-  Results: ANN=61.47 qps, OLAP=0.0845 qps
-
-  [123/252] Measuring (9 ANN, 11 OLAP)...
-
-  Measuring: 9 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 368.2s (target: 300s)
-  Results: ANN=60.77 qps, OLAP=0.0842 qps
-
-  [124/252] Measuring (9 ANN, 12 OLAP)...
-
-  Measuring: 9 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 372.1s (target: 300s)
-  Results: ANN=58.82 qps, OLAP=0.1075 qps
-
-  [125/252] Measuring (9 ANN, 13 OLAP)...
-
-  Measuring: 9 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 369.8s (target: 300s)
-  Results: ANN=57.91 qps, OLAP=0.1136 qps
-
-  [126/252] Measuring (9 ANN, 14 OLAP)...
-
-  Measuring: 9 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 369.4s (target: 300s)
-  Results: ANN=55.61 qps, OLAP=0.1326 qps
+  Skipping (9, 1) — already measured
+  Skipping (9, 2) — already measured
+  Skipping (9, 3) — already measured
+  Skipping (9, 4) — already measured
+  Skipping (9, 5) — already measured
+  Skipping (9, 6) — already measured
+  Skipping (9, 7) — already measured
+  Skipping (9, 8) — already measured
+  Skipping (9, 9) — already measured
+  Skipping (9, 10) — already measured
+  Skipping (9, 11) — already measured
+  Skipping (9, 12) — already measured
+  Skipping (9, 13) — already measured
+  Skipping (9, 14) — already measured
 
 ======================================================================
 FIXED-OLAP LINE: OLAP = 1 workers
@@ -1262,4 +2204,14 @@ Results saved to:
   Frontier:   /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/throughput_frontier.json
 
 DONE! Index: parallel_ivfflat, Memory: 10GB/15GB
-./run_all_frontiers.sh: line 217: A_FLAG}: command not found
+
+PHASE 3 COMPLETE: Parallel IVFFlat frontier done at Thu Jun 18 09:36:11 PM UTC 2026
+
+========================================================================
+ALL 3 FRONTIERS COMPLETE!
+Finished at: Thu Jun 18 09:36:11 PM UTC 2026
+Results in:
+  IVFFlat:          results_frontier_warm_constrained_10GB_sb_15GB_cg/
+  HNSW:             results_frontier_hnsw_warm_constrained_10GB_sb_15GB_cg/
+  Parallel IVFFlat: results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/
+========================================================================

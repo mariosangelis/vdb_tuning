@@ -63,79 +63,9 @@ Database is now in steady state. No more restarts.
 Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
   Copied OLAP saturation from IVFFlat run: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_warm_constrained_10GB_sb_15GB_cg/saturation_points_olap.json
   -> /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/saturation_points_olap.json
-  Will measure ANN saturation for parallel_ivfflat...
-
-======================================================================
-PHASE 1: Finding ANN Saturation (X^ANN)
-Running ANN alone with increasing workers...
-======================================================================
-
-  Measuring: 1 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=43.97 qps, OLAP=0.0000 qps
-  >> 1 workers: 43.97 qps
-
-  Measuring: 2 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=78.04 qps, OLAP=0.0000 qps
-  >> 2 workers: 78.04 qps
-
-  Measuring: 3 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=99.74 qps, OLAP=0.0000 qps
-  >> 3 workers: 99.74 qps
-
-  Measuring: 4 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=112.41 qps, OLAP=0.0000 qps
-  >> 4 workers: 112.41 qps
-
-  Measuring: 5 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=119.77 qps, OLAP=0.0000 qps
-  >> 5 workers: 119.77 qps
-
-  Measuring: 6 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=123.68 qps, OLAP=0.0000 qps
-  >> 6 workers: 123.68 qps
-
-  Measuring: 7 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=126.13 qps, OLAP=0.0000 qps
-  >> 7 workers: 126.13 qps
-
-  Measuring: 8 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=127.44 qps, OLAP=0.0000 qps
-  >> 8 workers: 127.44 qps
-
-  Measuring: 9 ANN workers, 0 OLAP workers
-  Duration: 300s (cold start, no warmup)
-  Running for 300s...
-  Results: ANN=128.62 qps, OLAP=0.0000 qps
-  >> 9 workers: 128.62 qps
-     (improvement 0.9% < 1% threshold, saturated)
-
-  *** ANN Saturation: X^ANN = 128.62 qps (at 9 workers) ***
-
-
-======================================================================
-SUMMARY
-======================================================================
-  X^ANN  = 128.62 qps (saturates at 9 workers)
-======================================================================
-
-ANN results saved to: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/saturation_points_ann.json
-Combined results saved to: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/saturation_points.json
+  ANN saturation already exists: /users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/results_frontier_pivfflat_warm_constrained_10GB_sb_15GB_cg/saturation_points_ann.json (skipping)
+  X^ANN  = 128.62 qps
+  Both saturation files exist. Nothing to measure.
 
 [Step 2/2] build_throughput_frontier.py --memory 10:15 --warm --index parallel_ivfflat --ivfflat-lists 8192 --snapshot
 DEBUG: sys.argv = ['/users/vmageira/vdb_tuning/vdb-tuning-main/TPCH/code/frontier_analysis/build_throughput_frontier.py', '--memory', '10:15', '--warm', '--index', 'parallel_ivfflat', '--ivfflat-lists', '8192', '--snapshot']
@@ -198,813 +128,184 @@ WARM MODE: Performing initial restart and prewarm...
   Prewarm complete: 33 relations, 2950732 pages (~23053 MB)
 Database is now in steady state. No more restarts.
 Loaded 1000 workload vectors from /users/vmageira/vdb_tuning/vdb-tuning-main/gist_test_queries.txt
+Resuming: 126 existing measurements found.
 
 Grid graph plan:
   ANN levels (fixed-ANN lines): [1, 2, 3, 4, 5, 6, 7, 8, 9]
   OLAP levels (fixed-OLAP lines): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-  Total new measurements needed: 252
-  Estimated time: 1260 minutes (21.0 hours)
+  Total new measurements needed: 0
+  Estimated time: 0 minutes (0.0 hours)
 
 ======================================================================
 FIXED-ANN LINE: ANN = 1 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [1/252] Measuring (1 ANN, 1 OLAP)...
-
-  Measuring: 1 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 317.7s (target: 300s)
-  Results: ANN=40.00 qps, OLAP=0.0661 qps
-
-  [2/252] Measuring (1 ANN, 2 OLAP)...
-
-  Measuring: 1 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 327.0s (target: 300s)
-  Results: ANN=35.37 qps, OLAP=0.0917 qps
-
-  [3/252] Measuring (1 ANN, 3 OLAP)...
-
-  Measuring: 1 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 310.3s (target: 300s)
-  Results: ANN=34.58 qps, OLAP=0.1096 qps
-
-  [4/252] Measuring (1 ANN, 4 OLAP)...
-
-  Measuring: 1 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 331.1s (target: 300s)
-  Results: ANN=27.65 qps, OLAP=0.1268 qps
-
-  [5/252] Measuring (1 ANN, 5 OLAP)...
-
-  Measuring: 1 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 333.3s (target: 300s)
-  Results: ANN=19.11 qps, OLAP=0.1410 qps
-
-  [6/252] Measuring (1 ANN, 6 OLAP)...
-
-  Measuring: 1 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 331.2s (target: 300s)
-  Results: ANN=17.38 qps, OLAP=0.1570 qps
-
-  [7/252] Measuring (1 ANN, 7 OLAP)...
-
-  Measuring: 1 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 348.0s (target: 300s)
-  Results: ANN=15.29 qps, OLAP=0.1494 qps
-
-  [8/252] Measuring (1 ANN, 8 OLAP)...
-
-  Measuring: 1 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 343.6s (target: 300s)
-  Results: ANN=14.28 qps, OLAP=0.1834 qps
-
-  [9/252] Measuring (1 ANN, 9 OLAP)...
-
-  Measuring: 1 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 346.9s (target: 300s)
-  Results: ANN=13.16 qps, OLAP=0.2018 qps
-
-  [10/252] Measuring (1 ANN, 10 OLAP)...
-
-  Measuring: 1 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 346.5s (target: 300s)
-  Results: ANN=11.74 qps, OLAP=0.2165 qps
-
-  [11/252] Measuring (1 ANN, 11 OLAP)...
-
-  Measuring: 1 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 340.4s (target: 300s)
-  Results: ANN=10.88 qps, OLAP=0.2350 qps
-
-  [12/252] Measuring (1 ANN, 12 OLAP)...
-
-  Measuring: 1 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 341.9s (target: 300s)
-  Results: ANN=9.99 qps, OLAP=0.2545 qps
-
-  [13/252] Measuring (1 ANN, 13 OLAP)...
-
-  Measuring: 1 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 341.2s (target: 300s)
-  Results: ANN=9.51 qps, OLAP=0.2667 qps
-
-  [14/252] Measuring (1 ANN, 14 OLAP)...
-
-  Measuring: 1 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 344.9s (target: 300s)
-  Results: ANN=8.51 qps, OLAP=0.2580 qps
+  Skipping (1, 1) — already measured
+  Skipping (1, 2) — already measured
+  Skipping (1, 3) — already measured
+  Skipping (1, 4) — already measured
+  Skipping (1, 5) — already measured
+  Skipping (1, 6) — already measured
+  Skipping (1, 7) — already measured
+  Skipping (1, 8) — already measured
+  Skipping (1, 9) — already measured
+  Skipping (1, 10) — already measured
+  Skipping (1, 11) — already measured
+  Skipping (1, 12) — already measured
+  Skipping (1, 13) — already measured
+  Skipping (1, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 2 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [15/252] Measuring (2 ANN, 1 OLAP)...
-
-  Measuring: 2 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 326.1s (target: 300s)
-  Results: ANN=49.30 qps, OLAP=0.0644 qps
-
-  [16/252] Measuring (2 ANN, 2 OLAP)...
-
-  Measuring: 2 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 331.1s (target: 300s)
-  Results: ANN=48.46 qps, OLAP=0.0936 qps
-
-  [17/252] Measuring (2 ANN, 3 OLAP)...
-
-  Measuring: 2 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 308.8s (target: 300s)
-  Results: ANN=50.23 qps, OLAP=0.1101 qps
-
-  [18/252] Measuring (2 ANN, 4 OLAP)...
-
-  Measuring: 2 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 331.3s (target: 300s)
-  Results: ANN=45.33 qps, OLAP=0.1328 qps
-
-  [19/252] Measuring (2 ANN, 5 OLAP)...
-
-  Measuring: 2 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 347.2s (target: 300s)
-  Results: ANN=39.71 qps, OLAP=0.1469 qps
-
-  [20/252] Measuring (2 ANN, 6 OLAP)...
-
-  Measuring: 2 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 332.4s (target: 300s)
-  Results: ANN=38.93 qps, OLAP=0.1715 qps
-
-  [21/252] Measuring (2 ANN, 7 OLAP)...
-
-  Measuring: 2 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 325.2s (target: 300s)
-  Results: ANN=38.42 qps, OLAP=0.2122 qps
-
-  [22/252] Measuring (2 ANN, 8 OLAP)...
-
-  Measuring: 2 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 337.7s (target: 300s)
-  Results: ANN=35.88 qps, OLAP=0.2162 qps
-
-  [23/252] Measuring (2 ANN, 9 OLAP)...
-
-  Measuring: 2 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 337.9s (target: 300s)
-  Results: ANN=34.01 qps, OLAP=0.2427 qps
-
-  [24/252] Measuring (2 ANN, 10 OLAP)...
-
-  Measuring: 2 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 344.3s (target: 300s)
-  Results: ANN=31.08 qps, OLAP=0.2527 qps
-
-  [25/252] Measuring (2 ANN, 11 OLAP)...
-
-  Measuring: 2 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 340.9s (target: 300s)
-  Results: ANN=30.68 qps, OLAP=0.2611 qps
-
-  [26/252] Measuring (2 ANN, 12 OLAP)...
-
-  Measuring: 2 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 337.4s (target: 300s)
-  Results: ANN=28.71 qps, OLAP=0.2667 qps
-
-  [27/252] Measuring (2 ANN, 13 OLAP)...
-
-  Measuring: 2 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 334.8s (target: 300s)
-  Results: ANN=26.87 qps, OLAP=0.2778 qps
-
-  [28/252] Measuring (2 ANN, 14 OLAP)...
-
-  Measuring: 2 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 334.6s (target: 300s)
-  Results: ANN=25.52 qps, OLAP=0.2869 qps
+  Skipping (2, 1) — already measured
+  Skipping (2, 2) — already measured
+  Skipping (2, 3) — already measured
+  Skipping (2, 4) — already measured
+  Skipping (2, 5) — already measured
+  Skipping (2, 6) — already measured
+  Skipping (2, 7) — already measured
+  Skipping (2, 8) — already measured
+  Skipping (2, 9) — already measured
+  Skipping (2, 10) — already measured
+  Skipping (2, 11) — already measured
+  Skipping (2, 12) — already measured
+  Skipping (2, 13) — already measured
+  Skipping (2, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 3 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [29/252] Measuring (3 ANN, 1 OLAP)...
-
-  Measuring: 3 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 309.5s (target: 300s)
-  Results: ANN=66.45 qps, OLAP=0.0614 qps
-
-  [30/252] Measuring (3 ANN, 2 OLAP)...
-
-  Measuring: 3 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 326.4s (target: 300s)
-  Results: ANN=60.46 qps, OLAP=0.0827 qps
-
-  [31/252] Measuring (3 ANN, 3 OLAP)...
-
-  Measuring: 3 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 329.6s (target: 300s)
-  Results: ANN=59.60 qps, OLAP=0.0941 qps
-
-  [32/252] Measuring (3 ANN, 4 OLAP)...
-
-  Measuring: 3 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 316.3s (target: 300s)
-  Results: ANN=61.52 qps, OLAP=0.1138 qps
-
-  [33/252] Measuring (3 ANN, 5 OLAP)...
-
-  Measuring: 3 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 328.2s (target: 300s)
-  Results: ANN=57.11 qps, OLAP=0.1401 qps
-
-  [34/252] Measuring (3 ANN, 6 OLAP)...
-
-  Measuring: 3 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 338.8s (target: 300s)
-  Results: ANN=51.97 qps, OLAP=0.1535 qps
-
-  [35/252] Measuring (3 ANN, 7 OLAP)...
-
-  Measuring: 3 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 337.5s (target: 300s)
-  Results: ANN=50.22 qps, OLAP=0.1866 qps
-
-  [36/252] Measuring (3 ANN, 8 OLAP)...
-
-  Measuring: 3 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 327.4s (target: 300s)
-  Results: ANN=47.36 qps, OLAP=0.2077 qps
-
-  [37/252] Measuring (3 ANN, 9 OLAP)...
-
-  Measuring: 3 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 345.3s (target: 300s)
-  Results: ANN=43.41 qps, OLAP=0.2085 qps
-
-  [38/252] Measuring (3 ANN, 10 OLAP)...
-
-  Measuring: 3 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 355.2s (target: 300s)
-  Results: ANN=40.86 qps, OLAP=0.2365 qps
-
-  [39/252] Measuring (3 ANN, 11 OLAP)...
-
-  Measuring: 3 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 344.6s (target: 300s)
-  Results: ANN=41.93 qps, OLAP=0.2496 qps
-
-  [40/252] Measuring (3 ANN, 12 OLAP)...
-
-  Measuring: 3 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 345.8s (target: 300s)
-  Results: ANN=39.63 qps, OLAP=0.2516 qps
-
-  [41/252] Measuring (3 ANN, 13 OLAP)...
-
-  Measuring: 3 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 346.4s (target: 300s)
-  Results: ANN=36.26 qps, OLAP=0.2598 qps
-
-  [42/252] Measuring (3 ANN, 14 OLAP)...
-
-  Measuring: 3 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 342.4s (target: 300s)
-  Results: ANN=34.90 qps, OLAP=0.2745 qps
+  Skipping (3, 1) — already measured
+  Skipping (3, 2) — already measured
+  Skipping (3, 3) — already measured
+  Skipping (3, 4) — already measured
+  Skipping (3, 5) — already measured
+  Skipping (3, 6) — already measured
+  Skipping (3, 7) — already measured
+  Skipping (3, 8) — already measured
+  Skipping (3, 9) — already measured
+  Skipping (3, 10) — already measured
+  Skipping (3, 11) — already measured
+  Skipping (3, 12) — already measured
+  Skipping (3, 13) — already measured
+  Skipping (3, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 4 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [43/252] Measuring (4 ANN, 1 OLAP)...
-
-  Measuring: 4 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 328.4s (target: 300s)
-  Results: ANN=72.20 qps, OLAP=0.0518 qps
-
-  [44/252] Measuring (4 ANN, 2 OLAP)...
-
-  Measuring: 4 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 325.4s (target: 300s)
-  Results: ANN=74.91 qps, OLAP=0.0707 qps
-
-  [45/252] Measuring (4 ANN, 3 OLAP)...
-
-  Measuring: 4 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 328.2s (target: 300s)
-  Results: ANN=71.98 qps, OLAP=0.0884 qps
-
-  [46/252] Measuring (4 ANN, 4 OLAP)...
-
-  Measuring: 4 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 327.8s (target: 300s)
-  Results: ANN=69.39 qps, OLAP=0.1007 qps
-
-  [47/252] Measuring (4 ANN, 5 OLAP)...
-
-  Measuring: 4 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 368.5s (target: 300s)
-  Results: ANN=58.22 qps, OLAP=0.1058 qps
-
-  [48/252] Measuring (4 ANN, 6 OLAP)...
-
-  Measuring: 4 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 346.8s (target: 300s)
-  Results: ANN=60.71 qps, OLAP=0.1327 qps
-
-  [49/252] Measuring (4 ANN, 7 OLAP)...
-
-  Measuring: 4 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 336.4s (target: 300s)
-  Results: ANN=58.39 qps, OLAP=0.1516 qps
-
-  [50/252] Measuring (4 ANN, 8 OLAP)...
-
-  Measuring: 4 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 337.8s (target: 300s)
-  Results: ANN=53.79 qps, OLAP=0.1688 qps
-
-  [51/252] Measuring (4 ANN, 9 OLAP)...
-
-  Measuring: 4 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 327.9s (target: 300s)
-  Results: ANN=53.05 qps, OLAP=0.2043 qps
-
-  [52/252] Measuring (4 ANN, 10 OLAP)...
-
-  Measuring: 4 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 349.0s (target: 300s)
-  Results: ANN=47.03 qps, OLAP=0.1977 qps
-
-  [53/252] Measuring (4 ANN, 11 OLAP)...
-
-  Measuring: 4 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 341.7s (target: 300s)
-  Results: ANN=47.64 qps, OLAP=0.2400 qps
-
-  [54/252] Measuring (4 ANN, 12 OLAP)...
-
-  Measuring: 4 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 350.2s (target: 300s)
-  Results: ANN=43.26 qps, OLAP=0.2427 qps
-
-  [55/252] Measuring (4 ANN, 13 OLAP)...
-
-  Measuring: 4 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 351.8s (target: 300s)
-  Results: ANN=42.66 qps, OLAP=0.2387 qps
-
-  [56/252] Measuring (4 ANN, 14 OLAP)...
-
-  Measuring: 4 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 356.5s (target: 300s)
-  Results: ANN=40.02 qps, OLAP=0.2468 qps
+  Skipping (4, 1) — already measured
+  Skipping (4, 2) — already measured
+  Skipping (4, 3) — already measured
+  Skipping (4, 4) — already measured
+  Skipping (4, 5) — already measured
+  Skipping (4, 6) — already measured
+  Skipping (4, 7) — already measured
+  Skipping (4, 8) — already measured
+  Skipping (4, 9) — already measured
+  Skipping (4, 10) — already measured
+  Skipping (4, 11) — already measured
+  Skipping (4, 12) — already measured
+  Skipping (4, 13) — already measured
+  Skipping (4, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 5 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [57/252] Measuring (5 ANN, 1 OLAP)...
-
-  Measuring: 5 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 327.5s (target: 300s)
-  Results: ANN=75.32 qps, OLAP=0.0489 qps
-
-  [58/252] Measuring (5 ANN, 2 OLAP)...
-
-  Measuring: 5 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 316.8s (target: 300s)
-  Results: ANN=79.60 qps, OLAP=0.0694 qps
-
-  [59/252] Measuring (5 ANN, 3 OLAP)...
-
-  Measuring: 5 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 316.1s (target: 300s)
-  Results: ANN=76.08 qps, OLAP=0.0759 qps
-
-  [60/252] Measuring (5 ANN, 4 OLAP)...
-
-  Measuring: 5 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 326.5s (target: 300s)
-  Results: ANN=71.55 qps, OLAP=0.0857 qps
-
-  [61/252] Measuring (5 ANN, 5 OLAP)...
-
-  Measuring: 5 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 329.2s (target: 300s)
-  Results: ANN=68.41 qps, OLAP=0.1002 qps
-
-  [62/252] Measuring (5 ANN, 6 OLAP)...
-
-  Measuring: 5 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 347.2s (target: 300s)
-  Results: ANN=62.85 qps, OLAP=0.1210 qps
-
-  [63/252] Measuring (5 ANN, 7 OLAP)...
-
-  Measuring: 5 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 357.4s (target: 300s)
-  Results: ANN=57.57 qps, OLAP=0.1259 qps
-
-  [64/252] Measuring (5 ANN, 8 OLAP)...
-
-  Measuring: 5 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 356.5s (target: 300s)
-  Results: ANN=58.07 qps, OLAP=0.1346 qps
-
-  [65/252] Measuring (5 ANN, 9 OLAP)...
-
-  Measuring: 5 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 339.6s (target: 300s)
-  Results: ANN=57.84 qps, OLAP=0.1560 qps
-
-  [66/252] Measuring (5 ANN, 10 OLAP)...
-
-  Measuring: 5 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 337.1s (target: 300s)
-  Results: ANN=50.81 qps, OLAP=0.1780 qps
-
-  [67/252] Measuring (5 ANN, 11 OLAP)...
-
-  Measuring: 5 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 344.4s (target: 300s)
-  Results: ANN=49.96 qps, OLAP=0.1713 qps
-
-  [68/252] Measuring (5 ANN, 12 OLAP)...
-
-  Measuring: 5 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 341.9s (target: 300s)
-  Results: ANN=50.37 qps, OLAP=0.1843 qps
-
-  [69/252] Measuring (5 ANN, 13 OLAP)...
-
-  Measuring: 5 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 342.1s (target: 300s)
-  Results: ANN=47.66 qps, OLAP=0.2134 qps
-
-  [70/252] Measuring (5 ANN, 14 OLAP)...
-
-  Measuring: 5 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 348.4s (target: 300s)
-  Results: ANN=42.44 qps, OLAP=0.2296 qps
+  Skipping (5, 1) — already measured
+  Skipping (5, 2) — already measured
+  Skipping (5, 3) — already measured
+  Skipping (5, 4) — already measured
+  Skipping (5, 5) — already measured
+  Skipping (5, 6) — already measured
+  Skipping (5, 7) — already measured
+  Skipping (5, 8) — already measured
+  Skipping (5, 9) — already measured
+  Skipping (5, 10) — already measured
+  Skipping (5, 11) — already measured
+  Skipping (5, 12) — already measured
+  Skipping (5, 13) — already measured
+  Skipping (5, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 6 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [71/252] Measuring (6 ANN, 1 OLAP)...
-
-  Measuring: 6 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 316.0s (target: 300s)
-  Results: ANN=85.27 qps, OLAP=0.0411 qps
-
-  [72/252] Measuring (6 ANN, 2 OLAP)...
-
-  Measuring: 6 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 317.6s (target: 300s)
-  Results: ANN=82.69 qps, OLAP=0.0567 qps
-
-  [73/252] Measuring (6 ANN, 3 OLAP)...
-
-  Measuring: 6 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 322.1s (target: 300s)
-  Results: ANN=80.42 qps, OLAP=0.0745 qps
-
-  [74/252] Measuring (6 ANN, 4 OLAP)...
-
-  Measuring: 6 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 318.9s (target: 300s)
-  Results: ANN=72.33 qps, OLAP=0.0847 qps
-
-  [75/252] Measuring (6 ANN, 5 OLAP)...
-
-  Measuring: 6 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 335.1s (target: 300s)
-  Results: ANN=66.93 qps, OLAP=0.0895 qps
-
-  [76/252] Measuring (6 ANN, 6 OLAP)...
-
-  Measuring: 6 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 330.7s (target: 300s)
-  Results: ANN=67.21 qps, OLAP=0.1028 qps
-
-  [77/252] Measuring (6 ANN, 7 OLAP)...
-
-  Measuring: 6 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 343.4s (target: 300s)
-  Results: ANN=67.19 qps, OLAP=0.1194 qps
-
-  [78/252] Measuring (6 ANN, 8 OLAP)...
-
-  Measuring: 6 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 354.4s (target: 300s)
-  Results: ANN=59.14 qps, OLAP=0.1270 qps
-
-  [79/252] Measuring (6 ANN, 9 OLAP)...
-
-  Measuring: 6 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 355.8s (target: 300s)
-  Results: ANN=57.05 qps, OLAP=0.1349 qps
-
-  [80/252] Measuring (6 ANN, 10 OLAP)...
-
-  Measuring: 6 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 360.1s (target: 300s)
-  Results: ANN=57.69 qps, OLAP=0.1333 qps
-
-  [81/252] Measuring (6 ANN, 11 OLAP)...
-
-  Measuring: 6 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 351.2s (target: 300s)
-  Results: ANN=53.84 qps, OLAP=0.1452 qps
-
-  [82/252] Measuring (6 ANN, 12 OLAP)...
-
-  Measuring: 6 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 351.7s (target: 300s)
-  Results: ANN=48.56 qps, OLAP=0.1734 qps
-
-  [83/252] Measuring (6 ANN, 13 OLAP)...
-
-  Measuring: 6 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 346.7s (target: 300s)
-  Results: ANN=51.14 qps, OLAP=0.1788 qps
-
-  [84/252] Measuring (6 ANN, 14 OLAP)...
-
-  Measuring: 6 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 361.2s (target: 300s)
-  Results: ANN=50.46 qps, OLAP=0.1689 qps
+  Skipping (6, 1) — already measured
+  Skipping (6, 2) — already measured
+  Skipping (6, 3) — already measured
+  Skipping (6, 4) — already measured
+  Skipping (6, 5) — already measured
+  Skipping (6, 6) — already measured
+  Skipping (6, 7) — already measured
+  Skipping (6, 8) — already measured
+  Skipping (6, 9) — already measured
+  Skipping (6, 10) — already measured
+  Skipping (6, 11) — already measured
+  Skipping (6, 12) — already measured
+  Skipping (6, 13) — already measured
+  Skipping (6, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 7 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [85/252] Measuring (7 ANN, 1 OLAP)...
-
-  Measuring: 7 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 337.2s (target: 300s)
-  Results: ANN=75.53 qps, OLAP=0.0386 qps
-
-  [86/252] Measuring (7 ANN, 2 OLAP)...
-
-  Measuring: 7 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 322.5s (target: 300s)
-  Results: ANN=80.80 qps, OLAP=0.0465 qps
-
-  [87/252] Measuring (7 ANN, 3 OLAP)...
-
-  Measuring: 7 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 322.5s (target: 300s)
-  Results: ANN=76.16 qps, OLAP=0.0620 qps
-
-  [88/252] Measuring (7 ANN, 4 OLAP)...
-
-  Measuring: 7 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 319.0s (target: 300s)
-  Results: ANN=80.98 qps, OLAP=0.0752 qps
-
-  [89/252] Measuring (7 ANN, 5 OLAP)...
-
-  Measuring: 7 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 316.5s (target: 300s)
-  Results: ANN=74.33 qps, OLAP=0.0821 qps
-
-  [90/252] Measuring (7 ANN, 6 OLAP)...
-
-  Measuring: 7 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 337.7s (target: 300s)
-  Results: ANN=65.38 qps, OLAP=0.0859 qps
-
-  [91/252] Measuring (7 ANN, 7 OLAP)...
-
-  Measuring: 7 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 370.0s (target: 300s)
-  Results: ANN=61.23 qps, OLAP=0.0919 qps
-
-  [92/252] Measuring (7 ANN, 8 OLAP)...
-
-  Measuring: 7 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 371.6s (target: 300s)
-  Results: ANN=59.62 qps, OLAP=0.0969 qps
-
-  [93/252] Measuring (7 ANN, 9 OLAP)...
-
-  Measuring: 7 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 354.6s (target: 300s)
-  Results: ANN=64.25 qps, OLAP=0.1156 qps
-
-  [94/252] Measuring (7 ANN, 10 OLAP)...
-
-  Measuring: 7 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 359.8s (target: 300s)
-  Results: ANN=57.64 qps, OLAP=0.1223 qps
-
-  [95/252] Measuring (7 ANN, 11 OLAP)...
-
-  Measuring: 7 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 354.8s (target: 300s)
-  Results: ANN=61.56 qps, OLAP=0.1409 qps
-
-  [96/252] Measuring (7 ANN, 12 OLAP)...
-
-  Measuring: 7 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 369.2s (target: 300s)
-  Results: ANN=53.73 qps, OLAP=0.1192 qps
-
-  [97/252] Measuring (7 ANN, 13 OLAP)...
-
-  Measuring: 7 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 358.5s (target: 300s)
-  Results: ANN=53.39 qps, OLAP=0.1423 qps
-
-  [98/252] Measuring (7 ANN, 14 OLAP)...
-
-  Measuring: 7 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 362.8s (target: 300s)
-  Results: ANN=49.14 qps, OLAP=0.1709 qps
+  Skipping (7, 1) — already measured
+  Skipping (7, 2) — already measured
+  Skipping (7, 3) — already measured
+  Skipping (7, 4) — already measured
+  Skipping (7, 5) — already measured
+  Skipping (7, 6) — already measured
+  Skipping (7, 7) — already measured
+  Skipping (7, 8) — already measured
+  Skipping (7, 9) — already measured
+  Skipping (7, 10) — already measured
+  Skipping (7, 11) — already measured
+  Skipping (7, 12) — already measured
+  Skipping (7, 13) — already measured
+  Skipping (7, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 8 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [99/252] Measuring (8 ANN, 1 OLAP)...
-
-  Measuring: 8 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 304.7s (target: 300s)
-  Results: ANN=85.47 qps, OLAP=0.0361 qps
-
-  [100/252] Measuring (8 ANN, 2 OLAP)...
-
-  Measuring: 8 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 327.4s (target: 300s)
-  Results: ANN=77.92 qps, OLAP=0.0428 qps
-
-  [101/252] Measuring (8 ANN, 3 OLAP)...
-
-  Measuring: 8 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 316.5s (target: 300s)
-  Results: ANN=87.81 qps, OLAP=0.0537 qps
-
-  [102/252] Measuring (8 ANN, 4 OLAP)...
-
-  Measuring: 8 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 317.9s (target: 300s)
-  Results: ANN=84.38 qps, OLAP=0.0661 qps
-
-  [103/252] Measuring (8 ANN, 5 OLAP)...
-
-  Measuring: 8 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 320.4s (target: 300s)
-  Results: ANN=72.18 qps, OLAP=0.0749 qps
-
-  [104/252] Measuring (8 ANN, 6 OLAP)...
-
-  Measuring: 8 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 338.0s (target: 300s)
-  Results: ANN=68.58 qps, OLAP=0.0769 qps
-
-  [105/252] Measuring (8 ANN, 7 OLAP)...
-
-  Measuring: 8 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 335.3s (target: 300s)
-  Results: ANN=70.07 qps, OLAP=0.0895 qps
-
-  [106/252] Measuring (8 ANN, 8 OLAP)...
-
-  Measuring: 8 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 338.6s (target: 300s)
-  Results: ANN=67.88 qps, OLAP=0.0915 qps
-
-  [107/252] Measuring (8 ANN, 9 OLAP)...
-
-  Measuring: 8 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 370.0s (target: 300s)
-  Results: ANN=63.25 qps, OLAP=0.0919 qps
-
-  [108/252] Measuring (8 ANN, 10 OLAP)...
-
-  Measuring: 8 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 365.2s (target: 300s)
-  Results: ANN=60.32 qps, OLAP=0.0958 qps
-
-  [109/252] Measuring (8 ANN, 11 OLAP)...
-
-  Measuring: 8 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 352.4s (target: 300s)
-  Results: ANN=65.43 qps, OLAP=0.1022 qps
-
-  [110/252] Measuring (8 ANN, 12 OLAP)...
-
-  Measuring: 8 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 364.4s (target: 300s)
-  Results: ANN=56.35 qps, OLAP=0.1235 qps
-
-  [111/252] Measuring (8 ANN, 13 OLAP)...
-
-  Measuring: 8 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 365.6s (target: 300s)
-  Results: ANN=52.63 qps, OLAP=0.1313 qps
-
-  [112/252] Measuring (8 ANN, 14 OLAP)...
-
-  Measuring: 8 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 366.2s (target: 300s)
-  Results: ANN=53.98 qps, OLAP=0.1202 qps
+  Skipping (8, 1) — already measured
+  Skipping (8, 2) — already measured
+  Skipping (8, 3) — already measured
+  Skipping (8, 4) — already measured
+  Skipping (8, 5) — already measured
+  Skipping (8, 6) — already measured
+  Skipping (8, 7) — already measured
+  Skipping (8, 8) — already measured
+  Skipping (8, 9) — already measured
+  Skipping (8, 10) — already measured
+  Skipping (8, 11) — already measured
+  Skipping (8, 12) — already measured
+  Skipping (8, 13) — already measured
+  Skipping (8, 14) — already measured
 
 ======================================================================
 FIXED-ANN LINE: ANN = 9 workers
   Sweeping OLAP: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 ======================================================================
-
-  [113/252] Measuring (9 ANN, 1 OLAP)...
-
-  Measuring: 9 ANN workers, 1 OLAP workers (300s, warm)
-  Actual duration: 315.6s (target: 300s)
-  Results: ANN=86.07 qps, OLAP=0.0285 qps
-
-  [114/252] Measuring (9 ANN, 2 OLAP)...
-
-  Measuring: 9 ANN workers, 2 OLAP workers (300s, warm)
-  Actual duration: 334.1s (target: 300s)
-  Results: ANN=79.17 qps, OLAP=0.0449 qps
-
-  [115/252] Measuring (9 ANN, 3 OLAP)...
-
-  Measuring: 9 ANN workers, 3 OLAP workers (300s, warm)
-  Actual duration: 325.0s (target: 300s)
-  Results: ANN=81.27 qps, OLAP=0.0431 qps
-
-  [116/252] Measuring (9 ANN, 4 OLAP)...
-
-  Measuring: 9 ANN workers, 4 OLAP workers (300s, warm)
-  Actual duration: 322.6s (target: 300s)
-  Results: ANN=78.93 qps, OLAP=0.0558 qps
-
-  [117/252] Measuring (9 ANN, 5 OLAP)...
-
-  Measuring: 9 ANN workers, 5 OLAP workers (300s, warm)
-  Actual duration: 321.2s (target: 300s)
-  Results: ANN=78.39 qps, OLAP=0.0623 qps
-
-  [118/252] Measuring (9 ANN, 6 OLAP)...
-
-  Measuring: 9 ANN workers, 6 OLAP workers (300s, warm)
-  Actual duration: 326.6s (target: 300s)
-  Results: ANN=73.42 qps, OLAP=0.0704 qps
-
-  [119/252] Measuring (9 ANN, 7 OLAP)...
-
-  Measuring: 9 ANN workers, 7 OLAP workers (300s, warm)
-  Actual duration: 338.4s (target: 300s)
-  Results: ANN=74.35 qps, OLAP=0.0827 qps
-
-  [120/252] Measuring (9 ANN, 8 OLAP)...
-
-  Measuring: 9 ANN workers, 8 OLAP workers (300s, warm)
-  Actual duration: 340.5s (target: 300s)
-  Results: ANN=69.71 qps, OLAP=0.0793 qps
-
-  [121/252] Measuring (9 ANN, 9 OLAP)...
-
-  Measuring: 9 ANN workers, 9 OLAP workers (300s, warm)
-  Actual duration: 368.2s (target: 300s)
-  Results: ANN=64.58 qps, OLAP=0.0869 qps
-
-  [122/252] Measuring (9 ANN, 10 OLAP)...
-
-  Measuring: 9 ANN workers, 10 OLAP workers (300s, warm)
-  Actual duration: 366.7s (target: 300s)
-  Results: ANN=61.47 qps, OLAP=0.0845 qps
-
-  [123/252] Measuring (9 ANN, 11 OLAP)...
-
-  Measuring: 9 ANN workers, 11 OLAP workers (300s, warm)
-  Actual duration: 368.2s (target: 300s)
-  Results: ANN=60.77 qps, OLAP=0.0842 qps
-
-  [124/252] Measuring (9 ANN, 12 OLAP)...
-
-  Measuring: 9 ANN workers, 12 OLAP workers (300s, warm)
-  Actual duration: 372.1s (target: 300s)
-  Results: ANN=58.82 qps, OLAP=0.1075 qps
-
-  [125/252] Measuring (9 ANN, 13 OLAP)...
-
-  Measuring: 9 ANN workers, 13 OLAP workers (300s, warm)
-  Actual duration: 369.8s (target: 300s)
-  Results: ANN=57.91 qps, OLAP=0.1136 qps
-
-  [126/252] Measuring (9 ANN, 14 OLAP)...
-
-  Measuring: 9 ANN workers, 14 OLAP workers (300s, warm)
-  Actual duration: 369.4s (target: 300s)
-  Results: ANN=55.61 qps, OLAP=0.1326 qps
+  Skipping (9, 1) — already measured
+  Skipping (9, 2) — already measured
+  Skipping (9, 3) — already measured
+  Skipping (9, 4) — already measured
+  Skipping (9, 5) — already measured
+  Skipping (9, 6) — already measured
+  Skipping (9, 7) — already measured
+  Skipping (9, 8) — already measured
+  Skipping (9, 9) — already measured
+  Skipping (9, 10) — already measured
+  Skipping (9, 11) — already measured
+  Skipping (9, 12) — already measured
+  Skipping (9, 13) — already measured
+  Skipping (9, 14) — already measured
 
 ======================================================================
 FIXED-OLAP LINE: OLAP = 1 workers
