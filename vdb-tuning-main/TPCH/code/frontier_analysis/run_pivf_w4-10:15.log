@@ -1,0 +1,20 @@
+========================================================================
+MASTER FRONTIER RUNNER - All 3 indexes (using snapshots)
+Memory config: shared_buffers=10GB, cgroup=15GB
+Snapshots:
+  IVFFlat:  /mnt/nvme/saved_indexes/gist_ivfflat_lists8192_pgdata.tar.gz
+  HNSW:     /mnt/nvme/saved_indexes/gist_hnsw_efc256_m32_pgdata.tar.gz
+  Parallel: /mnt/nvme/saved_indexes/gist_parallel_ivfflat_lists8192_pgdata.tar.gz
+Started at: Fri Jun 19 04:42:25 AM UTC 2026
+========================================================================
+
+========================================================================
+PHASE 3/3: Parallel IVFFlat
+========================================================================
+[3a] Compiling parallel pgvector...
+  Done.
+[3b] Loading Parallel IVFFlat snapshot...
+waiting for server to shut down...... done
+server stopped
+    Clearing old PGDATA contents...
+    Extracting snapshot (this may take a few minutes)...
