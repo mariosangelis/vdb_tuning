@@ -1,7 +1,7 @@
 paths:
-  pg_src: /users/mangelis/vdb_tuning/postgres/postgres
-  pgvector_default:  /users/mangelis/vdb_tuning/postgres/postgres/pgvector
-  pgvector_parallel: /users/mangelis/vdb_tuning/postgres/postgres/pgvector_modified_final
+  pg_src: /vdb_tuning/postgres/postgres
+  pgvector_default:  /vdb_tuning/postgres/postgres/pgvector
+  pgvector_parallel: /vdb_tuning/postgres/postgres/pgvector_modified_final
   pg_install: /usr/local/pgsql
   pg_data: /mnt/nvme/pgdata
   pg_conf_src: /users/mangelis/vdb_tuning/postgres_configurations/postgresql.conf
@@ -15,7 +15,7 @@ build:
   configure_flags: "--without-icu"
 
 storage:
-  setup_nvme: true
+  setup_nvme: false
   nvme_dev: /dev/nvme0n1
   nvme_mount: /mnt/nvme
 

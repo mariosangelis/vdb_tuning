@@ -1,0 +1,45 @@
+# Container for building and running the vdb_tuning experiments.
+#
+# Bind mounts (data survives container rebuilds):
+#   - the repo checkout        -> /vdb_tuning
+#   - host /mnt/nvme (a dir)    -> /mnt/nvme   (PGDATA + index snapshots)
+#
+# privileged + cgroup access are required because the experiments create and
+# manipulate a cgroup v2 (/sys/fs/cgroup/postgres_test) to impose memory limits.
+services:
+  vdb-tuning:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vdb-tuning:latest
+    container_name: vdb-tuning
+    hostname: vdb-tuning
+    privileged: true
+    # Give the container its own writable cgroup2 mount for the memory-limit tests.
+    cgroup: host
+    volumes:
+      # Repo root is the parent of this build/ directory on the host.
+      - ..:/vdb_tuning
+      # Host directory (on the root disk) holding PGDATA and snapshots.
+      - /mnt/nvme:/mnt/nvme
+      # Persist the compiled PostgreSQL install (from `make install`) across
+      # container recreates. Without this, /usr/local/pgsql lives only in the
+      # container layer and is lost whenever the container is recreated (e.g.
+      # after changing shm_size), forcing a full rebuild.
+      - /mnt/nvme/pgsql:/usr/local/pgsql
+    ports:
+      - "5432:5432"
+    environment:
+      PGDATA: /mnt/nvme/pgdata
+      VDB_CONFIG: /vdb_tuning/build/config.container.yaml
+    # PostgreSQL parallel index builds (IVFFlat/HNSW) allocate their shared work
+    # area in /dev/shm. This must be large enough for maintenance_work_mem x
+    # parallel workers, otherwise builds fail with "No space left on device"
+    # (that error refers to /dev/shm, not the disk). Sized generously for the
+    # 61 GB host; the kernel only backs pages actually used, so this is not a
+    # hard 48 GB reservation.
+    shm_size: "48gb"
+    # Keep the container alive so you can exec into it and run setup-all.sh.
+    command: ["sleep", "infinity"]
+    # No artificial memory cap: let the container use the host's full RAM.
+    # (Container is privileged; the host has 32 cores / 61 GB.)

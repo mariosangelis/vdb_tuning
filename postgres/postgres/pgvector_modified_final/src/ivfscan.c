@@ -34,7 +34,7 @@
 #define GetScanList(ptr) pairingheap_container(IvfflatScanList, ph_node, ptr)
 #define GetScanListConst(ptr) pairingheap_const_container(IvfflatScanList, ph_node, ptr)
 
-#define NUM_WORKERS 8
+#define NUM_WORKERS 12
 
 PGDLLEXPORT void ivf_prefetch_worker_main(Datum main_arg);
 

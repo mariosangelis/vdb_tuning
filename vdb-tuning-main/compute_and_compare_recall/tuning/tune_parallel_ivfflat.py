@@ -232,10 +232,10 @@ def build_index(table_name, ops_class, index_name, lists):
     cur = conn.cursor()
 
     # Set maintenance_work_mem high for large list counts
-    cur.execute("SET maintenance_work_mem = '400GB'")
+    cur.execute("SET maintenance_work_mem = '15GB'")
     #cur.execute("SET shared_buffers = '230000000kB'")
-    cur.execute("SET max_parallel_maintenance_workers = '64'")
-    cur.execute("SET max_parallel_workers_per_gather = '64'")
+    cur.execute("SET max_parallel_maintenance_workers = '16'")
+    cur.execute("SET max_parallel_workers_per_gather = '16'")
     # Drop existing index if any
     cur.execute(f"DROP INDEX IF EXISTS {table_name}_ivfflat_idx")
 

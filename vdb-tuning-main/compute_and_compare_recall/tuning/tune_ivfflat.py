@@ -261,9 +261,9 @@ def create_ivfflat_index(table_name, lists, index_ops="vector_l2_ops"):
     conn.autocommit = True
     cur = conn.cursor()
 
-    cur.execute("SET maintenance_work_mem = '400GB'")
-    cur.execute("SET max_parallel_maintenance_workers = '64'")
-    cur.execute("SET max_parallel_workers_per_gather = '64'")
+    cur.execute("SET maintenance_work_mem = '15GB'")
+    cur.execute("SET max_parallel_maintenance_workers = '16'")
+    cur.execute("SET max_parallel_workers_per_gather = '16'")
     cur.execute(f"DROP INDEX IF EXISTS {table_name}_ivfflat_idx")
 
     start = time.time()

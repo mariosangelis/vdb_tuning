@@ -1,0 +1,31 @@
+# Container-path variant of config.yaml.
+# Same schema as the repo's config.yaml (read by config_loader.py and the
+# yget() reader in the setup scripts). Selected via the VDB_CONFIG env var,
+# which the Dockerfile/compose set to this file.
+#
+# The repo root is bind-mounted at /vdb_tuning inside the container.
+paths:
+  pg_src:            /vdb_tuning/postgres/postgres
+  pgvector_default:  /vdb_tuning/postgres/postgres/pgvector
+  pgvector_parallel: /vdb_tuning/postgres/postgres/pgvector_modified_final
+  pg_install:        /usr/local/pgsql
+  pg_data:           /mnt/nvme/pgdata
+  pg_conf_src:       /vdb_tuning/postgres_configurations/postgresql.conf
+  snapshot_dir:      /mnt/nvme/saved_indexes
+  dbgen_dir:         /opt/tpch-dbgen
+
+database:
+  name: mydb
+
+build:
+  configure_flags: "--without-icu"
+
+storage:
+  # IMPORTANT: false so setup never reformats a disk. /mnt/nvme is a bind-mounted
+  # host directory here, not a raw device.
+  setup_nvme: false
+  nvme_dev: /dev/nvme0n1
+  nvme_mount: /mnt/nvme
+
+tpch:
+  scale: 10

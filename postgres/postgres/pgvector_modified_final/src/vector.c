@@ -21,7 +21,9 @@
 #include "utils/lsyscache.h"
 #include "utils/numeric.h"
 #include "vector.h"
+#if defined(__x86_64__) || defined(_M_AMD64)
 #include <immintrin.h>
+#endif
 
 double get_scan_lists_time = 0.0;
 double get_scan_items_time = 0.0;
