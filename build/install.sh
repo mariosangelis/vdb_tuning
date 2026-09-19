@@ -38,6 +38,21 @@ log "[0/6] Preflight: architecture, disk space, and shm sizing"
 # -----------------------------------------------------------------------------
 sub "Architecture: $(uname -m)   (ubuntu:24.04 image is multi-arch; nothing to do)"
 
+# Fresh CloudLab node: if ${NVME_DIR} is not mounted and the NVMe data disk is
+# blank (no filesystem, no partitions, not mounted), format + mount it there.
+# A disk that is in use (e.g. AWS, where nvme0n1 is the root disk) is never touched.
+NVME_DEV="${NVME_DEV:-/dev/nvme0n1}"
+if ! mountpoint -q "${NVME_DIR}" 2>/dev/null && [ -b "${NVME_DEV}" ]; then
+    if [ -z "$(lsblk -no FSTYPE,MOUNTPOINTS "${NVME_DEV}" | tr -d '[:space:]')" ] && [ "$(lsblk -no NAME "${NVME_DEV}" | wc -l)" -eq 1 ]; then
+        sub "Formatting blank ${NVME_DEV} (ext4) and mounting it at ${NVME_DIR}"
+        sudo mkfs.ext4 -q "${NVME_DEV}"
+        sudo mkdir -p "${NVME_DIR}" && sudo mount "${NVME_DEV}" "${NVME_DIR}"
+        echo "UUID=$(sudo blkid -s UUID -o value "${NVME_DEV}") ${NVME_DIR} ext4 defaults,noatime,nofail 0 2" | sudo tee -a /etc/fstab >/dev/null
+    else
+        sub "${NVME_DEV} is in use or not blank; leaving it alone."
+    fi
+fi
+
 # Where will /mnt/nvme live? If the operator already mounted a dedicated disk at
 # /mnt/nvme, we use it as-is. Otherwise it is a directory on the root filesystem.
 if mountpoint -q "${NVME_DIR}" 2>/dev/null; then
