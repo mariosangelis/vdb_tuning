@@ -305,6 +305,14 @@ def load_tune_config():
     return best
 
 
+def pgvector_num_workers():
+    """NUM_WORKERS #define of the parallel IVFFlat fork (None for other indexes)."""
+    if INDEX_TYPE_OVERRIDE != "parallel_ivfflat":
+        return None
+    src = Path(get_path("pgvector_parallel")) / "src" / "ivfscan.c"
+    return int(re.search(r"^#define\s+NUM_WORKERS\s+(\d+)", src.read_text(), re.M).group(1))
+
+
 def ensure_index():
     """Ensure the correct index exists based on tune config or CLI override. Build if needed."""
     # Determine index type: CLI override > config
@@ -777,6 +785,7 @@ def run_grid_measurements(workload, saturation, run_fixed_ann=True, run_fixed_ol
                 "measurement_sec": MEASUREMENT_SEC,
                 "postgres_cores": POSTGRES_CORES,
                 "numa_nodes": PG_NUMA_NODES,
+                "num_workers": pgvector_num_workers(),
                 "tau_max": tau_max,
                 "alpha_max": alpha_max,
                 "X_ANN": saturation["X_ANN"],
@@ -1098,7 +1107,7 @@ def main():
 
     # Modify results dir to include index name (only for non-default indexes)
     if INDEX_TYPE_OVERRIDE and INDEX_TYPE_OVERRIDE != "ivfflat":
-        idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", "pivfflat")
+        idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", f"pivfflat_w{pgvector_num_workers()}")
         RESULTS_DIR = RESULTS_DIR.replace("results_frontier_", f"results_frontier_{idx_short}_")
         os.makedirs(RESULTS_DIR, exist_ok=True)
         print(f"INDEX: {INDEX_TYPE_OVERRIDE.upper()} (results: {RESULTS_DIR})")

@@ -302,6 +302,14 @@ def load_tune_config():
     return best
 
 
+def pgvector_num_workers():
+    """NUM_WORKERS #define of the parallel IVFFlat fork (None for other indexes)."""
+    if INDEX_TYPE_OVERRIDE != "parallel_ivfflat":
+        return None
+    src = Path(get_path("pgvector_parallel")) / "src" / "ivfscan.c"
+    return int(re.search(r"^#define\s+NUM_WORKERS\s+(\d+)", src.read_text(), re.M).group(1))
+
+
 def compile_pgvector(variant="default"):
     """Compile and install pgvector extension (default or parallel), then restart postgres."""
     if variant == "parallel":
@@ -916,7 +924,7 @@ def main():
 
     # Modify results dir to include index name (only for non-default indexes)
     if INDEX_TYPE_OVERRIDE and INDEX_TYPE_OVERRIDE != "ivfflat":
-        idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", "pivfflat")
+        idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", f"pivfflat_w{pgvector_num_workers()}")
         # Insert index name into results dir path
         RESULTS_DIR = RESULTS_DIR.replace("results_frontier_", f"results_frontier_{idx_short}_")
         os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -969,6 +977,7 @@ def main():
             "measurement_sec": MEASUREMENT_SEC,
             "postgres_cores": POSTGRES_CORES,
             "numa_nodes": PG_NUMA_NODES,
+            "num_workers": pgvector_num_workers(),
             "memory_config": MEMORY_CONFIG,
         }
     }
@@ -982,7 +991,7 @@ def main():
     #   - ANN saturation: ALWAYS measure (index-specific)
     if INDEX_TYPE_OVERRIDE and INDEX_TYPE_OVERRIDE != "ivfflat":
         # Get default (ivfflat) results directory
-        idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", "pivfflat")
+        idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", f"pivfflat_w{pgvector_num_workers()}")
         default_results = RESULTS_DIR.replace(f"_{idx_short}_", "_")
 
         # Always copy OLAP from IVFFlat
