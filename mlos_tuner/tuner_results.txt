@@ -1,0 +1,99 @@
+
+
+
+max_wal_size:         From 1GB to 3GB
+shared_buffers:       From 300MB to 3GB
+maintenance_work_mem: From 300MB (required) to 3GB
+
+
+IVFFLAT Build, memory knobs
+Best Configuration:
+maintenance_work_mem    2468667
+max_wal_size            3563115
+shared_buffers           304098
+Best Score:             223.775437 sec
+
+worse Configuration:
+maintenance_work_mem    1023973
+max_wal_size            2828209
+shared_buffers          1783599
+worse Score: score      275.77101 sec
+-----------------------------------------------------
+IVFFLAT Build, memory knobs
+
+Best Configuration:
+maintenance_io_concurrency          858
+max_parallel_maintenance_workers     16
+Best Score: score    122.410028
+
+worse Configuration:
+maintenance_io_concurrency          981
+max_parallel_maintenance_workers      2
+worse Score: score    165.953238
+-----------------------------------------------------
+
+
+IVFFLAT Seach, memory knobs
+Best Configuration:
+effective_cache_size    1980446
+shared_buffers          2460264
+work_mem                1903423
+Best Score:    53.256502
+
+
+worse Configuration:
+effective_cache_size     941507
+shared_buffers           323930
+work_mem                 2334947
+worse Score:             72.641071
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+1M data, IVFFLAT index
+shared_buffers, work_maintenance_memory
+
+In IVFFLAT search, we need at least K*dim*float_size work_mem to sort, but this is small.
+
+In IVFFLAT build, we need more work_maintenance_memory to sort, but this is small.
+If we have more work_maintenance_memory, then all the detoasted vectors are stored in memory and the loading to pages is faster.
+BUT: not a lot, its a compute bound probelm. mOST OF THE TIME is used to run kmeans and for eacj tuple to compute the closest centroid
+
+For examle: 1M data, build index with 1000 clusters, we spend:
+
+ with 10GB of work_maintenance_memory
+
+Kmeans: 45-50 sec
+detoast:                       9
+compute_nearest_centroid:      132
+save_slot_to_heap:             0.76
+
+sort based on centroids:       0.06
+
+load to pages:                 15.8
+
+
+ with 300MB (minimum required to run kmeans) of work_maintenance_memory
+
+Kmeans: 45-50 sec
+detoast:                       9
+compute_nearest_centroid:      135
+save_slot_to_heap:             0.76
+
+sort based on centroids:       0.52
+
+load to pages:                 16.5
+
+
+
+Parallelization is not used from implementation
+
+
+
+
+
+
+
+
+
