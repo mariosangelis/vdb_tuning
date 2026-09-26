@@ -131,7 +131,7 @@ SNAPSHOT_MODE = False
 K = IDX_CFG["k"]
 
 # Measurement duration per data point (same as saturation script)
-MEASUREMENT_SEC = 300  # 5 minutes per point, cold start
+MEASUREMENT_SEC = int(os.environ.get("MEASUREMENT_SEC", "300"))  # per-point window (s); override via env, default 5 min
 
 # Grid: 4 evenly-spaced points from 1 to saturation max
 # [1, tau_max/3, 2*tau_max/3, tau_max] for each axis
@@ -1017,8 +1017,14 @@ def main():
             print("Using legacy hardcoded extra points")
     if "--single" in sys.argv:
         idx = sys.argv.index("--single")
-        ann_w, olap_w = sys.argv[idx + 1].split(",")
-        single_point = (int(ann_w), int(olap_w))
+        spec = sys.argv[idx + 1]
+        # "ANN:OLAP,ANN:OLAP,..." measures several points in one warm session.
+        # Legacy "ANN,OLAP" (one pair) still works.
+        if ":" in spec:
+            single_point = [tuple(int(v) for v in q.split(":")) for q in spec.split(",")]
+        else:
+            ann_w, olap_w = spec.split(",")
+            single_point = [(int(ann_w), int(olap_w))]
 
     # Parse --memory SB:CG flag (e.g., --memory 12:16 = 12GB shared_buffers, 16GB cgroup)
     if "--memory" in sys.argv:
@@ -1038,6 +1044,13 @@ def main():
         MEMORY_CONFIG = {"shared_buffers_gb": sb_gb, "cgroup_gb": cg_gb}
         RESULTS_DIR = str(TPCH_DIR / f"results_frontier_constrained_{sb_gb}GB_sb_{cg_gb}GB_cg")
 
+        print(f"MEMORY CONSTRAINED MODE: shared_buffers={sb_gb}GB, cgroup={cg_gb}GB")
+        print(f"Results directory: {RESULTS_DIR}")
+
+        # Apply memory configuration
+        set_shared_buffers(sb_gb)
+        set_cgroup_memory(cg_gb)
+
     # Parse --warm flag
     if "--warm" in sys.argv:
         WARM_MODE = True
@@ -1052,12 +1065,6 @@ def main():
         print(f"DENSE MODE: Using {len(GRID_FRACTIONS)} grid fractions (~280 points)")
         os.makedirs(RESULTS_DIR, exist_ok=True)
 
-        print(f"MEMORY CONSTRAINED MODE: shared_buffers={sb_gb}GB, cgroup={cg_gb}GB")
-        print(f"Results directory: {RESULTS_DIR}")
-
-        # Apply memory configuration
-        set_shared_buffers(sb_gb)
-        set_cgroup_memory(cg_gb)
 
     # Parse --index flag (ivfflat, hnsw, parallel_ivfflat)
     if "--index" in sys.argv:
@@ -1112,24 +1119,50 @@ def main():
     # Load saturation points from Step 1
     saturation = load_saturation_points()
 
-    # Single-point measurement mode (quick test)
+    # Selected-point mode: measure only the listed (ANN, OLAP) pairs through the
+    # same code path as the full grid. Nothing is written under RESULTS_DIR.
     if single_point:
-        ann_w, olap_w = single_point
         print(f"\n{'='*70}")
-        print(f"SINGLE POINT MODE: Measuring ({ann_w} ANN, {olap_w} OLAP)")
+        print(f"SELECTED POINT MODE: {len(single_point)} point(s), {MEASUREMENT_SEC}s each")
+        print(f"  points: {single_point}")
+        print(f"  results are printed only, no file under {RESULTS_DIR} is written")
         print(f"{'='*70}")
 
-        # Load workload
+        # Index parameters, loaded exactly as the grid path does. Without this
+        # TUNE_CFG stays None, ivfflat.probes falls back to 1, and the parallel
+        # scan crashes the backend.
+        if SNAPSHOT_MODE:
+            print("\nSnapshot mode: skipping index creation (already in PGDATA).")
+            TUNE_CFG = load_tune_config()
+            if INDEX_PARAMS:
+                TUNE_CFG.update(INDEX_PARAMS)
+        else:
+            print("\nEnsuring correct index from tune config...")
+            TUNE_CFG = ensure_index()
+        print(f"  index params: {TUNE_CFG}")
+
+        # Same warm protocol as run_grid_measurements: one restart + prewarm, then no
+        # restarts between points. Without it the first point would be cold and would
+        # not be comparable to grid measurements.
+        if WARM_MODE:
+            print("\nWARM MODE: Performing initial restart and prewarm...")
+            restart_postgres()
+            prewarm_database()
+            print("Database is now in steady state. No more restarts.")
+
         workload = load_workload()
 
-        # Measure
-        result = measure_throughput(ann_w, olap_w, workload, measurement_sec=MEASUREMENT_SEC)
-        print(f"\n{'='*70}")
-        print(f"RESULT: ANN={result['ann_throughput_qps']:.2f} qps, "
-              f"OLAP={result['olap_throughput_qps']:.4f} qps")
-        print(f"{'='*70}")
         import json as _json
-        print(_json.dumps(result, indent=2))
+        collected = []
+        for n, (ann_w, olap_w) in enumerate(single_point, 1):
+            print(f"\n  [{n}/{len(single_point)}] Measuring ({ann_w} ANN, {olap_w} OLAP)...")
+            result = measure_throughput(ann_w, olap_w, workload, measurement_sec=MEASUREMENT_SEC)
+            result["ann_workers"] = ann_w
+            result["olap_workers"] = olap_w
+            collected.append(result)
+            print(f"  RESULT ({ann_w},{olap_w}): ANN={result['ann_throughput_qps']:.2f} qps, "
+                  f"OLAP={result['olap_throughput_qps']:.4f} qps")
+        print("SELECTED_POINTS_JSON " + _json.dumps(collected))
         return
 
     if run_extra:

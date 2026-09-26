@@ -133,7 +133,7 @@ OLAP_WORKERS_TO_TEST = [5, 8, 10, 12, 14, 16, 18, 20, 22, 24]
 SATURATION_THRESHOLD = 0.01  # Stop if throughput improves less than 0.05%
 
 # Timing
-MEASUREMENT_SEC = 300    # Measurement window (5 minutes) - cold start, no warmup
+MEASUREMENT_SEC = int(os.environ.get("MEASUREMENT_SEC", "300"))  # per-point window (s); override via env, default 5 min
 
 # TopK query template
 TOPK_QUERY = "SELECT id FROM gist_data ORDER BY embedding <-> '%s'::vector LIMIT %d"
