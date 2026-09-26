@@ -14,7 +14,8 @@
 #   - Transparent Huge Pages off
 #   - NUMA balancing off
 #   - CPU C-states off        (best-effort)
-#   - Swap: ensure >= SWAP_GB swapfile
+#   - Swap: SWAP_GB swapfile on the NVMe (/mnt/nvme), all other swap off
+#   - vm.swappiness=1: swap only under real memory exhaustion (SWAPPINESS= overrides)
 #
 # Every knob is probed first and SKIPPED gracefully if absent (cloud VMs and ARM
 # often lack turbo/SMT/governor files). A summary reports what applied vs skipped.
@@ -25,11 +26,11 @@
 #
 # Usage:  sudo ./tune-host-os.sh              # apply
 #         sudo ./tune-host-os.sh --verify     # only print current state
-#         SWAP_GB=10 sudo ./tune-host-os.sh   # override swap size (default 10)
+#         SWAP_GB=10 sudo ./tune-host-os.sh   # override swap size (default 25)
 # =============================================================================
 set -uo pipefail   # not -e: a missing knob must not abort the whole script
 
-SWAP_GB="${SWAP_GB:-10}"
+SWAP_GB="${SWAP_GB:-25}"
 VERIFY_ONLY=0
 [ "${1:-}" = "--verify" ] && VERIFY_ONLY=1
 
@@ -52,7 +53,7 @@ verify() {
     echo "  THP enabled:     $(cat /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || echo n/a)"
     echo "  numa_balancing:  $(cat /proc/sys/kernel/numa_balancing 2>/dev/null || echo n/a)"
     echo "  swappiness:      $(cat /proc/sys/vm/swappiness 2>/dev/null || echo n/a)"
-    echo "  swap total:      $(free -h | awk '/^Swap:/{print $2}')"
+    echo "  swap:            $(swapon --show=NAME,SIZE,USED,PRIO --noheadings | tr -s ' ' | paste -sd';')"
     echo "  online CPUs:     $(nproc)   NUMA nodes: $(command -v numactl >/dev/null && numactl --hardware 2>/dev/null | awk '/available:/{print $2}' || echo '?')"
 }
 
@@ -113,22 +114,36 @@ else
     skip "C-state control (cpupower/intel_idle not present)"
 fi
 
-# --- 7. Swap: ensure >= SWAP_GB ---------------------------------------------
-cur_swap_kb="$(awk '/^SwapTotal:/{print $2}' /proc/meminfo)"
-cur_swap_gb=$(( cur_swap_kb / 1024 / 1024 ))
-if [ "${cur_swap_gb}" -ge "${SWAP_GB}" ]; then
-    info "Swap already ${cur_swap_gb}GB (>= ${SWAP_GB}GB target)"
-elif [ ! -e /swapfile ]; then
-    info "Creating ${SWAP_GB}GB /swapfile ..."
-    if fallocate -l "${SWAP_GB}G" /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=$((SWAP_GB*1024)) status=none; then
-        chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile \
-            && grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
-        ok "Swap: ${SWAP_GB}GB /swapfile enabled"
-    else
-        skip "Swap: could not create /swapfile"
-    fi
+# --- 7. Swap: all swap on the NVMe data disk ----------------------------------
+# Default: /mnt/nvme/swapfile when /mnt/nvme is mounted (the NVMe, see install.sh),
+# else /swapfile. Every other swap area (e.g. CloudLab's /dev/sda99 on the SATA boot
+# disk) is turned off, so swapped pages never go to the slower OS disk. Runtime-only.
+SWAP_FILE="${SWAP_FILE:-$(mountpoint -q /mnt/nvme && echo /mnt/nvme/swapfile || echo /swapfile)}"
+if [ ! -e "${SWAP_FILE}" ]; then
+    info "Creating ${SWAP_GB}GB ${SWAP_FILE} ..."
+    fallocate -l "${SWAP_GB}G" "${SWAP_FILE}" 2>/dev/null \
+        || dd if=/dev/zero of="${SWAP_FILE}" bs=1M count=$((SWAP_GB*1024)) status=none
+    chmod 600 "${SWAP_FILE}" && mkswap "${SWAP_FILE}" >/dev/null
+fi
+swapon --show=NAME --noheadings | grep -qx "${SWAP_FILE}" || swapon --priority 10 "${SWAP_FILE}"
+for s in $(swapon --show=NAME --noheadings); do
+    [ "$s" = "${SWAP_FILE}" ] || { swapoff "$s" && info "Swap: turned off $s"; }
+done
+if [ "$(swapon --show=NAME --noheadings)" = "${SWAP_FILE}" ]; then
+    ok "Swap: only ${SWAP_FILE} ($(swapon --show=SIZE --noheadings))"
 else
-    skip "Swap: /swapfile exists but total < target; leaving as-is"
+    skip "Swap: could not make ${SWAP_FILE} the only swap"
+fi
+
+# --- 8. Swappiness: swap only under real memory exhaustion ------------------
+# 1 = reclaim drops page cache first and swaps shared_buffers/backend memory only when file pages run out,
+# so the NVMe swapfile is an OOM safety net, not a working tier. (0 would disable swapping for cgroup
+# reclaim entirely on cgroup v2.) Override with SWAPPINESS=<n>.
+SWAPPINESS="${SWAPPINESS:-1}"
+if [ -w /proc/sys/vm/swappiness ]; then
+    echo "${SWAPPINESS}" > /proc/sys/vm/swappiness && ok "vm.swappiness -> ${SWAPPINESS} (swap = emergency only)"
+else
+    skip "vm.swappiness (not writable)"
 fi
 
 verify
