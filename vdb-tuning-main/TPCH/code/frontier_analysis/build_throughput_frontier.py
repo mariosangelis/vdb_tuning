@@ -615,6 +615,48 @@ def olap_worker(thread_id, stop_event, count_lock, results):
         results['olap_latencies'].extend(local_latencies)
 
 
+# ============== SHARED BUFFERS SNAPSHOT ==============
+
+# MB per relation in shared buffers (top 15). Vectors live in gist_data's TOAST
+# table (vector STORAGE = external), so TOAST relations are labelled "<parent>:toast".
+BUFCACHE_SQL = """
+SELECT coalesce(p.relname || ':toast', c.relname, 'unused'), count(*) * 8 / 1024
+FROM pg_buffercache b
+LEFT JOIN pg_class c ON b.relfilenode = pg_relation_filenode(c.oid)
+LEFT JOIN pg_class p ON p.reltoastrelid = c.oid
+GROUP BY 1 ORDER BY 2 DESC LIMIT 15"""
+
+
+def buffercache_snapshot():
+    """MB per relation in shared buffers right now, or None if it fails."""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cur = conn.cursor()
+        t = time.time()
+        cur.execute(BUFCACHE_SQL)
+        snap = {"ts": datetime.now().isoformat(),
+                "duration_ms": round((time.time() - t) * 1000),
+                "mb": dict(cur.fetchall())}
+        conn.close()
+        return snap
+    except Exception as e:
+        print(f"  buffercache snapshot failed: {e}")
+        return None
+
+
+def save_buffercache(ann, olap, start, end):
+    """One entry per grid point in grid_graph_buffercache.json, matched to grid_graph.json by ann/olap."""
+    try:
+        path = os.path.join(RESULTS_DIR, "grid_graph_buffercache.json")
+        data = json.load(open(path)) if os.path.exists(path) else {"measurements": []}
+        data["measurements"].append({"ann_workers": ann, "olap_workers": olap,
+                                     "start": start, "end": end})
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"  buffercache save failed: {e}")
+
+
 # ============== MEASUREMENT FUNCTION ==============
 
 def measure_throughput(num_ann_workers, num_olap_workers, workload,
@@ -655,6 +697,8 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
     measure_results = {'ann_count': 0, 'ann_latencies': [], 'olap_latencies': [], 'olap_query_count': 0}
     threads = []
 
+    bc_start = buffercache_snapshot()  # state inherited from the previous point, before workers start
+
     for i in range(num_ann_workers):
         t = threading.Thread(target=ann_worker, args=(i, workload, stop_event, count_lock, measure_results))
         t.start()
@@ -667,6 +711,7 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
 
     measurement_start = time.time()
     time.sleep(measurement_sec)
+    bc_end = buffercache_snapshot()  # final state, workload still running
 
     stop_event.set()
     for t in threads:
@@ -713,6 +758,7 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
     }
 
     print(f"  Results: ANN={ann_throughput:.2f} qps, OLAP={olap_throughput:.4f} qps")
+    save_buffercache(num_ann_workers, num_olap_workers, bc_start, bc_end)
     return result
 
 
