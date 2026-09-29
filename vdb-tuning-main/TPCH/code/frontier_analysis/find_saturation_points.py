@@ -112,6 +112,13 @@ MEMORY_CONFIG = None
 # Tune configuration (loaded from tune results)
 TUNE_CFG = None
 
+# Opt-in run variants, set only by --ef-search / --probes / --recall / --variant (see main).
+# Without these flags nothing changes: same results dir, same JSON keys.
+KNOB = {}          # search-knob override, e.g. {"ef_search": 250}
+RECALL_NOTE = None # measured recall at that knob, recorded in the JSONs
+VARIANT = None     # e.g. "noopt" = PostgreSQL built without the redundant-computation optimization
+RUN_SUFFIX = ""    # appended to the results dir, e.g. "_ef250", "_noopt"
+
 # Warm mode: prewarm DB once, no restart between measurements
 WARM_MODE = False  # Will be {"shared_buffers_gb": X, "cgroup_gb": Y} if --memory used
 
@@ -299,6 +306,9 @@ def load_tune_config():
     best = tune_data["best_configuration"]
     print(f"  Loaded tune config from: {tune_file}")
     print(f"  Best config: {best}")
+    if KNOB:
+        best = {**best, **KNOB}
+        print(f"  Search knob override (opt-in): {KNOB}")
     return best
 
 
@@ -917,6 +927,21 @@ def main():
         idx_l = sys.argv.index("--ivfflat-lists")
         INDEX_PARAMS["lists"] = int(sys.argv[idx_l + 1])
 
+    # Opt-in run variants (e.g. ~0.967-recall or no-optimization runs); nothing changes without these flags.
+    global KNOB, RECALL_NOTE, VARIANT, RUN_SUFFIX
+    if "--ef-search" in sys.argv:
+        KNOB["ef_search"] = int(sys.argv[sys.argv.index("--ef-search") + 1])
+        RUN_SUFFIX += f"_ef{KNOB['ef_search']}"
+    if "--probes" in sys.argv:
+        KNOB["probes"] = int(sys.argv[sys.argv.index("--probes") + 1])
+        RUN_SUFFIX += f"_p{KNOB['probes']}"
+    if "--recall" in sys.argv:
+        RECALL_NOTE = float(sys.argv[sys.argv.index("--recall") + 1])
+    if "--variant" in sys.argv:
+        VARIANT = sys.argv[sys.argv.index("--variant") + 1]
+        assert re.fullmatch(r"[a-z0-9]+", VARIANT), "--variant must be lowercase letters/digits, e.g. noopt"
+        RUN_SUFFIX += f"_{VARIANT}"
+
     # Parse --snapshot flag (skip ensure_index, index loaded from snapshot)
     if "--snapshot" in sys.argv:
         SNAPSHOT_MODE = True
@@ -933,6 +958,10 @@ def main():
             print(f"  Manual params: {INDEX_PARAMS}")
 
         print("=" * 70)
+    if RUN_SUFFIX:
+        RESULTS_DIR += RUN_SUFFIX
+        os.makedirs(RESULTS_DIR, exist_ok=True)
+        print(f"RUN VARIANT (opt-in): knob={KNOB} recall={RECALL_NOTE} variant={VARIANT}. Results: {RESULTS_DIR}")
     print("THROUGHPUT FRONTIER - Step 1: Find Saturation Points")
     print(f"Index: {INDEX_TYPE_OVERRIDE or "ivfflat"}, K: {K}, "
           f"Measurement: {MEASUREMENT_SEC}s per data point")
@@ -981,6 +1010,12 @@ def main():
             "memory_config": MEMORY_CONFIG,
         }
     }
+    if KNOB:
+        output["config"]["search_knob"] = KNOB
+    if RECALL_NOTE is not None:
+        output["config"]["recall"] = RECALL_NOTE
+    if VARIANT:
+        output["config"]["variant"] = VARIANT
 
     # Check if saturation results already exist (skip if found)
     ann_file = os.path.join(RESULTS_DIR, "saturation_points_ann.json")
@@ -993,6 +1028,8 @@ def main():
         # Get default (ivfflat) results directory
         idx_short = INDEX_TYPE_OVERRIDE.replace("parallel_ivfflat", f"pivfflat_w{pgvector_num_workers()}")
         default_results = RESULTS_DIR.replace(f"_{idx_short}_", "_")
+        if RUN_SUFFIX and default_results.endswith(RUN_SUFFIX):
+            default_results = default_results[:-len(RUN_SUFFIX)]  # OLAP-only saturation: copy from the default IVFFlat dir
 
         # Always copy OLAP from IVFFlat
         default_olap = os.path.join(default_results, "saturation_points_olap.json")

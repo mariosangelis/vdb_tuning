@@ -27,7 +27,9 @@ for a in "$@"; do
         --olap-first) OLAP_FIRST="--olap-first" ;;
         --saturation-only) SAT_ONLY=1 ;;
         --points) POINTS_NEXT=1 ;;
+        --ef-search|--probes|--recall|--variant) VAR_NEXT="$a" ;;  # opt-in run variants, passed through
         *) if [ -n "${POINTS_NEXT}" ]; then POINTS="$a"; POINTS_NEXT=""; \
+           elif [ -n "${VAR_NEXT:-}" ]; then VAR_ARGS="${VAR_ARGS:-} ${VAR_NEXT} $a"; VAR_NEXT=""; \
            else echo "unknown flag: $a" >&2; exit 1; fi ;;
     esac
 done
@@ -75,9 +77,11 @@ start_pg() {
 case "${INDEX}" in
     ivfflat)          SNAPSHOT=${SNAP}/gist_ivfflat_lists8192_pgdata.tar.gz;          PGV=${PGV_DEFAULT};  ARGS="--ivfflat-lists 8192" ;;
     hnsw)             SNAPSHOT=${SNAP}/gist_hnsw_efc256_m32_pgdata.tar.gz;            PGV=${PGV_DEFAULT};  ARGS="--hnsw-m 32 --hnsw-efc 256" ;;
+    hnsw_m8)          INDEX=hnsw; SNAPSHOT=${SNAP}/gist_hnsw_efc256_m8_pgdata.tar.gz; PGV=${PGV_DEFAULT};  ARGS="--hnsw-m 8 --hnsw-efc 256" ;;
     parallel_ivfflat) SNAPSHOT=${SNAP}/gist_parallel_ivfflat_lists8192_pgdata.tar.gz; PGV=${PGV_PARALLEL}; ARGS="--ivfflat-lists 8192" ;;
     *) echo "unknown index: ${INDEX}" >&2; exit 1 ;;
 esac
+ARGS="${ARGS}${VAR_ARGS:-}"
 
 log "=== Frontier: index=${INDEX} mem=${MEM} MEASUREMENT_SEC=${MEASUREMENT_SEC} NUMA=${NUMA} olap_first=${OLAP_FIRST:-no} saturation_only=${SAT_ONLY:-no}"
 
