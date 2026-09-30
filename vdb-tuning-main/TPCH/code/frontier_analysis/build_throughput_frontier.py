@@ -123,6 +123,9 @@ KNOB = {}          # search-knob override, e.g. {"ef_search": 250}
 RECALL_NOTE = None # measured recall at that knob, recorded in the JSONs
 VARIANT = None     # e.g. "noopt" = PostgreSQL built without the redundant-computation optimization
 RUN_SUFFIX = ""    # appended to the results dir, e.g. "_ef250", "_noopt"
+# Opt-in (--latency-windows): per grid point, also p50/p90/p99 + throughput over the full window, its last half,
+# and the last 120 s / 60 s, to see steady state without the start-of-point warm-up. Off = today's output.
+LATENCY_WINDOWS = False
 
 # Warm mode: prewarm DB once, no restart between measurements
 WARM_MODE = False  # Will be {"shared_buffers_gb": X, "cgroup_gb": Y} if --memory used
@@ -505,6 +508,7 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
 
     local_count = 0
     local_latencies = []
+    local_ends = []  # completion times, only with --latency-windows
 
     try:
         conn = psycopg2.connect(**DB_CONFIG)
@@ -536,6 +540,8 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
             if not stop_event.is_set():
                 local_count += 1
                 local_latencies.append(elapsed)
+                if LATENCY_WINDOWS:
+                    local_ends.append(end)
 
         cur.close()
         conn.close()
@@ -545,6 +551,7 @@ def ann_worker(thread_id, workload, stop_event, count_lock, results):
     with count_lock:
         results['ann_count'] += local_count
         results['ann_latencies'].extend(local_latencies)
+        results.setdefault('ann_ends', []).extend(local_ends)
 
 
 # ============== OLAP WORKER ==============
@@ -563,6 +570,7 @@ def olap_worker(thread_id, stop_event, count_lock, results):
 
     local_query_count = 0
     local_latencies = []
+    local_ends = []  # completion times, only with --latency-windows
 
     # Build executable query list
     executable_queries = []
@@ -614,6 +622,8 @@ def olap_worker(thread_id, stop_event, count_lock, results):
             if not stop_event.is_set():
                 local_query_count += 1
                 local_latencies.append(elapsed)
+                if LATENCY_WINDOWS:
+                    local_ends.append(start + elapsed)
 
         cur.close()
         conn.close()
@@ -623,6 +633,7 @@ def olap_worker(thread_id, stop_event, count_lock, results):
     with count_lock:
         results['olap_query_count'] += local_query_count
         results['olap_latencies'].extend(local_latencies)
+        results.setdefault('olap_ends', []).extend(local_ends)
 
 
 # ============== SHARED BUFFERS SNAPSHOT ==============
@@ -723,6 +734,7 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
     time.sleep(measurement_sec)
     bc_end = buffercache_snapshot()  # final state, workload still running
 
+    stop_time = time.time()  # windows for --latency-windows end here
     stop_event.set()
     for t in threads:
         t.join()
@@ -767,9 +779,33 @@ def measure_throughput(num_ann_workers, num_olap_workers, workload,
         "measurement_duration_sec": measurement_sec,
     }
 
+    if LATENCY_WINDOWS:
+        result.update(latency_window_stats(measure_results, measurement_start, stop_time))
+
     print(f"  Results: ANN={ann_throughput:.2f} qps, OLAP={olap_throughput:.4f} qps")
     save_buffercache(num_ann_workers, num_olap_workers, bc_start, bc_end)
     return result
+
+
+def latency_window_stats(results, t_start, t_stop):
+    """--latency-windows: per workload (ann, olap) and window, query count n, throughput and p50/p90/p99 (ms).
+    Windows end at t_stop: full (t_stop - t_start, i.e. MEASUREMENT_SEC), its last half, and the last 120 s / 60 s
+    (None when not shorter than the last half). A percentile is None when n is too small for it."""
+    full = t_stop - t_start
+    windows = {"full": full, "lasthalf": full / 2,
+               "last120s": 120 if 120 < full / 2 else None, "last60s": 60 if 60 < full / 2 else None}
+    min_n = {50: 1, 90: 20, 99: 100}
+    out = {"latency_windows_sec": {k: (round(w, 1) if w else None) for k, w in windows.items()}}
+    for wl in ("ann", "olap"):
+        pairs = list(zip(results.get(f"{wl}_ends", []), results[f"{wl}_latencies"]))
+        for name, w in windows.items():
+            lat = sorted(l for e, l in pairs if w and e >= t_stop - w)
+            out[f"{wl}_n_{name}"] = len(lat) if w else None
+            out[f"{wl}_qps_{name}"] = round(len(lat) / w, 4) if w else None
+            for p, need in min_n.items():
+                ok = w and len(lat) >= need
+                out[f"{wl}_p{p}_{name}_ms"] = round(lat[min(int(len(lat) * p / 100), len(lat) - 1)] * 1000, 2) if ok else None
+    return out
 
 
 # ============== GRID GRAPH CONSTRUCTION ==============
@@ -1169,7 +1205,9 @@ def main():
         INDEX_PARAMS["lists"] = int(sys.argv[idx_l + 1])
 
     # Opt-in run variants (e.g. ~0.967-recall or no-optimization runs); nothing changes without these flags.
-    global KNOB, RECALL_NOTE, VARIANT, RUN_SUFFIX
+    global KNOB, RECALL_NOTE, VARIANT, RUN_SUFFIX, LATENCY_WINDOWS
+    if "--latency-windows" in sys.argv:
+        LATENCY_WINDOWS = True
     if "--ef-search" in sys.argv:
         KNOB["ef_search"] = int(sys.argv[sys.argv.index("--ef-search") + 1])
         RUN_SUFFIX += f"_ef{KNOB['ef_search']}"

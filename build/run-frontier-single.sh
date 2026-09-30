@@ -28,6 +28,7 @@ for a in "$@"; do
         --saturation-only) SAT_ONLY=1 ;;
         --points) POINTS_NEXT=1 ;;
         --ef-search|--probes|--recall|--variant) VAR_NEXT="$a" ;;  # opt-in run variants, passed through
+        --latency-windows) VAR_ARGS="${VAR_ARGS:-} --latency-windows" ;;  # opt-in windowed latency stats
         *) if [ -n "${POINTS_NEXT}" ]; then POINTS="$a"; POINTS_NEXT=""; \
            elif [ -n "${VAR_NEXT:-}" ]; then VAR_ARGS="${VAR_ARGS:-} ${VAR_NEXT} $a"; VAR_NEXT=""; \
            else echo "unknown flag: $a" >&2; exit 1; fi ;;
